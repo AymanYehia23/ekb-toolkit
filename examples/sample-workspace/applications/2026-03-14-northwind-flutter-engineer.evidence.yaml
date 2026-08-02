@@ -1,0 +1,342 @@
+# EVIDENCE SHORTLIST. Candidates are generated; decisions are authored.
+#
+# Rebuild candidates with: ekb shortlist <id> --refresh
+# (a refresh preserves every `selected` and `reason` already recorded)
+#
+# HOW TO USE IT
+#   Work top down. Required and critical requirements come first. For each one,
+#   read the candidates, put the winning record IDs in `selected`, and write in
+#   `reason` why that beats the runner-up. When the winner is NOT the strongest
+#   candidate listed, the reason must say what outranked strength: a page-limit
+#   cut, a counting rule, non-redundant coverage that matters more.
+#
+# WHAT IT IS NOT
+#   Not evidence. `strength` and `claim` are derived from the curated record and
+#   license nothing. Every visible resume line still cites the record itself and
+#   still passes the source check. An empty `candidates` list means no eligible
+#   project record matched the aliases; that is a real gap, not a search failure
+#   to work around.
+schema_version: 1
+kind: evidence-shortlist
+application: 2026-03-14-northwind-flutter-engineer
+generated_at: '2026-08-02'
+generator: scripts/ekb_shortlist.py
+basis:
+  requirements: 15
+  requirements_with_candidates: 8
+  requirements_with_profile_sources_only: 1
+  index_records: 8
+  candidate_limit_per_requirement: 6
+requirements:
+- term: Flutter and Dart
+  priority: required
+  critical: true
+  aliases:
+  - flutter
+  - dart
+  - widget
+  candidates:
+  - ref: mealmate-002
+    project: mealmate
+    strength: 6.0
+    signals:
+    - best-evidence
+    - shipped
+    - tested
+    claim: Introduced widget and golden tests for the cart, covering empty state, quantity limits, and
+      the promotion path that had produced two regressions.
+  profile_candidates: []
+  selected:
+  - fittrack-003
+  - fittrack-001
+  reason: Every selected bullet is Flutter work, so the language is carried throughout. fittrack-003 leads
+    because it is the only record with a measurement behind it.
+- term: customer-facing features
+  priority: required
+  critical: true
+  aliases:
+  - checkout
+  - browsing
+  - user workflow
+  - product screen
+  candidates:
+  - ref: mealmate-001
+    project: mealmate
+    strength: 5.0
+    signals:
+    - best-evidence
+    - shipped
+    claim: Worked on the checkout flow's payment integration, adding a server confirmation step so a completed
+      charge is only recognized after the backend has verified it with the provider.
+  profile_candidates: []
+  selected:
+  - mealmate-001
+  reason: Checkout is the closest analogue to the posting's browsing-and-checkout journey. mealmate-002
+    is co-cited in Selected Projects rather than here, to avoid two cart bullets in one role.
+- term: offline capability
+  priority: required
+  critical: true
+  aliases:
+  - offline
+  - sync
+  - local cache
+  - reconnect
+  - conflict
+  candidates:
+  - ref: fittrack-003
+    project: fittrack
+    strength: 7.0
+    signals:
+    - best-evidence
+    - measured
+    - shipped
+    - interview-story
+    claim: Reduced the workout history screen's frame build time from a measured average of 31 ms to 9
+      ms by virtualizing the list and moving the weekly aggregation off the build path.
+  - ref: fittrack-001
+    project: fittrack
+    strength: 6.0
+    signals:
+    - best-evidence
+    - shipped
+    - tested
+    - interview-story
+    claim: Replaced three overlapping local-cache implementations with a single repository-backed store,
+      so a stale workout entry could no longer survive a failed sync and reappear on the history screen.
+  - ref: fittrack-002
+    project: fittrack
+    strength: 3.0
+    signals:
+    - shipped
+    - interview-story
+    claim: 'Built the offline workout logging path: entries are written locally first, queued, and replayed
+      on reconnect, with a last-write-wins resolution that keeps the device''s own edit when the server
+      copy is older.'
+  profile_candidates: []
+  selected:
+  - fittrack-002
+  - fittrack-001
+  reason: 'The posting names offline twice, and these are the portfolio''s two strongest records on it.
+    Both used: one covers the mechanism, the other the failure it removed.'
+- term: app performance
+  priority: required
+  critical: true
+  aliases:
+  - frame time
+  - rendering
+  - jank
+  - startup
+  - low-end device
+  candidates: []
+  profile_candidates: []
+  selected:
+  - fittrack-003
+  reason: The only before-after record in the knowledge base. A required performance requirement answered
+    by anything weaker would be the exact failure the shortlist exists to catch.
+- term: 3+ years mobile experience
+  priority: required
+  critical: true
+  aliases:
+  - years experience
+  - seniority
+  candidates: []
+  profile_candidates: []
+  selected:
+  - profile-experience-001
+  - profile-experience-002
+  reason: Carried by the Experience dates, which start 2023-01. No years figure is stated in the document;
+    the arithmetic is the reader's.
+- term: payment integration
+  priority: required
+  critical: false
+  aliases:
+  - payment
+  - checkout confirmation
+  - provider
+  - charge
+  candidates:
+  - ref: mealmate-001
+    project: mealmate
+    strength: 5.0
+    signals:
+    - best-evidence
+    - shipped
+    claim: Worked on the checkout flow's payment integration, adding a server confirmation step so a completed
+      charge is only recognized after the backend has verified it with the provider.
+  profile_candidates: []
+  selected:
+  - mealmate-001
+  reason: Only payment record. `contributed`, so the bullet says 'worked on' and never implies the provider
+    SDK integration.
+- term: localization
+  priority: required
+  critical: false
+  aliases:
+  - localization
+  - rtl
+  - arabic
+  - i18n
+  - directional
+  candidates:
+  - ref: fittrack-005
+    project: fittrack
+    strength: 2.0
+    signals:
+    - shipped
+    - tested
+    claim: Added right-to-left layout support across the app, which required replacing directional padding
+      and icon mirroring in fourteen widgets rather than only enabling the locale.
+  profile_candidates: []
+  selected:
+  - fittrack-005
+  reason: Only localization record. Placed in Selected Projects rather than Experience because the Vantage
+    Labs role already carries three stronger bullets.
+- term: store releases
+  priority: required
+  critical: false
+  aliases:
+  - release
+  - signing
+  - app store
+  - play store
+  - ci
+  candidates:
+  - ref: fittrack-004
+    project: fittrack
+    strength: 4.0
+    signals:
+    - led
+    - shipped
+    claim: Set up the release pipeline that builds, signs, and uploads both platforms from CI, moving
+      signing material out of developer machines and into the CI secret store.
+  profile_candidates: []
+  selected:
+  - fittrack-004
+  reason: Only release record, and the portfolio's only `led`. In Selected Projects because Experience
+    bullets were spent on the three required capabilities that outrank it.
+- term: testing
+  priority: required
+  critical: false
+  aliases:
+  - widget test
+  - golden test
+  - regression
+  - coverage
+  candidates: []
+  profile_candidates: []
+  selected:
+  - mealmate-002
+  - fittrack-005
+  reason: mealmate-002 in Experience, fittrack-005's golden tests in Selected Projects. Neither states
+    a test count; both name the behaviors covered.
+- term: state management
+  priority: required
+  critical: false
+  aliases:
+  - state management
+  - provider
+  - repository
+  - controller
+  candidates:
+  - ref: fittrack-001
+    project: fittrack
+    strength: 6.0
+    signals:
+    - best-evidence
+    - shipped
+    - tested
+    - interview-story
+    claim: Replaced three overlapping local-cache implementations with a single repository-backed store,
+      so a stale workout entry could no longer survive a failed sync and reappear on the history screen.
+  - ref: mealmate-001
+    project: mealmate
+    strength: 5.0
+    signals:
+    - best-evidence
+    - shipped
+    claim: Worked on the checkout flow's payment integration, adding a server confirmation step so a completed
+      charge is only recognized after the backend has verified it with the provider.
+  profile_candidates: []
+  selected:
+  - fittrack-001
+  reason: The repository consolidation is the only structural state record. Carried by the existing Experience
+    bullet rather than given one of its own.
+- term: native build configuration
+  priority: required
+  critical: false
+  aliases:
+  - gradle
+  - signing config
+  - android
+  - ios build
+  candidates: []
+  profile_candidates: []
+  selected:
+  - fittrack-004
+  reason: 'Signing configuration and the Gradle change are inside fittrack-004. Not given a separate line:
+    it would repeat the release bullet at lower value.'
+- term: requirements work with product
+  priority: required
+  critical: false
+  aliases:
+  - requirements
+  - stakeholders
+  - scope
+  - product
+  candidates: []
+  profile_candidates:
+  - ref: profile-responsibility-001
+    origin: responsibility
+    label: Requirements work with product stakeholders
+    cap: Describes what the work involved. Never a commercial outcome, a title, or a productivity claim.
+  selected:
+  - profile-responsibility-001
+  reason: No project record covers requirements work, because it leaves no Git trace. The profile responsibility
+    is the only eligible source, so this stays `stated` by necessity rather than by choice.
+- term: code reviews
+  priority: preferred
+  critical: false
+  aliases:
+  - code review
+  - review
+  candidates: []
+  profile_candidates: []
+  selected: []
+  reason: Nothing in the knowledge base covers code review. A real gap, reported at delivery rather than
+    softened into a skills-line claim.
+- term: retail or e-commerce domain
+  priority: preferred
+  critical: false
+  aliases:
+  - retail
+  - e-commerce
+  - shopping
+  - cart
+  - order
+  candidates:
+  - ref: mealmate-002
+    project: mealmate
+    strength: 6.0
+    signals:
+    - best-evidence
+    - shipped
+    - tested
+    claim: Introduced widget and golden tests for the cart, covering empty state, quantity limits, and
+      the promotion path that had produced two regressions.
+  profile_candidates: []
+  selected:
+  - mealmate-001
+  - mealmate-002
+  reason: Cart and checkout work is the closest domain evidence. Preferred rather than required, so it
+    earns no dedicated line.
+- term: design system across apps
+  priority: preferred
+  critical: false
+  aliases:
+  - design system
+  - shared components
+  - component library
+  candidates: []
+  profile_candidates: []
+  selected: []
+  reason: The experience does not exist. Closed by doing the work, never by wording.

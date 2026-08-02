@@ -1,0 +1,61 @@
+# Pre-application screening record. Written by `prompts/screen.md` to
+# `applications/<id>.screening.yaml`, beside the frozen application it screens.
+#
+# It records a decision about an OPPORTUNITY, never a fact about the user. It is
+# not evidence, nothing may cite it as a source, and no generated document may
+# reveal it exists. Every `basis` quotes the untrusted posting; every
+# `profile_basis` points at the confirmed fact the finding was measured against.
+schema_version: 1
+kind: screening
+id: 2026-07-21-example-company-software-engineer # same ID as the application
+screened_at: 2026-07-21
+criteria_policy_version: 1
+input_basis: job-description # job-description | job-url | user-summary
+company_known: true # false when the posting hides the employer
+verdict: proceed-with-caution # excellent-fit | good-fit | proceed-with-caution | low-fit
+
+# Findings, most severe first. Omit the list entirely when nothing was found;
+# do not pad it with reassurance.
+findings:
+  - id: finding-001
+    check: screen-check-002
+    rule: screen-rule-002 # or domain / misalign ID, when one applies
+    severity: blocker # blocker | warning | note
+    confidence: high # high | medium | low
+    title: Existing UK work authorization required, no sponsorship
+    basis: >-
+      Quoted from the posting. Untrusted target text, reproduced so the reading
+      can be checked against the source.
+    profile_basis:
+      - profile-eligibility-002
+    explanation: >-
+      One or two sentences on why this was raised and what it means for the
+      application. No advice about whether to apply.
+
+# Strongest reasons this is worth a tailoring pass. Two to four, not ten.
+positive_signals:
+  - id: screen-positive-003
+    confidence: high
+    basis: Quoted from the posting.
+
+# What the posting does not say that materially affects the decision. This is
+# where an absent statement belongs; it is never a blocker.
+missing_information:
+  - question: Is visa sponsorship available?
+    why_it_matters: Decides whether the role is reachable at all.
+
+# One or two sentences. Whether a tailoring pass looks worthwhile and what the
+# deciding factor is. Never an instruction, and never a decision.
+recommendation: null
+
+# Set after the user answers the gate. `pending` means the gate has not been
+# answered and no downstream work may begin.
+decision:
+  status: pending # pending | proceed | declined | deferred
+  decided_at: null
+  user_note: null
+
+# Checks that could not run, and why. An unresolvable `profile_basis`, a posting
+# too short to judge, or a URL that could not be read all belong here. Silence
+# about a check that did not run is the failure this field prevents.
+not_assessed: []

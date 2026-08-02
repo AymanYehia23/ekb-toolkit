@@ -1,0 +1,113 @@
+# Global project ranking — one job-independent ordering of every curated
+# project by professional value.
+#
+# Copied to profile/project-ranking.yaml by `ekb init`. Written only through
+# prompts/rank.md.
+#
+# WHAT THIS IS
+#   A private editorial aid. It ranks evidence that ALREADY EXISTS; it never
+#   creates any. A high rank does not license a claim, and every visible line
+#   in a generated document still needs its own eligible source reference.
+#
+# WHAT THIS IS NOT
+#   Not an ATS score, not a judgement of your work, and NEVER PRINTED. No rank,
+#   tier, score, or dimension value may appear in any generated document, and
+#   no wording may be derived from one. "A high-complexity project" is not a
+#   supported claim; it is a score talking.
+#
+# WHY IT EXISTS
+#   Selection under time pressure defaults to recency, and recency is a bad
+#   proxy for professional value. The strongest project in a portfolio is often
+#   two years old. Ranking once, away from any specific job, lets a later
+#   selection break a tie in one lookup instead of re-deriving a judgement
+#   while also drafting.
+#
+# HOW TO USE IT
+#   1. Decide which requirements need project evidence.
+#   2. For each, list every project that can support it.
+#   3. Choose the HIGHEST-RANKED project that supports it, honoring that
+#      entry's placement, caps, and never_with.
+#   4. Never select by recency.
+#   A lower-ranked project legitimately wins when it is the only support for a
+#   required capability, when the higher-ranked one is already cited for
+#   another claim, or when a counting rule forbids the pair. Record the reason.
+
+schema_version: 1
+kind: project-ranking
+updated_at: 2026-01-01
+
+basis:
+  curated_projects: 0
+  records_considered: 0
+  method: >-
+    Nine dimensions, each scored 0 to 3 against curated records and the standing
+    constraints in professional-profile.yaml. Coarse on purpose: the score is a
+    documented basis for an ordering, not a measurement.
+  dimensions:
+    complexity: engineering difficulty and technical depth
+    architecture: structural work, layering, testing, delivery practice
+    scale: size of the system and of the change surface
+    maturity: "production reality. Demo or PoC scores at most 1; academic scores 0"
+    ownership: "supported involvement (led > implemented > contributed), never commit count"
+    collaboration: client, requirements, or cross-functional evidence
+    distinctiveness: rarity inside THIS portfolio, not in the industry
+    resume_value: how well one bullet survives a recruiter's read
+    interview_value: how well it survives fifteen minutes of questions
+  excluded:
+    - >-
+      Business impact. Unless the user supplied revenue, retention, adoption, or
+      usage data, estimating it is forbidden.
+
+tiers:
+  - id: tier-1
+    label: Lead with these
+    ranks: [1, 3]
+  - id: tier-2
+    label: Strong support
+    ranks: [4, 8]
+  - id: tier-3
+    label: Use when specifically relevant
+    ranks: [9, null]
+
+projects: []
+# - project: fittrack
+#   rank: 1
+#   tier: tier-1
+#   score: 21
+#   dimensions:
+#     complexity: 3
+#     architecture: 3
+#     scale: 2
+#     maturity: 3
+#     ownership: 2
+#     collaboration: 2
+#     distinctiveness: 2
+#     resume_value: 2
+#     interview_value: 2
+#   rank_basis: >-
+#     Highest score. Shipped, maintained over two years, and the only project
+#     with a measured before/after.
+#   tie_with: null
+#   tie_break: null
+#   placement: experience          # experience | selected-projects | education
+#   best_evidence: [fittrack-011, fittrack-003]
+#   caps:
+#     - "Performance comparison is licensed only for the list rendering work
+#        (profile-constraint-002). No other comparative claim is supported."
+#   never_with: []
+#   links: [play_store, repo]
+
+# Common role shapes and a starting selection for each. A preset is a starting
+# point, never a rule: regenerate the candidate set for every application.
+target_presets: []
+# - id: preset-mobile-product
+#   for: Product-focused mobile roles
+#   lead_with: [fittrack]
+#   support_with: [mealmate]
+#   note: >-
+#     Leads with user-facing workflow evidence. Swap in sidequest when the
+#     posting emphasizes greenfield work.
+
+# Projects that could not be ranked, and why. A project with no curated file
+# cannot be ranked; that is a reason, not an omission.
+not_ranked: []

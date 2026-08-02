@@ -1,0 +1,6 @@
+.DS_Store
+
+# Rendered documents are regenerated from resume.json. Track the model, not the
+# output, unless you want a permanent record of exactly what you submitted.
+# artifacts/applications/**/*.docx
+# artifacts/applications/**/*.pdf

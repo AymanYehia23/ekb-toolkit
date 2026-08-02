@@ -1,0 +1,230 @@
+# Confirmed reusable facts about you.
+#
+# Copied to profile/profile.yaml by `ekb init`. Modify it only through
+# prompts/profile.md, so that every change is confirmed rather than inferred.
+#
+# EVERY ENTRY HERE IS `user-stated`. Nothing in this file may be derived from a
+# repository, from Git configuration, or from a generated document. A name in a
+# commit is not a confirmed display name.
+#
+# Stable IDs matter more than they look. A generated resume cites facts by ID,
+# so an ID must survive rewording. Change the `value`, never the `id`.
+
+schema_version: 1
+updated_at: 2026-01-01
+
+# --- Identity ---------------------------------------------------------------
+identity:
+  id: profile-identity-001
+  value: Your Name
+  kind: user-stated
+
+# `label` is the visible text in a generated document. `url` is the hyperlink
+# attached to it. Contact details keep the literal address as the label so a
+# text-only parser still reads it.
+contact:
+  - id: profile-contact-001
+    type: email
+    value: you@example.com
+    label: you@example.com
+    url: mailto:you@example.com
+    kind: user-stated
+  - id: profile-contact-002
+    type: phone
+    value: "+00 000 000 0000"
+    label: "+00 000 000 0000"
+    # Optional: put a messaging link behind the readable number.
+    url: null
+    kind: user-stated
+  - id: profile-contact-003
+    type: location
+    value: City, Country
+    label: City, Country
+    kind: user-stated # no hyperlink
+
+# Hyperlinked, but never hidden behind a word. The visible label is the full
+# readable address AND it carries a live URL, so an ATS reads the address while
+# a human can click it. Do not shorten these to "LinkedIn" or "GitHub".
+links:
+  - id: profile-link-001
+    type: linkedin # linkedin | github | portfolio | application | other
+    value: linkedin.com/in/yourhandle
+    label: linkedin.com/in/yourhandle
+    url: https://linkedin.com/in/yourhandle
+    kind: user-stated
+  - id: profile-link-002
+    type: github
+    value: github.com/yourhandle
+    label: github.com/yourhandle
+    url: https://github.com/yourhandle
+    kind: user-stated
+
+# --- The link registry ------------------------------------------------------
+#
+# THIS IS THE ONLY PLACE A GENERATED DOCUMENT MAY TAKE A URL FROM.
+#
+# link_status:
+#   confirmed    verified to resolve; the only status that ever renders
+#   unconfirmed  you are unsure which project it belongs to
+#   uncurated    the app is real but has no curated project behind it
+#
+# Store `verified_at` when you check that an address resolves. Verification
+# happens here, once, so that rendering stays deterministic and offline.
+# Never record a private or authenticated address: a developer console URL
+# identifies your account, not the app.
+
+organization_links: []
+# - organization: Example Employer   # must match experience[].organization exactly
+#   url: https://example.com
+#   link_status: confirmed
+#   verified_at: 2026-01-01
+#   kind: user-stated
+
+project_links: []
+# - project: fittrack                # must match a curated projects/<name>.yaml
+#   play_store: https://play.google.com/store/apps/details?id=com.example.fittrack
+#   app_store: https://apps.apple.com/app/id0000000000
+#   repo: null
+#   docs: null
+#   portfolio: null
+#   link_status: confirmed
+#   verified_at: 2026-01-01
+#   kind: user-stated
+
+# --- Employment -------------------------------------------------------------
+#
+# `projects` associates curated projects with this role. It is what stops an
+# independent project drifting into employment history in a generated resume,
+# and the source checker rejects a project placed under the wrong employer.
+experience: []
+# - id: profile-experience-001
+#   organization: Example Employer
+#   title: Mobile Engineer
+#   employment_type: full-time      # full-time | part-time | contract | internship | other
+#   location: Remote
+#   start: 2024-01
+#   end: present                    # or YYYY-MM
+#   projects: [fittrack, mealmate]
+#   kind: user-stated
+
+education: []
+# - id: profile-education-001
+#   institution: Example University
+#   credential: BSc Computer Science
+#   start: 2019-09
+#   end: 2023-06
+#   details: null
+#   url: null                       # e.g. a graduation project repository
+#   kind: user-stated
+
+certifications: []
+# - id: profile-certification-001
+#   name: Example Certification
+#   issuer: Example Issuer
+#   issued: 2025-03
+#   url: https://example.com/verify/000000
+#   kind: user-stated
+
+languages: []
+# - id: profile-language-001
+#   name: English
+#   level: fluent                   # native | fluent | professional | conversational | basic
+#   kind: user-stated
+
+# --- Skills -----------------------------------------------------------------
+#
+# `depth` is evidence-backed, not aspirational. `basis` records what supports
+# it, and `ekb skills` recomputes those counts from curated tags and reports
+# drift. A skill with no curated evidence behind it belongs at `exposure` or
+# not at all.
+skills: []
+# - id: profile-skill-001
+#   group: Mobile
+#   label: Flutter and Dart
+#   depth: core                     # core | working | exposure
+#   basis: "8 projects, 31 records"
+#   kind: user-stated
+
+# --- Responsibilities -------------------------------------------------------
+#
+# THE ONLY ROUTE FOR WORK THAT LEAVES NO GIT TRACE.
+#
+# Client meetings, requirements gathering, solution design, production support,
+# mentoring, and working method appear in no commit log, so without an entry
+# here they cannot appear in any document.
+#
+# `phrasings` is a closed vocabulary: text sourced to this entry may reuse only
+# words present in it. That is deliberate. It stops a responsibility quietly
+# growing between applications. Need a new angle? Add the phrasing here first.
+#
+# `cap` states what this entry may never be turned into.
+responsibilities: []
+# - id: profile-responsibility-001
+#   label: Client requirements and solution shaping
+#   phrasings:
+#     - "Gathered requirements directly from client stakeholders and translated
+#        them into technical scope."
+#     - "Worked with clients to shape feature scope before implementation."
+#   cap: >-
+#     Describes what the work involved. Never a commercial outcome, a title, or
+#     a productivity claim.
+#   kind: user-stated
+
+# --- Work eligibility -------------------------------------------------------
+#
+# Facts, not preferences. The screening policy compares against these by ID.
+# A check whose basis cannot be resolved reports that it could not run, which
+# is why an absent fact is better than a guessed one.
+work_eligibility: []
+# - id: profile-eligibility-001
+#   type: citizenship
+#   value: Example Country
+#   kind: user-stated
+# - id: profile-eligibility-002
+#   type: authorization
+#   value: No existing right to work outside Example Country; needs sponsorship.
+#   sponsorship_normal_markets: []
+#   kind: user-stated
+# - id: profile-eligibility-003
+#   type: relocation
+#   value: Open to relocation. Priority markets: ...
+#   kind: user-stated
+
+awards: []
+activities: []
+hobbies: [] # opt-in only
+career_breaks: []
+# - id: profile-career-break-001
+#   label: Career break
+#   start: 2023-07
+#   end: 2023-12
+#   details: null
+#   kind: user-stated
+
+# --- Preferences ------------------------------------------------------------
+preferences:
+  summary: auto # auto | include | omit
+  page_target: 1 # 1 or 2
+  default_market: europe # europe (A4) | north-america (Letter)
+  # Projects with no employer. They may appear under Selected Projects and
+  # must never appear inside Experience.
+  standalone_projects: []
+  academic_projects: []
+  link_style:
+    contact: literal-text-with-link
+    profile_links: full-address-with-link
+    project_links: hyperlink-behind-name
+    organization_links: hyperlink-behind-name
+    certification_links: hyperlink-behind-name
+    auto_hyperlink: on # on | off
+
+# --- Privacy ----------------------------------------------------------------
+#
+# GIT HISTORY PRESERVES DELETED PERSONAL INFORMATION. A phone number committed
+# once and removed later is still in the repository forever.
+#
+# A missing answer behaves as `declined`. Generation works either way; only the
+# checkpoint stops.
+privacy:
+  profile_git: declined # granted | declined
+  application_history_git: declined # granted | declined

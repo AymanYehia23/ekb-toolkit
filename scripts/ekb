@@ -1,0 +1,154 @@
+#!/usr/bin/env bash
+#
+# One entry point for every deterministic operation in the toolkit.
+#
+# The agent-driven parts of the workflow live in prompts/. This script covers
+# the parts that must be reproducible: building indexes, checking consistency,
+# rendering documents, and checkpointing. Anything that needs judgement is a
+# prompt; anything that needs to give the same answer twice is here.
+#
+#   ekb init                     scaffold a workspace from templates
+#   ekb doctor                   report what is installed and what is missing
+#   ekb status                   one-line state of the workspace
+#   ekb index [--check]          rebuild the evidence index
+#   ekb shortlist <app-id>       build the per-requirement evidence shortlist
+#   ekb check                    cross-file consistency check
+#   ekb skills                   recompute the evidence behind the skills list
+#   ekb validate <app-id>        source-eligibility check, no rendering
+#   ekb render <app-id> [...]    validate, then write DOCX and PDF
+#   ekb compare <a.json> <b.json>  score two competing drafts
+#   ekb git <mode> [...]         local checkpoint in the workspace
+#
+# Every subcommand reads the workspace resolved by scripts/ekb_paths.py:
+# $EKB_WORKSPACE, then paths.workspace in config/toolkit.yaml, then ./workspace.
+
+set -euo pipefail
+
+TOOLKIT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PYTHON="${EKB_PYTHON:-python3}"
+
+die() {
+  printf 'ekb: %s\n' "$*" >&2
+  exit 1
+}
+
+workspace() {
+  "$PYTHON" -c 'import sys;sys.path.insert(0,sys.argv[1]+"/scripts");from ekb_paths import workspace_root;print(workspace_root())' "$TOOLKIT"
+}
+
+usage() {
+  sed -n '3,25p' "${BASH_SOURCE[0]}" | sed 's/^#\{1,2\} \{0,1\}//'
+  exit "${1:-0}"
+}
+
+require_id() {
+  [[ $# -ge 1 && -n "${1:-}" ]] || die "this command needs an application id"
+  [[ "$1" =~ ^[a-z0-9][a-z0-9-]*$ ]] || die "application id must be lowercase letters, digits, and hyphens"
+}
+
+command="${1:-}"
+[[ -n "$command" ]] || usage 0
+shift || true
+
+case "$command" in
+-h | --help | help) usage 0 ;;
+
+init)
+  ws="$(workspace)"
+  mkdir -p "$ws"/{profile,projects,context,applications,index,artifacts/{interview,bullets,applications}}
+  copied=0
+  copy_template() {
+    local src="$TOOLKIT/$1" dest="$ws/$2"
+    if [[ -e "$dest" ]]; then
+      printf '  kept     %s (already exists)\n' "$2"
+    else
+      cp "$src" "$dest"
+      printf '  created  %s\n' "$2"
+      copied=$((copied + 1))
+    fi
+  }
+  printf 'Scaffolding workspace at %s\n' "$ws"
+  copy_template templates/profile.yaml profile/profile.yaml
+  copy_template templates/professional-profile.yaml profile/professional-profile.yaml
+  copy_template templates/project-ranking.yaml profile/project-ranking.yaml
+  copy_template config/screening-criteria.yaml profile/screening-criteria.yaml
+  copy_template templates/exclusions.md EXCLUSIONS.md
+  copy_template templates/workspace-gitignore .gitignore
+  for dir in projects context applications index artifacts/interview artifacts/bullets artifacts/applications; do
+    [[ -e "$ws/$dir/.gitkeep" ]] || touch "$ws/$dir/.gitkeep"
+  done
+  printf '\n%d file(s) created. Next:\n' "$copied"
+  printf '  1. git init in %s so your knowledge base has its own history\n' "$ws"
+  printf '  2. open your agent in the toolkit directory and ask it to follow prompts/profile.md\n'
+  printf '  3. then prompts/analyze.md with REPO_PATH=/path/to/a/repo\n'
+  ;;
+
+doctor)
+  ws="$(workspace)"
+  printf 'toolkit    %s\n' "$TOOLKIT"
+  printf 'workspace  %s%s\n' "$ws" "$([[ -d $ws ]] || echo '  (missing: run `ekb init`)')"
+  printf '\n'
+  check() {
+    if "${@:2}" >/dev/null 2>&1; then printf '  ok       %s\n' "$1"; else printf '  MISSING  %s\n' "$1"; fi
+  }
+  check "python3" "$PYTHON" --version
+  check "PyYAML (all commands)" "$PYTHON" -c 'import yaml'
+  check "ruby (resume source check)" ruby --version
+  check "python-docx (DOCX output)" "$PYTHON" -c 'import docx'
+  check "reportlab (PDF output)" "$PYTHON" -c 'import reportlab'
+  check "pypdf (PDF verification)" "$PYTHON" -c 'import pypdf'
+  check "git" git --version
+  printf '\nOnly python3, PyYAML, and git are needed to build a knowledge base.\n'
+  printf 'The rest are needed to render resumes: pip install -r requirements.txt\n'
+  ;;
+
+status)
+  ws="$(workspace)"
+  [[ -d "$ws/projects" ]] || die "no workspace at $ws; run 'ekb init'"
+  curated=$(find "$ws/projects" -name '*.yaml' ! -name '*.candidates.yaml' | wc -l | tr -d ' ')
+  pending=$(find "$ws/projects" -name '*.candidates.yaml' | wc -l | tr -d ' ')
+  apps=$(find "$ws/applications" -name '*.yaml' ! -name '*.evidence.yaml' ! -name '*.screening.yaml' 2>/dev/null | wc -l | tr -d ' ')
+  printf 'workspace %s\n' "$ws"
+  printf '  curated projects   %s\n' "$curated"
+  printf '  pending reviews    %s\n' "$pending"
+  printf '  applications       %s\n' "$apps"
+  printf '  profile            %s\n' "$([[ -f "$ws/profile/profile.yaml" ]] && echo present || echo 'not created')"
+  printf '\nFor the per-project state and next action, ask your agent to follow prompts/status.md\n'
+  ;;
+
+index) exec "$PYTHON" "$TOOLKIT/scripts/ekb_index.py" "$@" ;;
+check) exec "$PYTHON" "$TOOLKIT/scripts/ekb_check.py" "$@" ;;
+skills) exec "$PYTHON" "$TOOLKIT/scripts/ekb_skills.py" "$@" ;;
+git) exec "$TOOLKIT/scripts/ekb_git.sh" "$@" ;;
+
+shortlist)
+  require_id "${1:-}"
+  exec "$PYTHON" "$TOOLKIT/scripts/ekb_shortlist.py" --application "$@"
+  ;;
+
+validate | render)
+  require_id "${1:-}"
+  id="$1"
+  shift
+  ws="$(workspace)"
+  model="$ws/artifacts/applications/$id/resume.json"
+  [[ -f "$model" ]] || die "no resume model at $model"
+  args=(--model "$model" --profile "$ws/profile/profile.yaml" --projects "$ws/projects")
+  if [[ "$command" == "render" ]]; then
+    args+=(--policy "$TOOLKIT/config/resume-policy.json" --output-dir "$ws/artifacts/applications/$id")
+  fi
+  exec "$PYTHON" "$TOOLKIT/scripts/resume_render.py" "$command" "${args[@]}" "$@"
+  ;;
+
+compare)
+  ws="$(workspace)"
+  exec "$PYTHON" "$TOOLKIT/scripts/ekb_compare.py" \
+    --profile "$ws/profile/profile.yaml" --projects "$ws/projects" \
+    --ranking "$ws/profile/project-ranking.yaml" --models "$@"
+  ;;
+
+*)
+  printf 'ekb: unknown command %s\n\n' "$command" >&2
+  usage 1
+  ;;
+esac

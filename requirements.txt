@@ -1,0 +1,8 @@
+# Required for every command.
+PyYAML>=6.0
+
+# Required only to render resumes (ekb render / ekb validate).
+# Everything else works without these.
+python-docx>=1.1.0
+reportlab>=4.0.0
+pypdf>=4.0.0

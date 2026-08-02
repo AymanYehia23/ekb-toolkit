@@ -1,0 +1,86 @@
+# FICTIONAL EXAMPLE. See projects/fittrack.yaml for the fuller annotated case.
+#
+# MealMate is here to show a SECOND project with different characteristics:
+# lower involvement, a demo that never shipped, and a record that is deliberately
+# ineligible for a public claim. A knowledge base is more useful when it records
+# the weak evidence honestly than when it only records the strong.
+
+project: mealmate
+repo: /Users/sam/dev/mealmate
+
+analyses:
+  - at: 2026-02-11
+    since: null
+    head: "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678"
+    depth: quick
+    agent: example-agent
+    model: example-model
+    contributors: 7
+    skipped:
+      - "Repository history begins at the team's migration from another host; commits before 2025-03 are not present."
+      - "Two contributors used a shared CI account, so authorship for 41 commits is ambiguous."
+
+records:
+  - id: mealmate-001
+    statement: >
+      Worked on the checkout flow's payment integration, adding a server
+      confirmation step so a completed charge is only recognized after the
+      backend has verified it with the provider.
+    kind: repo-verified
+    involvement: contributed
+    evidence:
+      - range: 4d5e6f7..8a9b0c1
+        note: The confirmation call, the pending state, and its recovery path.
+      - path: lib/checkout/payment_controller.dart
+        at: 8a9b0c1
+    reasoning: >
+      The user's identity appears on the confirmation and recovery commits.
+      Other identities appear on the provider SDK integration in the same range,
+      so involvement is recorded as contributed rather than implemented.
+    limitations: >
+      Shared feature. Feature-level wording is supported; the provider SDK
+      integration itself was another engineer's work and must not be implied.
+    interview_notes: >
+      Confirmed 2026-02-13: the recovery path exists because a network drop
+      between charge and confirmation used to leave the order in a state the app
+      could not resolve without support intervention.
+    tags: [payments, networking, architecture]
+
+  - id: mealmate-002
+    statement: >
+      Introduced widget and golden tests for the cart, covering empty state,
+      quantity limits, and the promotion path that had produced two regressions.
+    kind: repo-verified
+    involvement: implemented
+    evidence:
+      - range: 2b3c4d5..6e7f8a9
+        note: The test suite and the CI step that runs it on pull requests.
+    reasoning: >
+      The tests are authored in one series by a single identity and the CI step
+      lands in the same range. The commit message names both regressions.
+    limitations: >
+      Test coverage for one feature area. Do not present test counts as an
+      achievement; describe the behaviors and failure paths covered instead.
+    interview_notes: ""
+    tags: [testing, ui-implementation]
+
+  - id: mealmate-003
+    statement: >
+      A voice-driven ordering prototype was built on a feature branch and
+      demonstrated internally. It was never merged or released.
+    kind: repo-verified
+    involvement: contributed
+    evidence:
+      - range: 7f8a9b0..1c2d3e4
+        note: The branch, and the pull request that was closed without merging.
+    reasoning: >
+      The branch exists with working code and a recorded demo, and the pull
+      request is closed unmerged. Nothing in main references it.
+    limitations: >
+      NOT ELIGIBLE FOR A RESUME CLAIM. Never shipped, never used by anyone
+      outside the team, and the work was shared. It is useful interview
+      material about scoping and about knowing when to stop, and nothing more.
+    interview_notes: >
+      Confirmed 2026-02-13: dropped because the speech provider's latency in the
+      two target languages made the flow slower than tapping.
+    tags: [prototype, architecture]

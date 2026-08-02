@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "application_id": "2026-07-21-example-company-software-engineer",
+  "target": {
+    "mode": "job-targeted",
+    "company": "Example Company",
+    "role": "Software Engineer",
+    "summary_lead": "Software Engineer",
+    "market": "europe",
+    "market_basis": "profile-default"
+  },
+  "layout": {
+    "page_target": 1,
+    "hyperlinks": "auto",
+    "emphasis": "matched-requirements"
+  },
+  "basics": {
+    "name": {
+      "text": "Example Name",
+      "source_ref": "profile-identity-001"
+    },
+    "contact": [
+      {
+        "text": "name@example.com",
+        "source_ref": "profile-contact-001",
+        "url": "mailto:name@example.com"
+      }
+    ],
+    "links": []
+  },
+  "summary": [
+    {
+      "text": "Software Engineer with evidence-backed experience relevant to the target role.",
+      "source_ref": "example-001"
+    }
+  ],
+  "experience": [
+    {
+      "organization": {
+        "text": "Example Company",
+        "source_ref": "profile-experience-001",
+        "url": "https://example.com/"
+      },
+      "title": {
+        "text": "Software Engineer",
+        "source_ref": "profile-experience-001"
+      },
+      "location": null,
+      "start": {
+        "text": "Jan 2024",
+        "source_ref": "profile-experience-001"
+      },
+      "end": {
+        "text": "Present",
+        "source_ref": "profile-experience-001"
+      },
+      "bullets": [
+        {
+          "text": "Contributed to an evidence-backed engineering feature.",
+          "source_ref": "example-001"
+        }
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "primary": {
+        "text": "First selected project",
+        "source_ref": "example-project-001"
+      },
+      "secondary": null,
+      "date": null,
+      "details": [
+        {
+          "text": "Describe one target-relevant engineering feature.",
+          "source_ref": "example-project-001"
+        }
+      ]
+    },
+    {
+      "primary": {
+        "text": "Second selected project",
+        "source_ref": "example-project-002"
+      },
+      "secondary": null,
+      "date": null,
+      "details": [
+        {
+          "text": "Describe a distinct target-relevant engineering feature.",
+          "source_ref": "example-project-002"
+        }
+      ]
+    }
+  ],
+  "skills": [
+    {
+      "name": "Languages",
+      "items": [
+        {
+          "text": "Example",
+          "source_ref": "example-001"
+        }
+      ]
+    }
+  ],
+  "languages": [],
+  "education": [],
+  "certifications": [],
+  "awards": [],
+  "activities": [],
+  "hobbies": [],
+  "career_breaks": [],
+  "alignment": {
+    "requirements": [
+      {
+        "term": "Example Framework",
+        "aliases": [
+          "Example Framework"
+        ],
+        "priority": "required",
+        "critical": true,
+        "status": "matched",
+        "evidence_refs": [
+          "example-001"
+        ],
+        "emphasize": true
+      }
+    ]
+  },
+  "quantifier_review": {
+    "used": [],
+    "available_not_used": [],
+    "opportunities": []
+  }
+}

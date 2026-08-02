@@ -1,0 +1,16 @@
+project: stronger
+repo: /read-only/stronger
+analyses: []
+records:
+  - id: stronger-001
+    statement: >
+      Implemented a scheduling service with Ruby and PostgreSQL.
+    kind: repo-verified
+    involvement: implemented
+    evidence:
+      - path: lib/scheduler.rb
+        at: bbb222
+    reasoning: The repository contains the scheduling paths.
+    limitations: No measured business result is stored.
+    interview_notes: ""
+    tags: [Ruby, PostgreSQL, scheduling]

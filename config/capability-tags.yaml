@@ -1,0 +1,52 @@
+# Capability vocabulary.
+#
+# Curated records carry free-form `tags`. Over a few dozen projects that
+# vocabulary drifts: one record says `bloc`, another says `state-management`,
+# a third says `cubit`. This file folds the variants so that looking up "which
+# records demonstrate state management" returns all three.
+#
+# Left side is the canonical capability, which is what a job requirement is
+# matched against. Right side is the set of curated tags that fold into it.
+#
+# This is a lookup aid and nothing more. Folding two tags together does not
+# make a claim, does not strengthen a record, and does not change what any
+# record says. If a fold produces a wrong match during selection, remove it.
+#
+# Delete freely. An empty file is a valid configuration: it simply means every
+# tag stands on its own, which is the right setup for a small knowledge base.
+# Add your own stack's vocabulary rather than adopting this one wholesale.
+
+schema_version: 1
+kind: capability-tags
+
+synonyms:
+  # --- cross-platform mobile, the default profile pack's vocabulary ---------
+  state-management: [riverpod, bloc, cubit, provider, getx, mobx, get-it, inherited-widget]
+  architecture: [clean-architecture, feature-first, layering, mvvm, modularization, monorepo]
+  navigation: [routing, go-router, auto-route, deep-linking, nested-navigation]
+  ui-implementation: [widgets, custom-painter, animation, responsive, adaptive-layout, theming]
+  platform-channels: [method-channel, native-interop, ffi, pigeon, plugin-development]
+
+  # --- data and integration ------------------------------------------------
+  networking: [dio, http, rest, graphql, api-design, retrofit, interceptors]
+  offline: [caching, sync, hive, drift, isar, sqlite, shared-preferences, offline-first]
+  serialization: [json, freezed, json-serializable, codegen]
+  realtime: [websocket, firestore, streams, pubsub]
+
+  # --- product surfaces ----------------------------------------------------
+  authentication: [auth, login, session-management, otp, oauth, biometrics, permissions]
+  payments: [payment, checkout, in-app-purchase, subscriptions, payment-gateway]
+  notifications: [push-notifications, fcm, local-notifications, apns]
+  geolocation: [gps, maps, geofence, geofencing, location, background-location]
+  localization: [i18n, l10n, rtl, translations, intl]
+  accessibility: [a11y, semantics, screen-reader, contrast]
+
+  # --- engineering practice ------------------------------------------------
+  testing: [unit-tests, widget-tests, integration-tests, golden-tests, test-suite, mocking]
+  release-engineering: [ci, ci-cd, fastlane, codemagic, app-store, play-store, code-signing, shorebird]
+  performance: [optimization, rendering, memory, jank, startup-time, profiling]
+  observability: [crashlytics, sentry, analytics, logging, monitoring]
+  security: [encryption, secure-storage, certificate-pinning, obfuscation]
+  refactoring: [migration, consolidation, cleanup, tech-debt, deprecation]
+  documentation: [docs, runbook, guide, adr, onboarding]
+  collaboration: [code-review, pairing, requirements, client-facing, mentoring]

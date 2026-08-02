@@ -1,0 +1,74 @@
+# FICTIONAL EXAMPLE.
+#
+# Written by prompts/screen.md BEFORE any evidence was read. Note what it does
+# not contain: no record IDs, no shortlist, no assessment of the resume. The
+# gate reads the posting, the profile, and the policy, and then stops.
+#
+# This record judges an OPPORTUNITY, never the candidate. Nothing cites it and
+# no generated document may reveal it exists.
+
+schema_version: 1
+kind: screening
+id: 2026-03-14-northwind-flutter-engineer
+screened_at: 2026-03-14
+criteria_policy_version: 1
+input_basis: job-description
+company_known: true
+verdict: good-fit
+
+findings:
+  - id: finding-001
+    check: screen-check-005
+    rule: screen-rule-015
+    severity: warning
+    confidence: high
+    title: Design system across multiple apps is listed with no supporting evidence
+    basis: >-
+      "Nice to have: Experience with a design system across multiple apps."
+    profile_basis:
+      - profile/profile.yaml#skills
+    explanation: >-
+      Listed as nice to have rather than required, so it does not block. Worth
+      knowing before drafting that this is a real gap and cannot be written
+      around.
+
+positive_signals:
+  - id: screen-positive-002
+    confidence: high
+    basis: '"Remote, EU" with no stated time-zone restriction.'
+  - id: screen-positive-003
+    confidence: high
+    basis: '"Strong Flutter and Dart" is the first requirement listed.'
+  - id: screen-positive-004
+    confidence: medium
+    basis: >-
+      Offline behavior is named twice, once in responsibilities and once in the
+      role summary. It is the strongest thing the knowledge base holds.
+
+missing_information:
+  - question: Is the "3+ years" bar counted from professional employment only?
+    why_it_matters: >-
+      The confirmed timeline starts 2023-01, which is 3 years and 2 months at
+      the screening date. It clears the bar, but only just, and a stricter
+      reading of the counting could change that.
+  - question: What does "own releases" mean in practice, given a six-market app?
+    why_it_matters: >-
+      The one release record is scoped to a pipeline, not to store listings or
+      release approvals. If the role means the latter, the match is weaker than
+      it looks.
+
+recommendation: >-
+  Worth a tailoring pass. The posting's three required capabilities that carry
+  the most weight are offline behavior, performance, and customer-facing
+  product work, and all three have project evidence behind them.
+
+decision:
+  status: proceed
+  decided_at: 2026-03-14
+  user_note: "Proceed. Ask about release ownership if it reaches an interview."
+
+not_assessed:
+  - check: screen-check-001
+    reason: >-
+      No domain exclusions are configured in profile/screening-criteria.yaml,
+      so this check could not run. Reported rather than silently skipped.

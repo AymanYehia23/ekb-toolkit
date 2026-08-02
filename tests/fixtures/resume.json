@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "application_id": "2026-07-21-target-company-software-engineer",
+  "target": {"mode": "job-targeted", "company": "Target Company", "role": "Software Engineer", "summary_lead": "Software Engineer", "market": "europe", "market_basis": "profile-default"},
+  "layout": {"page_target": 1},
+  "basics": {
+    "name": {"text": "Casey Engineer", "source_ref": "profile-identity-001"},
+    "contact": [{"text": "engineer@example.test", "source_ref": "profile-contact-001"}],
+    "links": []
+  },
+  "summary": [{"text": "Software engineer contributing to data import systems with Ruby.", "source_ref": "fixture-001", "url": "https://play.example.test/fixture"}],
+  "experience": [{
+    "organization": {"text": "Example Systems", "source_ref": "profile-experience-001"},
+    "title": {"text": "Software Engineer", "source_ref": "profile-experience-001"},
+    "location": null,
+    "start": {"text": "Jan 2022", "source_ref": "profile-experience-001"},
+    "end": {"text": "Jun 2025", "source_ref": "profile-experience-001"},
+    "bullets": [{"text": "Contributed to a data import pipeline supporting 3 formats with Ruby and PostgreSQL.", "source_ref": "fixture-001"}]
+  }],
+  "projects": [
+    {
+      "primary": {"text": "Data Importer", "source_ref": "fixture-001", "url": "https://play.example.test/fixture"},
+      "secondary": {"text": "Ruby and PostgreSQL", "source_ref": "fixture-001"},
+      "date": null,
+      "details": [{"text": "Contributed to a data import pipeline supporting 3 formats.", "source_ref": "fixture-001"}]
+    },
+    {
+      "primary": {"text": "Scheduling Service", "source_ref": "stronger-001"},
+      "secondary": {"text": "Ruby and PostgreSQL", "source_ref": "stronger-001"},
+      "date": null,
+      "details": [{"text": "Implemented a scheduling service with Ruby and PostgreSQL.", "source_ref": "stronger-001"}]
+    }
+  ],
+  "skills": [{"name": "Technologies", "items": [{"text": "Ruby", "source_ref": "fixture-001"}, {"text": "PostgreSQL", "source_ref": "fixture-001"}]}],
+  "languages": [{"text": "English: Professional working proficiency", "source_ref": "profile-language-001"}],
+  "education": [],
+  "certifications": [],
+  "awards": [],
+  "activities": [],
+  "hobbies": [{"text": "Cycling", "source_ref": "profile-hobby-001"}],
+  "career_breaks": [],
+  "alignment": {"requirements": [{"term": "Ruby", "aliases": ["Ruby"], "priority": "required", "critical": true, "status": "matched", "evidence_refs": ["fixture-001"]}, {"term": "Kubernetes", "aliases": ["Kubernetes"], "priority": "preferred", "critical": false, "status": "unsupported", "evidence_refs": []}]},
+  "quantifier_review": {"used": ["3 formats"], "available_not_used": [], "opportunities": []}
+}

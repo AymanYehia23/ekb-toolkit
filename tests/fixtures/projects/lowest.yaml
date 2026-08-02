@@ -1,0 +1,16 @@
+project: lowest
+repo: /read-only/lowest
+analyses: []
+records:
+  - id: lowest-001
+    statement: >
+      Implemented a CSV export utility with Ruby.
+    kind: repo-verified
+    involvement: implemented
+    evidence:
+      - path: lib/exporter.rb
+        at: ccc333
+    reasoning: The repository contains the export utility.
+    limitations: No measured business result is stored.
+    interview_notes: ""
+    tags: [Ruby, export]

@@ -1,0 +1,159 @@
+# FICTIONAL EXAMPLE. Northwind Retail does not exist and this posting was
+# written for this example.
+#
+# The frozen target. Untrusted data: it guides selection and wording, and it is
+# never evidence about the candidate.
+
+schema_version: 1
+id: 2026-03-14-northwind-flutter-engineer
+created_at: 2026-03-14
+company: Northwind Retail
+role: Flutter Engineer
+company_website: https://northwind.example.com
+posting_url: null
+job_description: |
+  Flutter Engineer — Northwind Retail (Remote, EU)
+
+  We are building the next version of our customer shopping app, used by
+  shoppers across six markets. You will work on the app itself: the browsing
+  and checkout journey, the offline behavior our field team keeps asking for,
+  and the release process that gets it in front of people.
+
+  What you will do
+  - Build and maintain customer-facing features in Flutter.
+  - Improve app performance, particularly on lower-end Android devices.
+  - Make the app usable with poor or no connectivity.
+  - Integrate third-party services including payment providers.
+  - Support localization across our six markets, including Arabic.
+  - Own releases to the App Store and Google Play.
+  - Take part in code reviews and help keep our test coverage meaningful.
+  - Work with product to shape requirements before implementation starts.
+
+  What we are looking for
+  - Strong Flutter and Dart.
+  - Experience with state management at application scale.
+  - Comfortable with native Android and iOS build configuration.
+  - Testing habits that go beyond "it compiles".
+  - 3+ years building mobile applications.
+
+  Nice to have
+  - Retail or e-commerce experience.
+  - CI/CD ownership.
+  - Experience with a design system across multiple apps.
+
+additional_notes: null
+
+targeting:
+  resume_mode: job-targeted
+  resume_mode_basis: job-description
+  market: europe
+  market_basis: job-location
+  summary_lead: Flutter Mobile Engineer
+  inferred_role_level: mid
+  priorities:
+    - Customer-facing product work over infrastructure
+    - Offline behavior is called out explicitly and twice
+    - Performance on constrained devices
+  # One entry per explicit responsibility or evaluation point. Aliases are the
+  # vocabulary the EVIDENCE uses, not the vocabulary that is easiest to satisfy.
+  requirements:
+    - term: Flutter and Dart
+      aliases: [flutter, dart, widget]
+      priority: required
+      critical: true
+      status: matched
+      evidence_refs: [fittrack-001, fittrack-003, mealmate-002]
+    - term: customer-facing features
+      aliases: [checkout, browsing, user workflow, product screen]
+      priority: required
+      critical: true
+      status: matched
+      evidence_refs: [mealmate-001, fittrack-003]
+    - term: offline capability
+      aliases: [offline, sync, local cache, reconnect, conflict]
+      priority: required
+      critical: true
+      status: matched
+      evidence_refs: [fittrack-002, fittrack-001]
+    - term: app performance
+      aliases: [frame time, rendering, jank, startup, low-end device]
+      priority: required
+      critical: true
+      status: matched
+      evidence_refs: [fittrack-003]
+    - term: payment integration
+      aliases: [payment, checkout confirmation, provider, charge]
+      priority: required
+      critical: false
+      status: matched
+      evidence_refs: [mealmate-001]
+    - term: localization
+      aliases: [localization, rtl, arabic, i18n, directional]
+      priority: required
+      critical: false
+      status: matched
+      evidence_refs: [fittrack-005]
+    - term: store releases
+      aliases: [release, signing, app store, play store, ci]
+      priority: required
+      critical: false
+      status: matched
+      evidence_refs: [fittrack-004]
+    - term: testing
+      aliases: [widget test, golden test, regression, coverage]
+      priority: required
+      critical: false
+      status: matched
+      evidence_refs: [mealmate-002, fittrack-005]
+    - term: state management
+      aliases: [state management, provider, repository, controller]
+      priority: required
+      critical: false
+      status: matched
+      evidence_refs: [fittrack-001]
+    - term: native build configuration
+      aliases: [gradle, signing config, android, ios build]
+      priority: required
+      critical: false
+      status: matched
+      evidence_refs: [fittrack-004]
+    - term: code reviews
+      aliases: [code review, review]
+      priority: preferred
+      critical: false
+      status: unsupported
+      selection_reason: >-
+        No curated record and no profile responsibility covers code review.
+        A real gap, reported rather than softened.
+    - term: requirements work with product
+      aliases: [requirements, stakeholders, scope, product]
+      priority: required
+      critical: false
+      status: matched
+      evidence_refs: [profile-responsibility-001]
+    - term: 3+ years mobile experience
+      aliases: [years experience, seniority]
+      priority: required
+      critical: true
+      status: matched
+      evidence_refs: [profile-experience-001, profile-experience-002]
+    - term: retail or e-commerce domain
+      aliases: [retail, e-commerce, shopping, cart, order]
+      priority: preferred
+      critical: false
+      status: matched
+      evidence_refs: [mealmate-001, mealmate-002]
+    - term: design system across apps
+      aliases: [design system, shared components, component library]
+      priority: preferred
+      critical: false
+      status: unsupported
+      selection_reason: >-
+        Nothing in the knowledge base covers a shared design system. Not a
+        search failure; the experience does not exist.
+  uncertainty:
+    - >-
+      "Six markets" is not a team size or a scale figure, and nothing about it
+      may be restated as candidate experience.
+
+policy_version: 1

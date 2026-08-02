@@ -1,0 +1,529 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ekb/resume/model.schema.json",
+  "title": "EKB evidence-linked application resume",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "application_id",
+    "target",
+    "layout",
+    "basics",
+    "experience",
+    "projects",
+    "skills",
+    "education",
+    "certifications",
+    "alignment",
+    "quantifier_review"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "application_id": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}-[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "company",
+        "role",
+        "market",
+        "market_basis"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "master",
+            "job-targeted"
+          ],
+          "description": "Controls evidence selection and summary weighting. Master resumes use evidence-weighted breadth; job-targeted resumes start from frozen job requirements."
+        },
+        "company": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary_lead": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Required for job-targeted resumes. The visible summary must begin with this supported target-facing professional identity."
+        },
+        "market": {
+          "enum": [
+            "europe",
+            "north-america"
+          ]
+        },
+        "market_basis": {
+          "enum": [
+            "job-location",
+            "profile-default",
+            "user-override"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "job-targeted"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "summary_lead"
+            ]
+          }
+        }
+      ]
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "page_target"
+      ],
+      "properties": {
+        "page_target": {
+          "enum": [
+            1,
+            2
+          ]
+        },
+        "summary_word_limit": {
+          "type": "integer",
+          "minimum": 15,
+          "maximum": 45,
+          "description": "Optional explicit user override for summary length. The default is 40 words in every market (resume/policy.json summary.default_words), which renders as two to three lines."
+        },
+        "page_break_before": {
+          "enum": [
+            "selected-projects"
+          ],
+          "description": "Optional deliberate page break used to balance a two-page resume."
+        },
+        "hyperlinks": {
+          "enum": [
+            "auto",
+            "off"
+          ],
+          "default": "auto",
+          "description": "Presentation only. 'auto' (the default) renders every item that carries a url as a clickable link. 'off' renders the same visible text with no link annotations, for a maximally conservative export."
+        },
+        "emphasis": {
+          "enum": [
+            "matched-requirements",
+            "none"
+          ],
+          "default": "matched-requirements",
+          "description": "Keyword highlighting mode. 'matched-requirements' bolds aliases of alignment requirements whose status is 'matched' and whose 'emphasize' is not false, at most once per term per section. 'none' disables bolding. Emphasis is a render-time formatting pass over text that is already written; it never changes wording or selection."
+        }
+      }
+    },
+    "basics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "contact",
+        "links"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/sourcedText"
+        },
+        "contact": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/sourcedText"
+          }
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sourcedText"
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/sourcedText"
+      }
+    },
+    "experience": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/experience"
+      }
+    },
+    "projects": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "$ref": "#/$defs/profileEntry"
+      }
+    },
+    "career_breaks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/careerBreak"
+      }
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/skillGroup"
+      }
+    },
+    "languages": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/sourcedText"
+      }
+    },
+    "education": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/profileEntry"
+      }
+    },
+    "certifications": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/profileEntry"
+      }
+    },
+    "awards": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/profileEntry"
+      }
+    },
+    "activities": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/profileEntry"
+      }
+    },
+    "hobbies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/sourcedText"
+      }
+    },
+    "alignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requirements"
+      ],
+      "properties": {
+        "requirements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/requirement"
+          }
+        }
+      }
+    },
+    "quantifier_review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "used",
+        "available_not_used",
+        "opportunities"
+      ],
+      "properties": {
+        "used": {
+          "$ref": "#/$defs/stringList"
+        },
+        "available_not_used": {
+          "$ref": "#/$defs/stringList"
+        },
+        "opportunities": {
+          "$ref": "#/$defs/stringList"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "stringList": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "sourcedText": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text"
+      ],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(https://|mailto:|tel:)",
+          "description": "Optional hyperlink target. When present the item renders as a clickable link in DOCX and PDF; the visible text stays whatever 'text' says. Keep 'text' meaningful — text-only ATS parsers read the text and discard the target."
+        },
+        "source_refs": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 4,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Two to four source IDs for a claim that is inherently plural, such as a shipping count spanning many apps, which no single record supports. Use `source_ref` for the normal one-source case; the two are mutually exclusive. Every listed source must be independently eligible, the strictest involvement governs the wording, and every number must be carried by at least one of them."
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "source_ref"
+          ]
+        },
+        {
+          "required": [
+            "source_refs"
+          ]
+        }
+      ]
+    },
+    "nullableSourcedText": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/sourcedText"
+        }
+      ]
+    },
+    "experience": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "organization",
+        "title",
+        "location",
+        "start",
+        "end",
+        "bullets"
+      ],
+      "properties": {
+        "organization": {
+          "$ref": "#/$defs/sourcedText"
+        },
+        "title": {
+          "$ref": "#/$defs/sourcedText"
+        },
+        "location": {
+          "$ref": "#/$defs/nullableSourcedText"
+        },
+        "start": {
+          "$ref": "#/$defs/sourcedText"
+        },
+        "end": {
+          "$ref": "#/$defs/sourcedText"
+        },
+        "bullets": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/sourcedText"
+          }
+        },
+        "engagements": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "description": "Named client projects or products delivered inside this role. Optional. A role whose evidence spans many distinct deliverables cannot express that through one flat bullet list, because a single employer block gives every project the same three or four slots. Each engagement must resolve through its source references to exactly one curated project, and that project must be associated with this employer in profile.yaml. When engagements are present the role-level bullets become framing lines: keep them to one or two.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "bullets"
+            ],
+            "properties": {
+              "name": {
+                "$ref": "#/$defs/sourcedText"
+              },
+              "context": {
+                "$ref": "#/$defs/nullableSourcedText"
+              },
+              "bullets": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 3,
+                "items": {
+                  "$ref": "#/$defs/sourcedText"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "careerBreak": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "start",
+        "end",
+        "details"
+      ],
+      "properties": {
+        "label": {
+          "$ref": "#/$defs/sourcedText"
+        },
+        "start": {
+          "$ref": "#/$defs/sourcedText"
+        },
+        "end": {
+          "$ref": "#/$defs/sourcedText"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sourcedText"
+          }
+        }
+      }
+    },
+    "skillGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "items"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/sourcedText"
+          }
+        }
+      }
+    },
+    "profileEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "primary",
+        "secondary",
+        "date",
+        "details"
+      ],
+      "properties": {
+        "primary": {
+          "$ref": "#/$defs/sourcedText"
+        },
+        "secondary": {
+          "$ref": "#/$defs/nullableSourcedText"
+        },
+        "date": {
+          "$ref": "#/$defs/nullableSourcedText"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sourcedText"
+          }
+        }
+      }
+    },
+    "requirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "term",
+        "aliases",
+        "priority",
+        "critical",
+        "status",
+        "evidence_refs"
+      ],
+      "properties": {
+        "term": {
+          "type": "string",
+          "minLength": 1
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "priority": {
+          "enum": [
+            "required",
+            "preferred"
+          ]
+        },
+        "critical": {
+          "type": "boolean"
+        },
+        "status": {
+          "enum": [
+            "matched",
+            "supported_not_selected",
+            "unsupported"
+          ]
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "emphasize": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether a matched requirement's aliases are bolded in the rendered document. Defaults to true for matched requirements. Set false for terms whose emphasis would add noise rather than guide the eye — broad soft concepts, or a term already carried by a section heading. Ignored unless status is 'matched'."
+        },
+        "selection_reason": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Required for a job-targeted priority-required requirement whose status is supported_not_selected. Records the concrete page-limit or non-redundancy trade-off that prevented selection."
+        }
+      }
+    }
+  }
+}

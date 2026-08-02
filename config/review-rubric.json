@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "kind": "selection-rubric",
+  "what_this_measures": "How well a generated resume used the evidence available to it. This is a score about the TOOLKIT's selection, not about the candidate's fit for the job, and not a prediction of any external reviewer's number. Every input is a fact the source checker already computes, the rubric is explicit and versioned, and the result is reproducible from the same model.",
+  "what_this_does_not_measure": [
+    "Whether the candidate matches the job. Requirements with no eligible evidence are excluded from every denominator, so an honest gap such as a seniority bar never lowers the score.",
+    "Writing quality, tone, or layout. Those have their own gates.",
+    "Anything a reviewer weighs that the toolkit cannot observe."
+  ],
+  "privacy": "Private. The score, its dimensions, and its bands never appear in a rendered resume, and no wording may be derived from one.",
+  "dimensions": {
+    "required_demonstrated": {
+      "weight": 45,
+      "measures": "Of the required requirements that have eligible project evidence, the share carried by an achievement in Summary, Experience, or Selected Projects rather than by a skills line or a profile claim.",
+      "why": "A reviewer scores what is demonstrated. A skills-list token and an achievement bullet are not the same answer to a requirement, and only one of them survives a follow-up question."
+    },
+    "critical_demonstrated": {
+      "weight": 25,
+      "measures": "The same ratio restricted to requirements marked critical.",
+      "why": "A critical requirement carried by a skills token is the most expensive kind of miss."
+    },
+    "strongest_evidence_used": {
+      "weight": 20,
+      "measures": "For each required requirement with candidates, whether the shortlist's strongest candidate reached the document. Partial credit when a lower-ranked candidate was used.",
+      "why": "Coverage can be complete while every requirement is answered by the second-best record. That failure is invisible to a presence check."
+    },
+    "decisions_recorded": {
+      "weight": 10,
+      "measures": "The share of required requirements whose evidence shortlist carries a recorded selection or a written reason.",
+      "why": "Every generated resume should be explainable. An unrecorded decision cannot be reviewed or improved."
+    }
+  },
+  "bands": {
+    "90": "Selection is using the knowledge base well. Remaining gaps are evidence gaps, not retrieval gaps.",
+    "75": "Sound but leaving strength on the table. Check strongest_evidence_used first.",
+    "60": "Requirements are being answered by claims rather than achievements. Re-run the shortlist before drafting.",
+    "0": "Selection is not driving the document."
+  },
+  "external_signals": {
+    "purpose": "Observations that predict what an external reviewer will penalize. Reported separately from the selection score and never blended into it: the selection score measures the toolkit and excludes honest gaps, while these deliberately INCLUDE them because a reviewer does.",
+    "keyword_gap": "Requirements carried as a claim or not at all. This is the same list a reviewer produces as 'missing or weakly represented' keywords, computed before submission rather than after.",
+    "seniority": "A stated years-of-experience bar in the posting against the confirmed profile timeline. Never a reason to inflate the timeline; it exists so the gap is stated plainly at delivery.",
+    "unsupported_critical": "Critical requirements with no eligible evidence. Usually the single largest cause of a low external score."
+  },
+  "known_limits": [
+    "The understatement gate treats a `stated` requirement as a problem, but that is only true for DIFFERENTIATING capabilities. For commodity tools and languages a Skills-section listing is exactly what a reviewer expects, and demanding an achievement for one produces boilerplate rather than a better resume. This is why the gate errors only on `critical` requirements and warns everywhere else.",
+    "Coverage grade measures how a capability is PRESENTED. A reviewer's per-skill score measures how DEEP it is. For commodity skills those two are close to orthogonal, so a high coverage grade is not evidence of depth and a low one is not evidence of a weakness.",
+    "An `unsupported` requirement is not worth zero to a human reviewer. Reviewers award adjacency credit for related evidence, so a binary unsupported overstates the damage an honest gap does."
+  ],
+  "calibration": {
+    "how": "Paired observations. Each time you get an external review of a generated resume, record its overall number beside the internal selection score from the same run. Two points prove nothing; four or five start to show whether the weights are pointed at the right thing.",
+    "do_not": "Do not tune the weights toward an external number after one or two observations, and do not blend the two scores. They measure different quantities on purpose.",
+    "observations": []
+  }
+}

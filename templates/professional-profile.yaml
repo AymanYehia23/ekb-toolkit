@@ -1,0 +1,152 @@
+# Long-term professional profile — what holds across projects.
+#
+# Copied to profile/professional-profile.yaml by `ekb init`. Written only
+# through prompts/professional-profile.md, with the reasoning logged in
+# profile/professional-profile-context.md.
+#
+# DERIVED, NEVER A SOURCE. Every strength named here still needs an eligible
+# curated record or a confirmed profile fact behind any public claim. An ID
+# defined in this file is NOT a usable source reference.
+#
+# What it is for: a resume summary, a headline, and an interview opener all
+# need something no single record supplies. Deriving that inside every
+# generation turn produces a different answer each time and quietly launders
+# single-project facts into career-level claims.
+
+schema_version: 1
+kind: professional-profile
+updated_at: 2026-01-01
+
+# --- Coverage ---------------------------------------------------------------
+#
+# What this file has actually WEIGHED, as distinct from validation_basis below,
+# which records the last full derivation. Without this, staleness is unreadable:
+# a project curated after the last pass leaves no trace. `ekb check` compares
+# curated_projects against the real curated set and warns on divergence.
+current_coverage:
+  curated_projects: 0
+  records: 0
+  verified_at: 2026-01-01
+  since_last_full_validation: []
+  # - project: fittrack
+  #   curated: 2026-02-10
+  #   integrated_by: >-
+  #     Weighed into profile-strength-002 and the career map. Added no new
+  #     capability: its offline evidence is already carried at greater depth by
+  #     mealmate.
+  known_limits: []
+
+validation_basis:
+  last_full_validation: null
+  method: >-
+    Read every curated project, the confirmed profile, and the previous version
+    of this file. Never candidate files, never generated artifacts, never a
+    target repository.
+
+# --- Strengths --------------------------------------------------------------
+#
+# A capability that RECURS across projects and that the evidence supports at a
+# stated depth.
+#
+# tier is about evidentiary weight, not enthusiasm:
+#   signature   several projects, deep records, supported involvement, and
+#               distinctive inside THIS portfolio. What you lead with.
+#   core        solid recurring evidence, two or more projects.
+#   supporting  real but thin, narrow, or mostly `contributed`.
+#
+# A portfolio with two signature strengths and nothing else is an accurate
+# portfolio. Do not invent a strength to round out a picture.
+strengths: []
+# - id: profile-strength-001
+#   tier: signature
+#   statement: >-
+#     Offline-capable mobile data layers: local persistence, conflict handling,
+#     and reconnect behavior, built and maintained across multiple shipped apps.
+#   projects: [fittrack, mealmate]
+#   records: [fittrack-003, fittrack-007, mealmate-002]
+#   resume_usage: >-
+#     Safe at feature level and at architecture level. Do not claim a measured
+#     sync success rate; no measurement exists.
+#   boundary: >-
+#     All evidence is single-user sync. No multi-device conflict resolution and
+#     no server-side reconciliation work.
+
+# --- Career map -------------------------------------------------------------
+#
+# Every curated project sits under exactly ONE context. This is what stops a
+# personal project drifting into employment history in a generated resume.
+# `ekb check` enforces that this agrees with profile.yaml experience[].projects.
+career_map: []
+# - id: profile-employer-001
+#   context: Example Employer
+#   kind: employment                 # employment | independent | academic
+#   profile_ref: profile-experience-001
+#   projects: [fittrack, mealmate]
+# - id: profile-employer-002
+#   context: Independent work
+#   kind: independent
+#   profile_ref: null
+#   projects: [sidequest]
+
+# --- Standing constraints ---------------------------------------------------
+#
+# The most valuable section and the one most often skipped. These bind every
+# artifact IN ADDITION to each record's own limitations, because some truths
+# are only visible across projects.
+#
+# type:
+#   counting-rule   a reused component is one piece of work, counted once
+#   never-together  two projects that must not both be cited for one claim
+#   placement       work that must appear in a specific section
+#   do-not-claim    what the evidence cannot support
+#   unlock          the rare inverse: a measurement that DOES license
+#                   comparative language, for one specific claim
+#
+# EVERY CONSTRAINT STATES ITS REASON. A constraint with no reason gets deleted
+# six months from now by someone who cannot tell whether it still applies.
+constraints: []
+# - id: profile-constraint-001
+#   type: counting-rule
+#   statement: >-
+#     The shared design system is one piece of work. It may not be counted once
+#     per app that consumes it.
+#   reason: >-
+#     Built once in fittrack and imported unchanged elsewhere. Counting it per
+#     app would turn one component into four accomplishments.
+#   applies_to: [fittrack, mealmate, sidequest]
+# - id: profile-constraint-002
+#   type: unlock
+#   statement: >-
+#     Comparative performance language IS supported for the fittrack list
+#     rendering work.
+#   reason: >-
+#     A frame-timing capture exists before and after, recorded in fittrack-011.
+#     This is the only measured comparison in the portfolio.
+#   applies_to: [fittrack]
+
+counting_rules: [] # shorthand index into the constraints above
+do_not_claim: []
+# - statement: Team leadership or formal ownership of other engineers.
+#   reason: No record supports `led` at team scope; all leadership evidence is
+#     scoped to a feature.
+
+# --- Character --------------------------------------------------------------
+#
+# Recurring working traits, each with the records that show them.
+#
+# THE TEST: name the records where the trait is visible, AND the projects where
+# it is not. A trait that cannot fail this test is a compliment, not an
+# observation.
+character: []
+# - id: profile-trait-001
+#   trait: Fixes the cause rather than the symptom.
+#   visible_in: [fittrack-003, mealmate-005]
+#   not_visible_in: [sidequest]
+#   note: >-
+#     sidequest is a prototype with no bug history, so the trait is neither
+#     supported nor contradicted there.
+
+# --- Open items -------------------------------------------------------------
+#
+# What the next derivation pass should resolve. Not a to-do list for the user.
+open_items: []

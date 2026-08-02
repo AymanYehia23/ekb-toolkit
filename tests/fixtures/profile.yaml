@@ -1,0 +1,67 @@
+schema_version: 1
+updated_at: 2026-07-21
+identity:
+  id: profile-identity-001
+  value: Casey Engineer
+  kind: user-stated
+contact:
+  - id: profile-contact-001
+    type: email
+    value: engineer@example.test
+    kind: user-stated
+links:
+  - id: profile-link-001
+    type: portfolio
+    value: example.test/casey
+    label: example.test/casey
+    url: https://example.test/casey
+    kind: user-stated
+organization_links:
+  - organization: Example Systems
+    url: https://example.test/systems
+    link_status: confirmed
+    verified_at: 2026-07-28
+    kind: user-stated
+project_links:
+  - project: fixture
+    play_store: https://play.example.test/fixture
+    link_status: confirmed
+    kind: user-stated
+  - project: second
+    repo: https://code.example.test/second
+    link_status: unconfirmed
+    kind: user-stated
+    note: Attribution unconfirmed; must never be attached.
+experience:
+  - id: profile-experience-001
+    organization: Example Systems
+    title: Software Engineer
+    location: null
+    start: 2022-01
+    end: 2025-06
+    employment_type: full-time
+    projects: [fixture, stronger]
+    kind: user-stated
+education: []
+certifications: []
+languages:
+  - id: profile-language-001
+    name: English
+    level: Professional working proficiency
+    kind: user-stated
+awards: []
+activities: []
+hobbies:
+  - id: profile-hobby-001
+    value: Cycling
+    kind: user-stated
+career_breaks: []
+preferences:
+  standalone_projects:
+    - lowest
+  summary: auto
+  page_target: 1
+  default_market: europe
+privacy:
+  profile_git: declined
+  application_history_git: declined

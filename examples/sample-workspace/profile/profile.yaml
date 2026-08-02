@@ -1,0 +1,187 @@
+# FICTIONAL EXAMPLE. Sam Rivera does not exist. Every address here points at
+# example.com and resolves nowhere.
+#
+# This shows a profile after one prompts/profile.md session.
+
+schema_version: 1
+updated_at: 2026-03-01
+
+identity:
+  id: profile-identity-001
+  value: Sam Rivera
+  kind: user-stated
+
+contact:
+  - id: profile-contact-001
+    type: email
+    value: sam.rivera@example.com
+    label: sam.rivera@example.com
+    url: mailto:sam.rivera@example.com
+    kind: user-stated
+  - id: profile-contact-002
+    type: location
+    value: Lisbon, Portugal
+    label: Lisbon, Portugal
+    kind: user-stated
+
+links:
+  - id: profile-link-001
+    type: linkedin
+    value: linkedin.com/in/example-sam-rivera
+    label: linkedin.com/in/example-sam-rivera
+    url: https://linkedin.com/in/example-sam-rivera
+    kind: user-stated
+  - id: profile-link-002
+    type: github
+    value: github.com/example-sam-rivera
+    label: github.com/example-sam-rivera
+    url: https://github.com/example-sam-rivera
+    kind: user-stated
+
+organization_links:
+  - organization: Vantage Labs
+    url: https://vantagelabs.example.com
+    link_status: confirmed
+    verified_at: 2026-03-01
+    kind: user-stated
+  - organization: Bright Orchard
+    url: https://brightorchard.example.com
+    link_status: confirmed
+    verified_at: 2026-03-01
+    kind: user-stated
+
+project_links:
+  - project: fittrack
+    play_store: https://play.google.com/store/apps/details?id=com.example.fittrack
+    app_store: https://apps.apple.com/app/id0000000001
+    repo: null
+    link_status: confirmed
+    verified_at: 2026-03-01
+    kind: user-stated
+  - project: mealmate
+    play_store: https://play.google.com/store/apps/details?id=com.example.mealmate
+    link_status: confirmed
+    verified_at: 2026-03-01
+    kind: user-stated
+
+experience:
+  - id: profile-experience-001
+    organization: Vantage Labs
+    title: Mobile Engineer
+    employment_type: full-time
+    location: Remote
+    start: 2024-06
+    end: present
+    projects: [fittrack]
+    kind: user-stated
+  - id: profile-experience-002
+    organization: Bright Orchard
+    title: Flutter Developer
+    employment_type: full-time
+    location: Lisbon, Portugal
+    start: 2023-01
+    end: 2024-05
+    projects: [mealmate]
+    kind: user-stated
+
+education:
+  - id: profile-education-001
+    institution: Example Polytechnic
+    credential: BSc Software Engineering
+    start: 2018-09
+    end: 2022-07
+    url: null
+    kind: user-stated
+
+certifications: []
+
+languages:
+  - id: profile-language-001
+    name: Portuguese
+    level: native
+    kind: user-stated
+  - id: profile-language-002
+    name: English
+    level: fluent
+    kind: user-stated
+
+skills:
+  - id: profile-skill-001
+    group: Mobile
+    label: Flutter and Dart
+    depth: core
+    basis: "2 projects, 8 records"
+    kind: user-stated
+  - id: profile-skill-002
+    group: Mobile
+    label: Offline data and synchronization
+    depth: core
+    basis: "2 projects, 3 records"
+    kind: user-stated
+  - id: profile-skill-003
+    group: Delivery
+    label: CI and store release automation
+    depth: working
+    basis: "1 project, 1 record"
+    kind: user-stated
+  - id: profile-skill-004
+    group: Quality
+    label: Widget and golden testing
+    depth: working
+    basis: "2 projects, 2 records"
+    kind: user-stated
+
+responsibilities:
+  - id: profile-responsibility-001
+    label: Requirements work with product stakeholders
+    phrasings:
+      - "Worked directly with product stakeholders to turn feature requests into technical scope before implementation."
+      - "Translated product requirements into implementation scope and raised the constraints that changed it."
+    cap: >-
+      Describes what the work involved. Never a commercial outcome, a title, or
+      a productivity claim.
+    kind: user-stated
+  - id: profile-responsibility-002
+    label: Production support for released apps
+    phrasings:
+      - "Investigated production reports from released apps and traced them to their cause in the codebase."
+    cap: Describes the work. Never an uptime, resolution-time, or volume claim.
+    kind: user-stated
+
+work_eligibility:
+  - id: profile-eligibility-001
+    type: citizenship
+    value: Portuguese
+    kind: user-stated
+  - id: profile-eligibility-002
+    type: authorization
+    value: Right to work across the EU. No sponsorship required in the EU.
+    sponsorship_normal_markets: []
+    kind: user-stated
+  - id: profile-eligibility-003
+    type: relocation
+    value: Open to relocation within the EU. Prefers remote or Lisbon-based roles.
+    kind: user-stated
+
+awards: []
+activities: []
+hobbies: []
+career_breaks: []
+
+preferences:
+  summary: auto
+  page_target: 1
+  default_market: europe
+  standalone_projects: []
+  academic_projects: []
+  link_style:
+    contact: literal-text-with-link
+    profile_links: full-address-with-link
+    project_links: hyperlink-behind-name
+    organization_links: hyperlink-behind-name
+    certification_links: hyperlink-behind-name
+    auto_hyperlink: on
+
+privacy:
+  profile_git: granted
+  application_history_git: granted

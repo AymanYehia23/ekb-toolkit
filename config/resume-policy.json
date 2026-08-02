@@ -1,0 +1,217 @@
+{
+  "version": 1,
+  "page_sizes": {
+    "europe": "A4",
+    "north-america": "LETTER"
+  },
+  "margins_inches": {
+    "top": 0.65,
+    "right": 0.7,
+    "bottom": 0.65,
+    "left": 0.7
+  },
+  "fonts": {
+    "primary": "Arial",
+    "pdf_primary": "Helvetica"
+  },
+  "sizes_pt": {
+    "name": 14,
+    "section": 10,
+    "body": 10,
+    "small": 10
+  },
+  "spacing_pt": {
+    "section_before": 7,
+    "section_after": 3,
+    "paragraph_after": 2,
+    "bullet_after": 1.5
+  },
+  "bullets": {
+    "text_indent_pt": 20,
+    "hanging_pt": 11,
+    "marker_font_size_pt": 6,
+    "marker_vertical_offset_pt": -1.5,
+    "note": "Bullet text sits inside the company or project title margin, wrapped lines align under the first text line, and the marker is lowered to the text baseline in both DOCX and PDF. An engagement title aligns with the role bullet text and its own bullets sit one level deeper, giving three visible depths: employer, named project, achievement. Both renderers consume these tokens; neither infers indentation from a viewer default.",
+    "engagement_title_indent_pt": 20,
+    "engagement_text_indent_pt": 40
+  },
+  "allowed_sections": [
+    "Summary",
+    "Experience",
+    "Selected Projects",
+    "Career Breaks",
+    "Skills",
+    "Languages",
+    "Education",
+    "Certifications",
+    "Awards",
+    "Activities",
+    "Interests"
+  ],
+  "summary": {
+    "default_words": 40,
+    "minimum_override": 15,
+    "maximum_override": 45,
+    "note": "40 words is two to three rendered lines, and it is a ceiling rather than a target. The summary is the only place a cross-project fact can live, because a bullet describes one project. Omit the summary entirely rather than padding it."
+  },
+  "job_targeted_content_balance": {
+    "summary_lead": "Begin with the primary discipline advertised by the role. Put an unrequested vendor, platform, or domain specialization later.",
+    "customer_facing_experience": "When the target asks for customer-facing apps and eligible evidence exists in a current or highly relevant role, retain at least one concrete product, UI, or user-workflow bullet. Authentication, infrastructure, release, and CI/CD evidence must not occupy every bullet.",
+    "distinct_integrations": "When the posting explicitly requests payments or another third-party integration, retain a distinct implementation when it adds a materially different gateway, trust boundary, or failure model.",
+    "note": "Semantic selection gates applied before layout cuts. They exist because a layout pass cuts by length and has no idea which bullet answered the posting's main question."
+  },
+  "links": {
+    "default": "auto",
+    "schemes": [
+      "https://",
+      "mailto:",
+      "tel:"
+    ],
+    "color_hex": "0563C1",
+    "underline": true,
+    "text_export": "append-url",
+    "note": "Every live hyperlink is explicitly blue and underlined in DOCX and PDF so a reader can recognize it without hovering. Hyperlinks are annotations over unchanged visible text, so a text-only parser reads the same resume with or without them. TXT has no annotation layer: append-url prints the target in parentheses so the address is not silently lost, and none drops it."
+  },
+  "emphasis": {
+    "default": "matched-requirements",
+    "max_terms": 12,
+    "occurrences_per_term_per_section": 1,
+    "sections": [
+      "Summary",
+      "Experience",
+      "Selected Projects",
+      "Skills"
+    ],
+    "note": "Bold is real character formatting, which every ATS parser discards harmlessly along with the rest of the run properties. The cap exists for the human reader: past roughly a dozen terms nothing stands out any more."
+  },
+  "writing_style": {
+    "forbidden_symbols": {
+      "—": "em dash",
+      "–": "en dash",
+      "→": "right arrow",
+      "⇒": "double right arrow"
+    },
+    "forbidden_terms": [
+      "delve",
+      "delved",
+      "delving",
+      "seamless",
+      "seamlessly",
+      "robust",
+      "leverage",
+      "leveraged",
+      "leveraging",
+      "utilize",
+      "utilized",
+      "utilizing",
+      "spearhead",
+      "spearheaded",
+      "spearheading",
+      "pivotal",
+      "transformative",
+      "multifaceted",
+      "holistic",
+      "synergy",
+      "synergies",
+      "innovative",
+      "cutting-edge",
+      "game-changing",
+      "elevate",
+      "elevated",
+      "elevating",
+      "foster",
+      "fostered",
+      "fostering",
+      "underscore",
+      "underscored",
+      "underscores",
+      "meticulous",
+      "exceptional",
+      "unwavering"
+    ],
+    "forbidden_phrases": [
+      "excellent problem solver",
+      "results-driven professional",
+      "proven track record",
+      "dynamic professional",
+      "passionate engineer",
+      "highly motivated professional",
+      "fast-paced environment",
+      "think outside the box"
+    ],
+    "note": "Public resume text must use direct engineering language and plain punctuation. Replace forbidden symbols with a full stop, colon, comma, parentheses, or ASCII hyphen. Replace generic terms with the concrete feature, action, constraint, or verified result. This list is a default, not a doctrine: edit it. The em dash and en dash are here because they are the most reliable visual tell of generated text in a document nobody expects to be typeset."
+  },
+  "selected_projects": {
+    "minimum_distinct_projects": 2,
+    "default_projects": 2,
+    "note": "Every full application resume renders a Selected Projects section containing at least two distinct curated projects. Each entry must resolve to exactly one project through its source references."
+  },
+  "quantifier_quality": {
+    "test_context_terms": [
+      "test",
+      "tests",
+      "testing",
+      "unit-test",
+      "unit tests",
+      "test suite",
+      "test-suite"
+    ],
+    "forbidden_test_count_units": [
+      "case",
+      "cases",
+      "file",
+      "files",
+      "line",
+      "lines",
+      "loc"
+    ],
+    "code_context_terms": [
+      "code",
+      "codebase",
+      "controller",
+      "screen",
+      "widget",
+      "class",
+      "repository",
+      "refactor",
+      "change"
+    ],
+    "forbidden_code_count_units": [
+      "file",
+      "files",
+      "line",
+      "lines",
+      "loc",
+      "commit",
+      "commits"
+    ],
+    "note": "Public resume text must not present test cases, test files, test-code size, source-code lines, source files, or commit counts as achievements. These counts are easy to change by splitting code, tests, files, or commits and do not explain engineering value. Describe the structural change, delivered capability, tested behaviors, boundaries, failure paths, determinism, or release risk instead. Other verified numbers still need to be materially meaningful and resistant to trivial manipulation."
+  },
+  "content_density": {
+    "single_page_minimum_usable_height_ratio": 0.84,
+    "note": "A one-page resume that uses less than 84 percent of the printable height is underfilled. Add target-relevant technical depth to Selected Projects first, then add another distinct project if it contributes new evidence. Do not pad with generic prose, weak skills, or gameable counts."
+  },
+  "requirements": {
+    "single_column": true,
+    "one_font_family": true,
+    "two_font_sizes": true,
+    "contact_in_body": true,
+    "continuation_contact_header": "exact-duplicate-only",
+    "tables": false,
+    "text_boxes": false,
+    "images": false,
+    "selectable_pdf_text": true,
+    "page_target": 1,
+    "page_maximum": 2,
+    "selected_projects_minimum": 2
+  },
+  "experience_budget": {
+    "role_bullets_default": 3,
+    "role_bullets_max": 4,
+    "role_bullets_with_engagements_max": 2,
+    "engagements_max": 4,
+    "engagement_bullets_max": 2,
+    "note": "A flat employer block gives every project inside a role the same three or four slots, so a role covering many distinct client deliverables cannot show them. Engagements raise the ceiling for that shape: one or two framing lines plus up to four named projects carrying up to two bullets each. The maxima are editorial targets enforced as warnings, not structural limits; the schema bounds are wider on purpose so a genuinely dense role is not truncated."
+  },
+  "_readme": "Layout, ATS structure, and writing policy for generated resumes. Every value here is a default you may change. The renderer and the source checker both read this file, so a change takes effect in DOCX, PDF, and validation at once."
+}

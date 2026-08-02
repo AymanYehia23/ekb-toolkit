@@ -1,0 +1,25 @@
+schema_version: 1
+id: 2026-07-21-example-company-software-engineer
+created_at: 2026-07-21
+company: Example Company
+role: Software Engineer
+company_website: null
+posting_url: null
+job_description: |
+  Exact pasted or archived job description.
+additional_notes: null
+targeting:
+  resume_mode: job-targeted # master | job-targeted
+  resume_mode_basis: job-description # user-request | job-description | job-url
+  market: europe # europe | north-america
+  market_basis: profile-default # job-location | profile-default | user-override
+  summary_lead: null # supported target-facing identity for the first summary words
+  inferred_role_level: null
+  priorities: []
+  # One entry per explicit technical responsibility or evaluation point.
+  # Include documentation, code reviews, collaboration, troubleshooting,
+  # production support, testing, release work, and process improvement when the
+  # posting names them. A supported required omission needs selection_reason.
+  requirements: [] # term, aliases, priority, critical, status, evidence_refs, optional selection_reason
+  uncertainty: []
+policy_version: 1

@@ -1,0 +1,165 @@
+# FICTIONAL EXAMPLE. Sam Rivera, FitTrack, and Northwind Retail do not exist.
+# This file exists to show what a curated project looks like after review.
+#
+# Read it alongside context/fittrack-questions.md, which shows the conversation
+# that produced these records.
+
+project: fittrack
+repo: /Users/sam/dev/fittrack
+
+analyses:
+  - at: 2026-02-02
+    since: null
+    head: "4f2a1c9e8b7d6a5c4b3e2f1a0d9c8b7a6e5d4c3b"
+    depth: quick
+    agent: example-agent
+    model: example-model
+    contributors: 4
+    skipped:
+      - "History before 2024-09 is a squashed import from a private prototype; per-commit attribution is unavailable for that period."
+      - "ios/Pods and android/.gradle excluded per EXCLUSIONS.md."
+      - "The `client/analytics-spec` branch was not examined; it contains customer identifiers."
+
+  - at: 2026-03-01
+    since: "4f2a1c9e8b7d6a5c4b3e2f1a0d9c8b7a6e5d4c3b"
+    head: "9c1b0a8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c2b"
+    depth: quick
+    agent: example-agent
+    model: example-model
+    contributors: 4
+    skipped: []
+
+records:
+  - id: fittrack-001
+    statement: >
+      Replaced three overlapping local-cache implementations with a single
+      repository-backed store, so a stale workout entry could no longer survive
+      a failed sync and reappear on the history screen.
+    kind: repo-verified
+    involvement: implemented
+    evidence:
+      - range: 7a1e4c2..b3d9f01
+        note: >
+          Introduces WorkoutRepository with one write path and deletes
+          LocalWorkoutCache and SessionMemoryStore along with their call sites.
+      - path: lib/data/workout_repository.dart
+        at: b3d9f01
+      - path: test/data/workout_repository_test.dart
+        at: b3d9f01
+        note: Reproduces the stale-read case that the change fixes.
+    reasoning: >
+      The diff removes two cache classes and eleven call sites and introduces a
+      single repository with one write path. The added test fails against the
+      previous commit and passes after it, which pins the behavior change rather
+      than only the structural one.
+    limitations: >
+      The stale read was reproduced in a test, not measured in production. No
+      before and after timing exists, so comparative performance wording is not
+      supported for this record.
+    interview_notes: >
+      Confirmed 2026-02-04: this came from a support report, not a planned
+      refactor. Two users had logged workouts that disappeared and then
+      reappeared a day later. See context/fittrack-questions.md#fittrack-001.
+    tags: [offline, architecture, refactoring, testing]
+
+  - id: fittrack-002
+    statement: >
+      Built the offline workout logging path: entries are written locally first,
+      queued, and replayed on reconnect, with a last-write-wins resolution that
+      keeps the device's own edit when the server copy is older.
+    kind: repo-verified
+    involvement: implemented
+    evidence:
+      - range: c4a8e11..f02b7d5
+        note: The queue, the replay worker, and the resolution rule.
+      - path: lib/sync/replay_queue.dart
+        at: f02b7d5
+      - path: lib/sync/conflict.dart
+        at: f02b7d5
+    reasoning: >
+      The queue persists to the same store as the entries themselves, so a crash
+      between write and send cannot lose an entry. The resolution rule is a
+      single comparison in conflict.dart with tests for both orderings.
+    limitations: >
+      Single-device sync only. There is no multi-device conflict resolution and
+      no server-side reconciliation, so wording must not imply distributed
+      consistency work.
+    interview_notes: >
+      Confirmed 2026-02-04: last-write-wins was chosen deliberately over a merge
+      because a workout entry is a small immutable record and a merge would have
+      needed a server change the team did not own.
+    tags: [offline, sync, architecture]
+
+  - id: fittrack-003
+    statement: >
+      Reduced the workout history screen's frame build time from a measured
+      average of 31 ms to 9 ms by virtualizing the list and moving the weekly
+      aggregation off the build path.
+    kind: repo-verified
+    involvement: implemented
+    evidence:
+      - range: 3e7c9a2..8b1f4d6
+        note: The virtualization and the move of aggregation into a cached provider.
+      - path: docs/perf/history-screen-2026-02.md
+        at: 8b1f4d6
+        note: >
+          Frame timings captured before and after on the same device and build
+          mode, committed with the change.
+    reasoning: >
+      The committed capture records both runs with device, build mode, and
+      sample count, so the comparison is between like and like. The diff shows
+      the aggregation moving out of build.
+    limitations: >
+      Profile-mode measurement on one mid-range Android device. It is not a
+      release-mode figure and not a cross-device claim, so the number must
+      travel with its context or not at all.
+    interview_notes: >
+      Confirmed 2026-02-04: the aggregation was recomputed on every rebuild
+      because the original screen predated the provider layer.
+    tags: [performance, ui-implementation, offline]
+
+  - id: fittrack-004
+    statement: >
+      Set up the release pipeline that builds, signs, and uploads both platforms
+      from CI, moving signing material out of developer machines and into the
+      CI secret store.
+    kind: repo-verified
+    involvement: led
+    evidence:
+      - range: 1a2b3c4..5d6e7f8
+        note: The workflow, the signing configuration, and the removal of local keystore references.
+      - path: .github/workflows/release.yml
+        at: 5d6e7f8
+    reasoning: >
+      The workflow is authored in a single series of commits by one identity,
+      and the user confirmed ownership during review. The diff removes local
+      keystore paths from the Gradle configuration.
+    limitations: >
+      Ownership is confirmed for the pipeline itself. The store listings and
+      release approvals stayed with the product owner.
+    interview_notes: >
+      Confirmed 2026-02-04: before this, releases were cut from one engineer's
+      laptop and that engineer was the only one who could ship.
+    tags: [release-engineering, security]
+
+  - id: fittrack-005
+    statement: >
+      Added right-to-left layout support across the app, which required
+      replacing directional padding and icon mirroring in fourteen widgets
+      rather than only enabling the locale.
+    kind: repo-verified
+    involvement: contributed
+    evidence:
+      - range: 9f8e7d6..2c3b4a5
+        note: The directional migration and the RTL golden tests.
+      - path: test/golden/rtl
+        at: 2c3b4a5
+    reasoning: >
+      The diff spans fourteen widget files with a consistent substitution and
+      adds golden tests for both directions. Three contributors appear in the
+      range, so involvement is recorded as contributed.
+    limitations: >
+      Shared work. Feature-level wording is supported; sole authorship is not.
+      Translation itself was handled by an external vendor.
+    interview_notes: ""
+    tags: [localization, ui-implementation, testing]

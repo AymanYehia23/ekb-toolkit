@@ -1,0 +1,282 @@
+{
+  "schema_version": 1,
+  "application_id": "2026-03-14-northwind-flutter-engineer",
+  "target": {
+    "mode": "job-targeted",
+    "company": "Northwind Retail",
+    "role": "Flutter Engineer",
+    "summary_lead": "Flutter Mobile Engineer",
+    "market": "europe",
+    "market_basis": "job-location"
+  },
+  "layout": {
+    "page_target": 1,
+    "hyperlinks": "auto",
+    "emphasis": "matched-requirements"
+  },
+  "basics": {
+    "name": { "text": "Sam Rivera", "source_ref": "profile-identity-001" },
+    "contact": [
+      {
+        "text": "sam.rivera@example.com",
+        "source_ref": "profile-contact-001",
+        "url": "mailto:sam.rivera@example.com"
+      },
+      { "text": "Lisbon, Portugal", "source_ref": "profile-contact-002" }
+    ],
+    "links": [
+      {
+        "text": "linkedin.com/in/example-sam-rivera",
+        "source_ref": "profile-link-001",
+        "url": "https://linkedin.com/in/example-sam-rivera"
+      },
+      {
+        "text": "github.com/example-sam-rivera",
+        "source_ref": "profile-link-002",
+        "url": "https://github.com/example-sam-rivera"
+      }
+    ]
+  },
+  "summary": [
+    {
+      "text": "Flutter Mobile Engineer building offline-capable shopping and tracking apps shipped to both stores.",
+      "source_refs": ["fittrack-002", "mealmate-001"],
+      "url": "https://play.google.com/store/apps/details?id=com.example.fittrack"
+    },
+    {
+      "text": "Worked directly with product stakeholders to turn feature requests into technical scope before implementation.",
+      "source_ref": "profile-responsibility-001"
+    }
+  ],
+  "experience": [
+    {
+      "organization": {
+        "text": "Vantage Labs",
+        "source_ref": "profile-experience-001",
+        "url": "https://vantagelabs.example.com"
+      },
+      "title": { "text": "Mobile Engineer", "source_ref": "profile-experience-001" },
+      "location": { "text": "Remote", "source_ref": "profile-experience-001" },
+      "start": { "text": "Jun 2024", "source_ref": "profile-experience-001" },
+      "end": { "text": "Present", "source_ref": "profile-experience-001" },
+      "bullets": [
+        {
+          "text": "Reduced workout history frame build time from a measured 31 ms to 9 ms by virtualizing the list and moving weekly aggregation off the build path, measured on the same mid-range Android device before and after.",
+          "source_ref": "fittrack-003"
+        },
+        {
+          "text": "Built offline workout logging with local-first writes, a persisted replay queue, and a last-write-wins rule chosen over a field-level merge because a workout entry is small and immutable.",
+          "source_ref": "fittrack-002"
+        },
+        {
+          "text": "Consolidated three overlapping local caches into a single repository-backed store, removing the path by which a stale entry could survive a failed sync and reappear in history.",
+          "source_ref": "fittrack-001"
+        }
+      ]
+    },
+    {
+      "organization": {
+        "text": "Bright Orchard",
+        "source_ref": "profile-experience-002",
+        "url": "https://brightorchard.example.com"
+      },
+      "title": { "text": "Flutter Developer", "source_ref": "profile-experience-002" },
+      "location": { "text": "Lisbon, Portugal", "source_ref": "profile-experience-002" },
+      "start": { "text": "Jan 2023", "source_ref": "profile-experience-002" },
+      "end": { "text": "May 2024", "source_ref": "profile-experience-002" },
+      "bullets": [
+        {
+          "text": "Worked on the checkout payment flow, adding a server confirmation step so a completed charge is only recognized after backend verification, along with the recovery path for a network drop between charge and confirmation.",
+          "source_ref": "mealmate-001"
+        },
+        {
+          "text": "Introduced widget and golden tests covering the cart's empty state, quantity limits, and the promotion path that had produced two regressions.",
+          "source_ref": "mealmate-002"
+        }
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "primary": {
+        "text": "FitTrack",
+        "source_ref": "fittrack-004",
+        "url": "https://play.google.com/store/apps/details?id=com.example.fittrack"
+      },
+      "secondary": { "text": "Flutter, Android, iOS", "source_ref": "fittrack-004" },
+      "date": null,
+      "details": [
+        {
+          "text": "Set up the release pipeline that builds, signs, and uploads both platforms from CI, moving signing material off developer machines into the CI secret store.",
+          "source_ref": "fittrack-004"
+        },
+        {
+          "text": "Contributed to right-to-left support, replacing directional padding and icon mirroring across fourteen widgets and adding golden tests for both directions.",
+          "source_ref": "fittrack-005"
+        }
+      ]
+    },
+    {
+      "primary": {
+        "text": "MealMate",
+        "source_ref": "mealmate-002",
+        "url": "https://play.google.com/store/apps/details?id=com.example.mealmate"
+      },
+      "secondary": { "text": "Flutter, payments", "source_ref": "mealmate-002" },
+      "date": null,
+      "details": [
+        {
+          "text": "Wired cart regression tests into the pull request pipeline so the promotion path could not silently break again.",
+          "source_ref": "mealmate-002"
+        }
+      ]
+    }
+  ],
+  "skills": [
+    {
+      "name": "Mobile",
+      "items": [
+        { "text": "Flutter and Dart", "source_ref": "profile-skill-001" },
+        { "text": "Offline data and synchronization", "source_ref": "profile-skill-002" }
+      ]
+    },
+    {
+      "name": "Delivery and quality",
+      "items": [
+        { "text": "CI and store release automation", "source_ref": "profile-skill-003" },
+        { "text": "Widget and golden testing", "source_ref": "profile-skill-004" }
+      ]
+    }
+  ],
+  "languages": [
+    { "text": "Portuguese (native)", "source_ref": "profile-language-001" },
+    { "text": "English (fluent)", "source_ref": "profile-language-002" }
+  ],
+  "education": [
+    {
+      "primary": { "text": "BSc Software Engineering", "source_ref": "profile-education-001" },
+      "secondary": { "text": "Example Polytechnic", "source_ref": "profile-education-001" },
+      "date": { "text": "2018 - 2022", "source_ref": "profile-education-001" },
+      "details": []
+    }
+  ],
+  "certifications": [],
+  "awards": [],
+  "activities": [],
+  "hobbies": [],
+  "career_breaks": [],
+  "alignment": {
+    "requirements": [
+      {
+        "term": "Flutter and Dart",
+        "aliases": ["Flutter", "Dart"],
+        "priority": "required",
+        "critical": true,
+        "status": "matched",
+        "evidence_refs": ["fittrack-001", "fittrack-003", "mealmate-002"],
+        "emphasize": true
+      },
+      {
+        "term": "offline capability",
+        "aliases": ["offline", "sync", "replay queue"],
+        "priority": "required",
+        "critical": true,
+        "status": "matched",
+        "evidence_refs": ["fittrack-002", "fittrack-001"],
+        "emphasize": true
+      },
+      {
+        "term": "app performance",
+        "aliases": ["frame build time", "virtualizing"],
+        "priority": "required",
+        "critical": true,
+        "status": "matched",
+        "evidence_refs": ["fittrack-003"],
+        "emphasize": true
+      },
+      {
+        "term": "customer-facing features",
+        "aliases": ["checkout", "cart"],
+        "priority": "required",
+        "critical": true,
+        "status": "matched",
+        "evidence_refs": ["mealmate-001", "mealmate-002"],
+        "emphasize": true
+      },
+      {
+        "term": "payment integration",
+        "aliases": ["payment", "charge"],
+        "priority": "required",
+        "critical": false,
+        "status": "matched",
+        "evidence_refs": ["mealmate-001"],
+        "emphasize": true
+      },
+      {
+        "term": "store releases",
+        "aliases": ["release pipeline", "signing"],
+        "priority": "required",
+        "critical": false,
+        "status": "matched",
+        "evidence_refs": ["fittrack-004"],
+        "emphasize": true
+      },
+      {
+        "term": "localization",
+        "aliases": ["right-to-left"],
+        "priority": "required",
+        "critical": false,
+        "status": "matched",
+        "evidence_refs": ["fittrack-005"],
+        "emphasize": true
+      },
+      {
+        "term": "testing",
+        "aliases": ["golden tests", "widget", "regression"],
+        "priority": "required",
+        "critical": false,
+        "status": "matched",
+        "evidence_refs": ["mealmate-002", "fittrack-005"],
+        "emphasize": false
+      },
+      {
+        "term": "requirements work with product",
+        "aliases": ["product stakeholders", "technical scope"],
+        "priority": "required",
+        "critical": false,
+        "status": "matched",
+        "evidence_refs": ["profile-responsibility-001"],
+        "emphasize": false
+      },
+      {
+        "term": "code reviews",
+        "aliases": ["code review"],
+        "priority": "preferred",
+        "critical": false,
+        "status": "unsupported",
+        "evidence_refs": [],
+        "emphasize": false,
+        "selection_reason": "No curated record and no profile responsibility covers code review. Reported as a real gap rather than softened into a claim."
+      },
+      {
+        "term": "design system across apps",
+        "aliases": ["design system"],
+        "priority": "preferred",
+        "critical": false,
+        "status": "unsupported",
+        "evidence_refs": [],
+        "emphasize": false,
+        "selection_reason": "The experience does not exist in the knowledge base. A real gap, closed by doing the work, never by wording."
+      }
+    ]
+  },
+  "quantifier_review": {
+    "used": ["fittrack-003: 31 ms to 9 ms, with device and build-mode context attached"],
+    "available_not_used": [
+      "fittrack-005: fourteen widgets. Used in the project detail because it communicates the real scope of an RTL migration, which is the point that is usually missed."
+    ],
+    "opportunities": [
+      "MealMate order volume or market count, if the user can supply a figure they are allowed to state."
+    ]
+  }
+}

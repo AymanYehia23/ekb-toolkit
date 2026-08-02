@@ -1,0 +1,99 @@
+# Role profile pack — Flutter engineers.
+#
+# A pack is everything the toolkit needs to know about ONE engineering
+# discipline. Nothing outside this directory names Flutter, Dart, or a mobile
+# concern, which is what makes a second pack a contribution rather than a fork.
+#
+# A pack supplies four things and nothing else:
+#
+#   aligned_anchors        what the screening gate treats as in-scope work
+#   misaligned_archetypes  what it flags as a different discipline
+#   analysis_hints         where career-relevant evidence hides in this stack
+#   exclusions             what an analyzer must never read in this stack
+#
+# A pack states no fact about any user. It describes a DISCIPLINE, not a
+# person, so it can ship in a public repository and still be useful to every
+# engineer working in that discipline.
+#
+# To add a pack: copy this directory, rewrite these four things, and open a
+# pull request. See docs/extending.md.
+
+schema_version: 1
+kind: profile-pack
+id: flutter-engineers
+name: Flutter Engineers
+description: >-
+  Cross-platform application engineers building and shipping Flutter apps to
+  the App Store and Google Play, including the platform, release, and
+  integration work that surrounds them.
+status: stable
+maintainers: [community]
+
+# --- Screening: what counts as this discipline ------------------------------
+#
+# Read by prompts/screen.md through screen-check-004. Coarse on purpose: this
+# is an in-or-out judgement made before any retrieval, not an assessment.
+aligned_anchors:
+  - Flutter and Dart application development
+  - cross-platform mobile architecture and state management
+  - mobile release engineering, store submission, and app lifecycle
+  - native platform integration through platform channels or plugins
+  - offline-capable and API-driven mobile products
+  - mobile performance, rendering, and startup work
+  - client-facing requirements work on mobile deliverables
+
+misaligned_archetypes:
+  - id: pack-misalign-001
+    label: Embedded, firmware, or hardware engineering
+    severity: blocker
+  - id: pack-misalign-002
+    label: Machine learning research or MLOps as the core role
+    severity: blocker
+    explain: >-
+      Distinguish from applied AI product work, which IS in scope. A role
+      building models is a different discipline; a role building a product
+      that calls a model is not.
+  - id: pack-misalign-003
+    label: Frontend web only, with a web framework as the whole role
+    severity: warning
+    explain: >-
+      Declarative UI and state management transfer. The framework, tooling,
+      and browser platform knowledge do not. Raise this to blocker if you do
+      not want web roles surfaced at all.
+  - id: pack-misalign-004
+    label: Native iOS-only or Android-only engineering
+    severity: warning
+    explain: >-
+      Mobile domain knowledge transfers; the required native language and
+      toolchain depth does not.
+  - id: pack-misalign-005
+    label: Backend, DevOps, SRE, or platform engineering as the whole role
+    severity: warning
+  - id: pack-misalign-006
+    label: Data engineering, analytics engineering, or BI
+    severity: blocker
+  - id: pack-misalign-007
+    label: QA or test automation as the whole role
+    severity: warning
+  - id: pack-misalign-008
+    label: Game development
+    severity: blocker
+
+# --- Analysis: where the evidence is ----------------------------------------
+#
+# Read by prompts/analyze.md. These are hints about where career-relevant work
+# tends to LIVE in this stack, so a scout does not have to rediscover the
+# ecosystem on every run. They are not a checklist: never record "no evidence
+# found" for a hint that did not apply.
+analysis_hints: analysis-hints.md
+
+# --- Exclusions: what must never be read ------------------------------------
+exclusions: exclusions.md
+
+# --- Vocabulary -------------------------------------------------------------
+#
+# The pack may extend config/capability-tags.yaml with stack-specific folds.
+# The shipped default already carries this pack's vocabulary, so nothing is
+# listed here; a second pack should either add its own file or contribute its
+# folds to the shared one.
+capability_tags: null

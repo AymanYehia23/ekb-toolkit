@@ -1,0 +1,52 @@
+schema_version: 1
+updated_at: 2026-07-28
+kind: project-ranking
+basis:
+  curated_projects: 3
+  records_considered: 6
+  sources: [projects/*.yaml]
+  method: Fixture ranking used only by the resume module tests.
+tiers:
+  flagship: Rank 1.
+  strong: Rank 2.
+projects:
+  - rank: 1
+    project: stronger
+    tier: flagship
+    score: 20
+    dimensions:
+      {complexity: 3, architecture: 3, scale: 2, maturity: 2, ownership: 3,
+       collaboration: 2, distinctiveness: 2, resume_value: 2, interview_value: 1}
+    why: Fixture entry standing in for a higher-value project.
+    best_evidence: [stronger-001]
+    strengths: []
+    placement: experience
+    links: []
+    caps: None; fixture only.
+  - rank: 2
+    project: fixture
+    tier: strong
+    score: 12
+    dimensions:
+      {complexity: 2, architecture: 1, scale: 1, maturity: 2, ownership: 1,
+       collaboration: 1, distinctiveness: 1, resume_value: 2, interview_value: 1}
+    why: Fixture entry standing in for a lower-value project.
+    best_evidence: [fixture-001]
+    strengths: []
+    placement: experience
+    links: [play_store]
+    caps: None; fixture only.
+  - rank: 3
+    project: lowest
+    tier: strong
+    score: 8
+    dimensions:
+      {complexity: 1, architecture: 1, scale: 1, maturity: 1, ownership: 2,
+       collaboration: 1, distinctiveness: 1, resume_value: 1, interview_value: 1}
+    why: Fixture entry standing in for the lowest-ranked project.
+    best_evidence: [lowest-001]
+    strengths: []
+    placement: selected-projects
+    links: []
+    caps: None; fixture only.
+not_ranked: []

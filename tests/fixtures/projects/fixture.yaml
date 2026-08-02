@@ -1,0 +1,55 @@
+project: fixture
+repo: /read-only/example
+analyses: []
+records:
+  - id: fixture-001
+    statement: >
+      Contributed to a data import pipeline supporting 3 formats with Ruby and
+      PostgreSQL.
+    kind: repo-verified
+    involvement: contributed
+    evidence:
+      - path: lib/importer.rb
+        at: abc123
+    reasoning: The repository contains the import paths and persistence layer.
+    limitations: No measured business result is stored.
+    interview_notes: ""
+    tags: [Ruby, PostgreSQL, data-import]
+  - id: fixture-inferred-001
+    statement: The pipeline likely shortened customer onboarding.
+    kind: inferred
+    involvement: contributed
+    evidence: []
+    reasoning: This is plausible but unconfirmed.
+    limitations: No measured or confirmed outcome.
+    tags: [inferred]
+  - id: fixture-team-001
+    statement: The product included a billing subsystem.
+    kind: repo-verified
+    involvement: team-context
+    evidence:
+      - path: lib/billing.rb
+        at: def456
+    reasoning: The subsystem is observable but participation is not established.
+    limitations: Not eligible as a personal accomplishment.
+    tags: [billing]
+  - id: fixture-legacy-shared-001
+    statement: Contributed to a background job integration using Redis.
+    kind: repo-verified
+    attribution: shared
+    evidence:
+      - path: lib/jobs.rb
+        at: fed321
+    reasoning: Legacy shared attribution is supported.
+    limitations: No leadership claim.
+    tags: [Redis]
+  - id: fixture-quantified-001
+    statement: Processed 1K+ users in 2 hours through a verified import workflow.
+    kind: repo-verified
+    involvement: implemented
+    evidence:
+      - path: docs/verified-metrics.md
+        at: aaa111
+    reasoning: The repository records the exact scale and duration.
+    limitations: No business result is claimed.
+    tags: [metrics]

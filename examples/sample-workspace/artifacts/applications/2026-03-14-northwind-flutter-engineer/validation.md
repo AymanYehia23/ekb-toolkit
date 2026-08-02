@@ -1,0 +1,52 @@
+# Resume validation
+
+- Status: PASS
+- Application: `2026-03-14-northwind-flutter-engineer`
+- Resume mode: job-targeted
+- ATS policy: v1
+- Selected sources: fittrack-001, fittrack-002, fittrack-003, fittrack-004, fittrack-005, mealmate-001, mealmate-002, profile-contact-001, profile-contact-002, profile-education-001, profile-experience-001, profile-experience-002, profile-identity-001, profile-language-001, profile-language-002, profile-link-001, profile-link-002, profile-responsibility-001, profile-skill-001, profile-skill-002, profile-skill-003, profile-skill-004
+- Hyperlinks: auto (8 linked items; #0563C1, underlined)
+- Emphasis: matched-requirements (21 terms, 16 applied)
+- Project evidence used anywhere: fittrack, mealmate (ranks 1, 2)
+- Named in Selected Projects: fittrack, mealmate (ranks 1, 2)
+- Requirement coverage: 8 demonstrated, 1 stated, 2 unsupported
+- Selection score: 95/100 (rubric v1; 8 scoreable required requirements, 1 excluded as genuine gaps)
+  - required_demonstrated 100, critical_demonstrated 100, strongest_evidence_used 75, decisions_recorded 100
+- PDF pages: 1
+- Content fill by page: 69.7%
+- DOCX tables: 0
+- DOCX images/shapes: 0
+- Extraction/order errors: 0
+- Editorial/layout warnings: 3
+
+## Requirement coverage
+
+| Requirement | Priority | Coverage | Strongest unused | Reason |
+| --- | --- | --- | --- | --- |
+| Flutter and Dart | required | shown | - |  |
+| offline capability | required | shown | - |  |
+| app performance | required | shown | - |  |
+| customer-facing features | required | shown | - |  |
+| payment integration | required | shown | - |  |
+| store releases | required | shown | - |  |
+| localization | required | shown | - |  |
+| testing | required | shown | - |  |
+| requirements work with product | required | claimed | - |  |
+| code reviews | preferred | absent | - | No curated record and no profile responsibility covers code review. Reported as a real gap rather than softened into a claim. |
+| design system across apps | preferred | absent | - | The experience does not exist in the knowledge base. A real gap, closed by doing the work, never by wording. |
+
+## Likely external review findings
+
+Keyword gap (3 terms, 0 fixable from existing evidence). A reviewer's missing-keyword list will draw from these:
+
+| Term | Coverage | Priority | Fixable here |
+| --- | --- | --- | --- |
+| requirements work with product | stated | required | no, real gap |
+| code reviews | unsupported | preferred | no, real gap |
+| design system across apps | unsupported | preferred | no, real gap |
+
+## Warnings
+
+- Single-page resume is underfilled: content uses 69.7% of printable height, below the 84.0% minimum; add target-relevant Selected Projects evidence or another distinct project
+- 14 emphasized fragments across 8 bullets reads as heavily bolded; reduce the term set
+- required requirements carried by a claim rather than an achievement: requirements work with product

@@ -1,0 +1,69 @@
+# EKB Toolkit — global settings.
+#
+# This is the first file to edit after cloning. Everything here is a default
+# you are meant to change; nothing in prompts/ or scripts/ hardcodes a value
+# that belongs to one person's career.
+
+schema_version: 1
+
+paths:
+  # Where YOUR knowledge base lives. The toolkit and the knowledge base are
+  # deliberately different trees: you pull updates to one and never risk the
+  # other. A path outside this repository is the recommended setup once you
+  # have more than a few projects.
+  #
+  #   workspace: ./workspace          # default, inside the clone
+  #   workspace: ~/ekb                # separate directory, own Git repository
+  #
+  # $EKB_WORKSPACE overrides this at runtime.
+  workspace: ./workspace
+
+  # The role profile pack that shapes analysis hints, exclusions, and the
+  # capability vocabulary. See profiles/ and docs/extending.md.
+  profile_pack: profiles/flutter-engineers
+
+analysis:
+  # How many records one analyze run should aim to produce. These are attention
+  # budgets, not quotas: fewer when the evidence is weak, more only when a
+  # repository genuinely contains more distinct high-value work.
+  first_capture: [3, 7]
+  incremental_capture: [0, 3]
+
+  # `quick` scans broadly and verifies narrowly. `deep` removes the numeric
+  # budget for one project, for an interview that matters.
+  default_depth: quick
+
+evidence:
+  # Which records may support a public claim about you. Loosening either of
+  # these is how a knowledge base stops being defensible, so change them only
+  # if you understand what you are trading away. See docs/concepts.md.
+  eligible_kinds: [repo-verified, user-stated]
+  eligible_involvement: [led, implemented, contributed]
+
+  # Whether a record needs a stated limitation before it can be curated.
+  # `warn` prints a notice; `require` refuses the record; `off` says nothing.
+  limitations: warn
+
+resume:
+  # Page size follows the target market. `europe` renders A4, `north-america`
+  # renders Letter. This is the fallback when a posting names no location.
+  default_market: europe
+  page_target: 1
+  page_maximum: 2
+
+  # Selection is worth a second opinion for a target that matters, and worth
+  # nothing for a routine application. `on-request` keeps competing drafts
+  # opt-in; `always` builds two every time.
+  competing_drafts: on-request
+
+screening:
+  # The pre-application gate in prompts/screen.md. It always stops for your
+  # decision, including on a clean report. Set to false only if you want
+  # postings to flow straight into a full tailoring pass.
+  enabled: true
+  policy: profile/screening-criteria.yaml # relative to the workspace
+
+git:
+  # The toolkit never pushes. These control local checkpointing only.
+  auto_checkpoint: true
+  tag_snapshots: true

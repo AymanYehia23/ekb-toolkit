@@ -1,0 +1,129 @@
+# FICTIONAL EXAMPLE. Derived from the two example projects.
+#
+# Note how small this is. Two projects support two real strengths and one
+# supporting one. Nothing here rounds the picture out, and that is the point.
+
+schema_version: 1
+kind: professional-profile
+updated_at: 2026-03-01
+
+current_coverage:
+  curated_projects: 2
+  records: 8
+  verified_at: 2026-03-01
+  since_last_full_validation: []
+  known_limits:
+    - >-
+      Two projects is a thin basis for any claim about what recurs. Every
+      strength below is stated at the depth two projects can actually support.
+
+validation_basis:
+  last_full_validation: 2026-03-01
+  method: >-
+    Read both curated projects, the confirmed profile, and the previous version
+    of this file.
+
+strengths:
+  - id: profile-strength-001
+    tier: signature
+    statement: >-
+      Offline-capable mobile data layers: local-first writes, replay on
+      reconnect, and explicit conflict resolution, built in two shipped apps.
+    projects: [fittrack, mealmate]
+    records: [fittrack-001, fittrack-002]
+    resume_usage: >-
+      Safe at feature and architecture level. Do not claim a sync success rate
+      or reliability figure; no measurement exists.
+    boundary: >-
+      All evidence is single-device sync. No multi-device conflict resolution
+      and no server-side reconciliation work.
+
+  - id: profile-strength-002
+    tier: core
+    statement: >-
+      Test-backed UI work, including golden tests used to pin layout behavior
+      across directions and states.
+    projects: [fittrack, mealmate]
+    records: [fittrack-005, mealmate-002]
+    resume_usage: >-
+      Name the behaviors and failure paths covered. Never a test count.
+    boundary: >-
+      Widget and golden level. No end-to-end or device-farm testing evidence.
+
+  - id: profile-strength-003
+    tier: supporting
+    statement: >-
+      Release automation: building, signing, and uploading both platforms from
+      CI.
+    projects: [fittrack]
+    records: [fittrack-004]
+    resume_usage: >-
+      One project only. Do not phrase this as a recurring specialization.
+    boundary: >-
+      Pipeline ownership is confirmed. Store listings and release approvals
+      were not owned.
+
+career_map:
+  - id: profile-employer-001
+    context: Vantage Labs
+    kind: employment
+    profile_ref: profile-experience-001
+    projects: [fittrack]
+  - id: profile-employer-002
+    context: Bright Orchard
+    kind: employment
+    profile_ref: profile-experience-002
+    projects: [mealmate]
+
+constraints:
+  - id: profile-constraint-001
+    type: unlock
+    statement: >-
+      Comparative performance language IS supported for the FitTrack history
+      screen work, with its measurement context attached.
+    reason: >-
+      fittrack-003 carries a committed before-and-after frame timing capture on
+      the same device and build mode. It is the only measured comparison in the
+      portfolio.
+    applies_to: [fittrack]
+
+  - id: profile-constraint-002
+    type: do-not-claim
+    statement: >-
+      No claim of multi-device or distributed synchronization.
+    reason: >-
+      Both sync records are single-device. The boundary on
+      profile-strength-001 states where the evidence stops.
+    applies_to: [fittrack, mealmate]
+
+  - id: profile-constraint-003
+    type: placement
+    statement: >-
+      mealmate-003 may never appear in a resume in any form.
+    reason: >-
+      A prototype that was demonstrated internally and closed unmerged. Useful
+      interview material about scoping; not an accomplishment.
+    applies_to: [mealmate]
+
+counting_rules: []
+
+do_not_claim:
+  - statement: Team leadership or ownership of other engineers.
+    reason: >-
+      The only `led` record is scoped to a release pipeline, not to people.
+
+character:
+  - id: profile-trait-001
+    trait: >-
+      Traces a reported symptom to its structural cause rather than patching the
+      surface.
+    visible_in: [fittrack-001, mealmate-001]
+    not_visible_in: [mealmate-003]
+    note: >-
+      mealmate-003 is a prototype with no bug history, so the trait is neither
+      supported nor contradicted there.
+
+open_items:
+  - >-
+    Whether the requirements work in profile-responsibility-001 recurs enough to
+    become a strength. One more curated project should settle it.

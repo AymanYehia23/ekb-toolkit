@@ -1,0 +1,78 @@
+# One curated project. Copy this shape for projects/<name>.yaml and for the
+# temporary projects/<name>.candidates.yaml that analysis writes.
+#
+# Delete these instructional comments once the file is real.
+
+project: example
+repo: /absolute/path/to/example
+
+# --- Analysis header --------------------------------------------------------
+#
+# One entry per analyze run, in order. The newest `head` is the baseline for
+# the next run, which is how incremental capture works without you having to
+# remember anything.
+#
+# `skipped` is not optional bookkeeping. "No evidence found" is not "did not
+# happen", and this list is where that distinction lives.
+analyses:
+  - at: 2026-01-15
+    since: null # full previous HEAD; null only on the first analysis
+    head: "0000000000000000000000000000000000000000"
+    depth: quick # quick | deep
+    agent: agent-name
+    model: model-name
+    contributors: 3
+    skipped:
+      - "History before 2025-06 is a squashed import; per-commit attribution is unavailable."
+      - "ios/Pods excluded."
+
+# --- Records ----------------------------------------------------------------
+records:
+  - id: example-candidate-001 # review renames this to example-001
+    # ONE defensible technical claim. The test: could the user say this
+    # sentence in an interview and then answer three questions about it?
+    statement: >
+      Replaced three overlapping local-cache implementations with a single
+      repository-backed store, so a stale read after a failed sync could no
+      longer surface in the order screen.
+
+    kind: repo-verified # repo-verified | inferred | user-stated
+    involvement: implemented # led | implemented | contributed | team-context | unknown
+
+    # Anything a reader could open to check the statement. Ranges, paths at a
+    # commit, and stable locators into the context file.
+    evidence:
+      - range: 0000000..1111111
+        note: The consolidation, including the removal of the two older stores.
+      - path: lib/data/order_repository.dart
+        at: 1111111
+      - context: example-questions.md#example-candidate-001--decision-anchor
+
+    # How the evidence supports the statement. For an inferred record, make the
+    # inference explicit rather than burying it in confident prose.
+    reasoning: >
+      The diff removes two cache classes and their call sites and introduces one
+      repository with a single write path. The commit message names the stale
+      read, and the test added alongside reproduces it.
+
+    # ONE TO THREE material boundaries. Only things that could change how this
+    # is worded in public. Not a disclaimer, not a hedge.
+    limitations: >
+      The stale read was reproduced in a test, not measured in production. No
+      before/after timing exists, so comparative performance wording is not
+      supported.
+
+    # Agent-proposed rationale, alternatives, trade-offs, risks, or expected
+    # effects. State the basis and the uncertainty. Removed or rewritten when
+    # the user confirms or corrects it during review.
+    inferred_context: >
+      Likely driven by a support issue rather than a refactor plan: the change
+      lands in a hotfix branch and ships the same day. Basis: branch name and
+      commit timing. Uncertain: whether a customer report triggered it.
+
+    # User-stated or user-confirmed context. Empty until confirmed.
+    interview_notes: ""
+
+    # Prefer the canonical names in config/capability-tags.yaml so this record
+    # stays findable when a job requirement is matched against capabilities.
+    tags: [offline, architecture, refactoring]

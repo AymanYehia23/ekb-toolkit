@@ -1,0 +1,107 @@
+# FICTIONAL EXAMPLE. Two projects, so the ordering is trivial. It is here to
+# show the SHAPE of an entry, especially the caps, which are the part that
+# actually binds selection later.
+
+schema_version: 1
+kind: project-ranking
+updated_at: 2026-03-01
+
+basis:
+  curated_projects: 2
+  records_considered: 8
+  method: >-
+    Nine dimensions, each 0 to 3, scored against curated records and the
+    standing constraints in professional-profile.yaml.
+  dimensions:
+    complexity: engineering difficulty and technical depth
+    architecture: structural work, layering, testing, delivery practice
+    scale: size of the system and of the change surface
+    maturity: "production reality. Demo or PoC scores at most 1; academic scores 0"
+    ownership: "supported involvement (led > implemented > contributed)"
+    collaboration: client, requirements, or cross-functional evidence
+    distinctiveness: rarity inside THIS portfolio
+    resume_value: how well one bullet survives a recruiter's read
+    interview_value: how well it survives fifteen minutes of questions
+  excluded:
+    - Business impact. No revenue, retention, adoption, or usage data exists.
+
+tiers:
+  - id: tier-1
+    label: Lead with these
+    ranks: [1, 3]
+  - id: tier-2
+    label: Strong support
+    ranks: [4, 8]
+
+projects:
+  - project: fittrack
+    rank: 1
+    tier: tier-1
+    score: 19
+    dimensions:
+      complexity: 3
+      architecture: 3
+      scale: 2
+      maturity: 3
+      ownership: 3
+      collaboration: 1
+      distinctiveness: 2
+      resume_value: 1
+      interview_value: 1
+    rank_basis: >-
+      Highest score. Shipped and maintained, the only `led` record in the
+      portfolio, and the only measured before-and-after.
+    tie_with: null
+    tie_break: null
+    placement: experience
+    best_evidence: [fittrack-003, fittrack-001]
+    caps:
+      - >-
+        Comparative performance language is licensed ONLY for fittrack-003, and
+        the measurement context travels with the number
+        (profile-constraint-001).
+      - >-
+        fittrack-005 is `contributed`. Feature-level wording only.
+    never_with: []
+    links: [play_store, app_store]
+
+  - project: mealmate
+    rank: 2
+    tier: tier-1
+    score: 13
+    dimensions:
+      complexity: 2
+      architecture: 2
+      scale: 2
+      maturity: 3
+      ownership: 1
+      collaboration: 1
+      distinctiveness: 1
+      resume_value: 1
+      interview_value: 0
+    rank_basis: >-
+      Shipped and in use, but most records are `contributed` in a seven-person
+      team, which caps ownership and interview value.
+    tie_with: null
+    tie_break: null
+    placement: experience
+    best_evidence: [mealmate-001, mealmate-002]
+    caps:
+      - >-
+        mealmate-003 may never appear in a resume (profile-constraint-003).
+      - >-
+        mealmate-001 is `contributed`. The provider SDK integration was another
+        engineer's work and must not be implied.
+    never_with: []
+    links: [play_store]
+
+target_presets:
+  - id: preset-product-mobile
+    for: Product-focused mobile roles
+    lead_with: [fittrack]
+    support_with: [mealmate]
+    note: >-
+      Leads with user-facing workflow and measured performance evidence. This
+      is a starting point, not a rule: regenerate the candidate set per posting.
+
+not_ranked: []
