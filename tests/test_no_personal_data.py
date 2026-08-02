@@ -40,7 +40,7 @@ RESERVED_TLDS = (".test", ".example", ".invalid", ".localhost")
 SAFE_HOSTS = (
     "example.com", "example.org", "example.net", "localhost",
     "github.com", "play.google.com", "apps.apple.com", "linkedin.com",
-    "keepachangelog.com", "opensource.org", "json-schema.org",
+    "keepachangelog.com", "semver.org", "opensource.org", "json-schema.org",
     "local.ekb",  # the resume model schema $id; not a real host
 )
 
