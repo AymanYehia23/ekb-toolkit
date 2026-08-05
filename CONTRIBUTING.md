@@ -114,6 +114,5 @@ gets a long conversation first, which is the correct outcome.
 
 ## Code of conduct
 
-Be decent. Assume good faith. Disagree about the work rather than about the
-person. Maintainers may remove anything that makes this a worse place to
-contribute.
+Please read the [Code of Conduct](CODE_OF_CONDUCT.md). Maintainers may remove
+anything that makes this a worse place to contribute.
