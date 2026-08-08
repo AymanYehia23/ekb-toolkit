@@ -32,7 +32,8 @@ Nothing is uploaded. Nothing is published. Everything is a local file you own.
   - [Generate resume evidence](#6-generate-resume-evidence)
   - [Screen a job posting](#7-screen-a-job-posting)
   - [Generate a tailored resume](#8-generate-a-tailored-resume)
-  - [Generate a professional summary](#9-generate-a-professional-summary)
+  - [Generate a cover letter](#9-generate-a-cover-letter)
+  - [Generate a professional summary](#10-generate-a-professional-summary)
 - [Recommended workflow](#recommended-workflow)
 - [Configuration](#configuration)
 - [Best practices](#best-practices)
@@ -239,6 +240,7 @@ ekb-toolkit/
 │   ├── screen.md             the pre-application gate
 │   ├── resume.md             evidence selection for a tailored resume
 │   ├── resume-presentation.md  how the document looks
+│   ├── cover-letter.md       optional letter after a tailored resume
 │   ├── interview.md          interview stories with follow-up questions
 │   ├── bullets.md            single-project bullet bank
 │   ├── summary.md            professional summaries for any venue
@@ -465,7 +467,25 @@ well the resume used the evidence available to it, never your fit for the job:
 requirements with no eligible evidence are excluded from every denominator, so
 an honest gap cannot lower it.
 
-### 9. Generate a professional summary
+After delivery, the agent asks whether you want a tailored cover letter. It is
+never generated without your opt-in.
+
+### 9. Generate a cover letter
+
+Answer `yes` after a job-targeted resume, or ask directly:
+
+```text
+Follow prompts/cover-letter.md with APPLICATION_ID=<existing-id>
+```
+
+The module reuses the completed application's frozen posting, shortlist, and
+validated resume. It writes `artifacts/applications/<id>/cover-letter.md` using
+three paragraphs: motivation and hook, value fit and proof, then call to action
+and closing. Candidate claims retain hidden source comments, and unstated
+company enthusiasm, recipient details, or mission alignment are omitted rather
+than guessed.
+
+### 10. Generate a professional summary
 
 ```text
 Follow prompts/summary.md with VENUE=profile-about
@@ -514,6 +534,8 @@ flowchart TD
     I --> L
     L --> M[resume.json]
     M -->|source check| N[DOCX + PDF]
+    N -->|user opts in| O[cover-letter.md]
+    L --> O
 ```
 
 ## Configuration

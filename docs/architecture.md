@@ -72,6 +72,7 @@ workspace/artifacts/interview/<name>.md
 workspace/artifacts/bullets/<name>.md
 workspace/artifacts/summaries/<venue>.md
 workspace/artifacts/applications/<id>/resume.json → .docx, .pdf, validation.*
+workspace/artifacts/applications/<id>/cover-letter.md
 ```
 
 **Never hand-edited.** If an artifact is wrong, the record, the profile, or the
@@ -131,6 +132,9 @@ flowchart TD
       M -->|source check| V{valid?}
       V -->|yes| D[DOCX + PDF]
       V -->|no| M
+      D -->|user opts in| CL[cover-letter.md]
+      SL --> CL
+      PR --> CL
     end
 
     K --> I

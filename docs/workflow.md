@@ -147,6 +147,19 @@ scripts/ekb render 2026-03-14-northwind-flutter-engineer --ats-plain
 Same words, no hyperlinks, no bold, for a submission portal that mangles
 formatting.
 
+After a job-targeted resume is delivered, the agent asks whether you want a
+cover letter. Answer `yes` to run `prompts/cover-letter.md` against the same
+application. It reuses the frozen posting, screening decision, shortlist, and
+validated resume, then writes:
+
+```
+artifacts/applications/2026-03-14-northwind-flutter-engineer/cover-letter.md
+```
+
+The letter follows three paragraphs: motivation and hook, value fit and proof,
+then call to action and closing. It does not rerun screening or invent a company
+motivation you have not stated.
+
 ## Every few months
 
 ```bash

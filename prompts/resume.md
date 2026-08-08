@@ -497,3 +497,10 @@ Do not require claim-by-claim approval. The user will ask for edits naturally.
 If `privacy.application_history_git` is granted, run
 `scripts/ekb git application <id>`. If it is declined or absent, leave the files
 uncommitted and say so plainly. Never push and never submit an application.
+
+For every successfully delivered `job-targeted` resume, end with exactly one
+opt-in question: **"Would you like me to generate a tailored cover letter for
+this application?"** Do not generate it unless the user says yes. On yes,
+follow `prompts/cover-letter.md` with the same application ID; reuse the frozen
+posting, screening decision, shortlist, and validated resume. Do not ask this
+after a `master` resume.

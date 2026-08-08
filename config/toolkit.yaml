@@ -56,6 +56,12 @@ resume:
   # opt-in; `always` builds two every time.
   competing_drafts: on-request
 
+cover_letter:
+  # A cover letter is optional and follows a successfully rendered,
+  # job-targeted resume. The workflow always asks before generating one.
+  target_words: 300
+  maximum_words: 400
+
 screening:
   # The pre-application gate in prompts/screen.md. It always stops for your
   # decision, including on a clean report. Set to false only if you want
