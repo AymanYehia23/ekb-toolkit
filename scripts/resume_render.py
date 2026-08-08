@@ -804,8 +804,12 @@ def external_signals_section(source_report: dict[str, Any]) -> str:
 
 
 def coverage_table(source_report: dict[str, Any]) -> str:
-    """Per-requirement detail, so a `stated` required capability and the record
-    that could have demonstrated it are visible side by side."""
+    """Per-requirement detail.
+
+    Critical stated capabilities show their strongest unused project evidence.
+    Non-critical stated tools remain visible as `claimed` without pressuring the
+    draft to turn a routine matching record into an achievement.
+    """
     requirements = source_report.get("coverage", {}).get("requirements") or []
     if not requirements:
         return ""

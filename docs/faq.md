@@ -50,7 +50,7 @@ checker doing its job.
 
 **The selection score is low but the resume looks fine.**
 
-Read the dimensions rather than the total. A high `required_demonstrated` beside
+Read the dimensions rather than the total. A high `required_coverage` beside
 a low `strongest_evidence_used` means coverage is complete while requirements
 are being answered by second-best records. Go back to the shortlist and check
 what outranked strength in each case.
@@ -58,10 +58,11 @@ what outranked strength in each case.
 **The checker keeps warning about the same commodity skill on every
 application.**
 
-That is the understatement gate firing where it should not. Identical
-`selection_reason` boilerplate appearing on the same requirement across
-applications is the signature. Read the warning and move on; it only errors on
-`critical` requirements for exactly this reason.
+Current versions do not emit understatement warnings for supported,
+non-critical commodity skills. Keep the item in Skills unless its matching
+project record independently deserves resume space. If this warning still
+appears, confirm you are running the current toolkit rather than an older
+checker copied into the workspace.
 
 **Can I generate a cover letter?**
 

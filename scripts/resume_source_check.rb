@@ -273,7 +273,7 @@ end
 # so the checks here are about the decision being MADE and HONORED, never about
 # which decision was right. That judgement needs the job description.
 
-def shortlist_findings(shortlist, prose_refs, errors, warnings)
+def shortlist_findings(shortlist, prose_refs, visible_refs, errors, warnings)
   return unless shortlist.is_a?(Hash)
   entries = Array(shortlist["requirements"]).select { |entry| entry.is_a?(Hash) }
   return if entries.empty?
@@ -285,6 +285,8 @@ def shortlist_findings(shortlist, prose_refs, errors, warnings)
     selected = Array(entry["selected"]).map(&:to_s)
     reason = entry["reason"].to_s.strip
     candidates = Array(entry["candidates"]).filter_map { |c| c["ref"].to_s if c.is_a?(Hash) }
+    profile_candidates = Array(entry["profile_candidates"])
+      .filter_map { |c| c["ref"].to_s if c.is_a?(Hash) }
 
     if required && selected.empty? && reason.empty?
       undecided << term
@@ -293,10 +295,19 @@ def shortlist_findings(shortlist, prose_refs, errors, warnings)
 
     # A recorded pick that never reaches the document means the shortlist and
     # the resume disagree about what was decided.
-    unused = selected.reject { |ref| prose_refs.include?(ref) }
+    unused = selected.reject do |ref|
+      if candidates.include?(ref)
+        prose_refs.include?(ref)
+      elsif profile_candidates.include?(ref)
+        visible_refs.include?(ref)
+      else
+        prose_refs.include?(ref) || visible_refs.include?(ref)
+      end
+    end
     unless unused.empty?
       warnings << "shortlist for \"#{term}\" selects #{unused.join(', ')} but the resume does not " \
-                  "cite it in Summary, Experience, or Selected Projects"
+                  "cite each project candidate in Summary, Experience, or Selected Projects, or each " \
+                  "profile candidate anywhere visible"
     end
 
     # Skipping the top candidate is often correct, but it is the decision most
@@ -325,6 +336,12 @@ end
 def selection_score(rubric, coverage_report, shortlist)
   return nil if rubric.nil?
   dimensions = rubric["dimensions"] || {}
+  # Normalize workspace-level rubrics created before this dimension was
+  # renamed. The old label encoded the bad incentive, so use only its weight
+  # and publish the corrected name and semantics in the report.
+  if !dimensions.key?("required_coverage") && dimensions.key?("required_demonstrated")
+    dimensions = dimensions.merge("required_coverage" => dimensions["required_demonstrated"])
+  end
   decisions = {}
   Array(shortlist && shortlist["requirements"]).each do |entry|
     next unless entry.is_a?(Hash)
@@ -342,14 +359,30 @@ def selection_score(rubric, coverage_report, shortlist)
   end
   critical = scoreable.select { |entry| entry["critical"] }
 
-  ratio = lambda do |set|
+  demonstrated_ratio = lambda do |set|
     return nil if set.empty?
     set.count { |entry| entry["coverage"] == "demonstrated" }.to_f / set.length
+  end
+
+  # Critical requirements need project evidence. A non-critical requirement is
+  # at its expected depth when it is either demonstrated or supported as stated.
+  # This prevents a commodity-tool keyword such as Git from gaining score merely
+  # because an internal recovery anecdote was promoted into Experience.
+  coverage_ratio = lambda do |set|
+    return nil if set.empty?
+    set.count do |entry|
+      entry["coverage"] == "demonstrated" ||
+        (!entry["critical"] && entry["coverage"] == "stated")
+    end.to_f / set.length
   end
 
   strongest = nil
   unless decisions.empty?
     judged = scoreable.filter_map do |entry|
+      # Do not reward selecting project evidence for a non-critical requirement
+      # that is already correctly stated. If a project record is used anyway,
+      # judge its strength because it consumed public resume space.
+      next if !entry["critical"] && entry["coverage"] != "demonstrated"
       decision = decisions[entry["term"].to_s]
       next if decision.nil?
       candidates = Array(decision["candidates"]).filter_map { |c| c["ref"].to_s if c.is_a?(Hash) }
@@ -373,8 +406,8 @@ def selection_score(rubric, coverage_report, shortlist)
   end
 
   values = {
-    "required_demonstrated" => ratio.call(scoreable),
-    "critical_demonstrated" => ratio.call(critical),
+    "required_coverage" => coverage_ratio.call(scoreable),
+    "critical_demonstrated" => demonstrated_ratio.call(critical),
     "strongest_evidence_used" => strongest,
     "decisions_recorded" => recorded
   }
@@ -442,10 +475,13 @@ end
 def external_signals(model, profile, coverage_report, limit = 15)
   return nil if coverage_report.empty?
 
-  # The reviewer's "missing or weakly represented" is this toolkit's `stated`
-  # plus `unsupported`. Ordered so the ones that cost most appear first.
+  # A supported non-critical skill is not a gap. Report unsupported items and
+  # critical capabilities that are only stated, ordered by likely cost.
   gap = coverage_report
-    .reject { |entry| entry["coverage"] == "demonstrated" }
+    .select do |entry|
+      entry["coverage"] == "unsupported" ||
+        (entry["critical"] && entry["coverage"] != "demonstrated")
+    end
     .sort_by do |entry|
       [
         entry["priority"].to_s == "required" ? 0 : 1,
@@ -821,7 +857,7 @@ def collect_alignment_requirements(model, sources, visible_items, index, errors,
     # every Flutter bullet and does not need an achievement of its own. Absent
     # from prose entirely is the case worth blocking.
     present_in_prose = aliases.any? { |alias_name| alignment_term_present?(prose_text, alias_name) }
-    understated = required && coverage != "demonstrated" && !unused.empty?
+    understated = required && requirement["critical"] && coverage != "demonstrated" && !unused.empty?
 
     if understated && reason.empty?
       top = unused.first(3).map do |record|
@@ -1107,7 +1143,8 @@ if shortlist_path && File.file?(shortlist_path)
     .select { |item| prose_item?(item["path"]) }
     .flat_map { |item| Array(item["refs"]) }
     .uniq
-  shortlist_findings(shortlist, prose_refs_for_shortlist, errors, warnings)
+  visible_refs_for_shortlist = visible_items.flat_map { |item| Array(item["refs"]) }.uniq
+  shortlist_findings(shortlist, prose_refs_for_shortlist, visible_refs_for_shortlist, errors, warnings)
 elsif model.dig("target", "mode") == "job-targeted"
   warnings << "no evidence shortlist for this application: selection is unrecorded. " \
               "Run ekb shortlist #{model['application_id']}"
@@ -1249,7 +1286,7 @@ end
 coverage_counts = coverage_report.group_by { |entry| entry["coverage"] }
   .transform_values(&:length)
 stated_required = coverage_report.select do |entry|
-  entry["priority"].to_s == "required" && entry["coverage"] == "stated"
+  entry["priority"].to_s == "required" && entry["critical"] && entry["coverage"] == "stated"
 end
 unless stated_required.empty?
   warnings << "required requirements carried by a claim rather than an achievement: " \

@@ -66,6 +66,13 @@ collaboration, troubleshooting, production support, testing, release work,
 process improvement. Merge two items only when they would use the same evidence
 and the combined aliases preserve both concepts.
 
+Do not merge adjacent requirements merely because the posting lists them in one
+sentence. In particular, **Git familiarity, code-review participation, and
+coding standards are three different evidence questions**: a branch-recovery
+story does not demonstrate code review, and a confirmed code-review
+responsibility does not need a Git incident attached to it. Keep them separate
+unless one selected record genuinely supports the combined wording.
+
 This audit is what stops a requirement disappearing before selection begins.
 
 Write aliases as the vocabulary **the evidence uses**, not the vocabulary the
@@ -241,8 +248,20 @@ The checker derives a second, stronger measure you cannot assert:
   The resume claims the capability.
 - **unsupported** — no eligible evidence exists.
 
-A reviewer scores what is demonstrated. Aim every `priority: required`
-requirement at `demonstrated`.
+A reviewer scores differentiating capabilities by what is demonstrated. Aim
+every `critical: true` requirement at `demonstrated`. A non-critical commodity
+tool or workflow such as Git, an issue tracker, a package manager, or a language
+may correctly remain `stated` when the profile supports it. Do not turn routine
+maintenance, branch recovery, dependency bumps, or internal migration mechanics
+into an Experience bullet merely to move such a term from `stated` to
+`demonstrated`.
+
+Apply an editorial-value test before selecting a project record: **would this
+accomplishment still deserve public resume space if the posting did not contain
+the matching keyword?** If not, keep the supported skill or responsibility in
+Skills or Summary and record why the technically matching project record was
+not selected. Neither a validator warning nor the private selection score may
+override this test.
 
 A **critical** requirement left at `stated` while the index holds eligible
 project evidence, with the term appearing in no achievement text, is an **error**.
@@ -250,11 +269,13 @@ Fix it by using the evidence, or record why not. A real reason is a trade-off:
 a page-limit cut, non-redundant coverage that matters more. "Already covered in
 skills" is not one.
 
-The same shape on a non-critical requirement is a **warning**, and often the
-right answer is to leave it. A Skills-section listing is exactly what a reviewer
-expects for a language or a tool, and demanding an achievement for one produces
-boilerplate rather than a better resume. The distinction that matters is
-differentiating capability versus commodity tool.
+The same shape on a non-critical requirement is not an understatement warning.
+A Skills-section listing is exactly what a reviewer expects for a language or a
+commodity tool, and demanding an achievement for one produces boilerplate
+rather than a better resume. The distinction that matters is differentiating
+capability versus commodity tool. The coverage table still reports `stated`, so
+the presentation remains visible without pressuring the draft to manufacture an
+achievement.
 
 `supported_not_selected` is permitted only when the page limit or a stronger
 coverage decision genuinely forces the omission, and it needs a recorded reason.
@@ -463,7 +484,7 @@ evidence are excluded from every denominator, so an honest gap cannot lower it.
 It is not a prediction of any external reviewer's number and never appears in a
 rendered document.
 
-Read the dimensions rather than the total. A high `required_demonstrated` beside
+Read the dimensions rather than the total. A high `required_coverage` beside
 a low `strongest_evidence_used` means coverage is complete while requirements
 are being answered by second-best records.
 
