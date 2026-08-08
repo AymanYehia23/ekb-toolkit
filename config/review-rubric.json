@@ -9,10 +9,10 @@
   ],
   "privacy": "Private. The score, its dimensions, and its bands never appear in a rendered resume, and no wording may be derived from one.",
   "dimensions": {
-    "required_demonstrated": {
+    "required_coverage": {
       "weight": 45,
-      "measures": "Of the required requirements that have eligible project evidence, the share carried by an achievement in Summary, Experience, or Selected Projects rather than by a skills line or a profile claim.",
-      "why": "A reviewer scores what is demonstrated. A skills-list token and an achievement bullet are not the same answer to a requirement, and only one of them survives a follow-up question."
+      "measures": "Of the required requirements with eligible evidence, the share presented at the expected depth: critical requirements demonstrated by project evidence, and non-critical requirements either demonstrated or supported as stated.",
+      "why": "Differentiating capabilities need an achievement. Commodity tools and routine workflow familiarity are often correctly carried by Skills; rewarding a project anecdote for every keyword makes the resume worse."
     },
     "critical_demonstrated": {
       "weight": 25,
@@ -43,7 +43,7 @@
     "unsupported_critical": "Critical requirements with no eligible evidence. Usually the single largest cause of a low external score."
   },
   "known_limits": [
-    "The understatement gate treats a `stated` requirement as a problem, but that is only true for DIFFERENTIATING capabilities. For commodity tools and languages a Skills-section listing is exactly what a reviewer expects, and demanding an achievement for one produces boilerplate rather than a better resume. This is why the gate errors only on `critical` requirements and warns everywhere else.",
+    "A `stated` requirement is a problem only for DIFFERENTIATING capabilities. For commodity tools and languages a Skills-section listing is exactly what a reviewer expects, and demanding an achievement for one produces boilerplate rather than a better resume. The gate and score therefore require demonstration only for `critical` requirements.",
     "Coverage grade measures how a capability is PRESENTED. A reviewer's per-skill score measures how DEEP it is. For commodity skills those two are close to orthogonal, so a high coverage grade is not evidence of depth and a low one is not evidence of a weakness.",
     "An `unsupported` requirement is not worth zero to a human reviewer. Reviewers award adjacency credit for related evidence, so a binary unsupported overstates the damage an honest gap does."
   ],

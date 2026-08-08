@@ -392,14 +392,16 @@ class ResumeCoverageTest < Minitest::Test
   def test_a_non_critical_requirement_does_not_block
     with_workspace do |dir|
       # Narrowed 2026-07-29: only a CRITICAL capability blocks. Calibration
-      # showed commodity skills graded `stated` cost nothing externally.
+      # showed commodity skills graded `stated` cost nothing externally. They
+      # must not emit an understatement warning either, because that warning
+      # pressures the author to publish a low-value matching anecdote.
       model = base_model
       model["alignment"]["requirements"][0]["critical"] = false
       report, status = check(dir, model)
       assert status.success?, "errors: #{report['errors']}"
-      assert(
-        report["warnings"].any? { |w| w.include?("Not critical") },
-        report["warnings"].inspect
+      refute(
+        report["warnings"].any? { |w| w.include?("sample-001") },
+        "non-critical stated coverage must not promote a matching project record: #{report['warnings']}"
       )
     end
   end
@@ -474,7 +476,12 @@ class ResumeCoverageTest < Minitest::Test
     path
   end
 
-  def check_with_shortlist(dir, model, shortlist_body = SHORTLIST)
+  def check_with_shortlist(
+    dir,
+    model,
+    shortlist_body = SHORTLIST,
+    rubric_path = File.join(ROOT, "config", "review-rubric.json")
+  )
     path = File.join(dir, "model.json")
     File.write(path, JSON.pretty_generate(model))
     stdout, stderr, status = Open3.capture3(
@@ -484,7 +491,7 @@ class ResumeCoverageTest < Minitest::Test
       "--projects", File.join(dir, "projects"),
       "--index", File.join(dir, "index", "evidence-index.yaml"),
       "--shortlist", write_shortlist(dir, shortlist_body),
-      "--rubric", File.join(ROOT, "config", "review-rubric.json")
+      "--rubric", rubric_path
     )
     raise "checker produced no output: #{stderr}" if stdout.strip.empty?
     [JSON.parse(stdout), status]
@@ -506,6 +513,64 @@ class ResumeCoverageTest < Minitest::Test
       report, status = check_with_shortlist(dir, model_using_the_performance_record)
       assert status.success?, "errors: #{report['errors']}"
       refute(report["warnings"].any? { |w| w.include?("shortlist") }, report["warnings"].inspect)
+    end
+  end
+
+  def test_non_critical_profile_selection_does_not_promote_a_project_anecdote
+    with_workspace do |dir|
+      model = base_model
+      model["alignment"]["requirements"][0]["critical"] = false
+      shortlist = <<~YAML
+        schema_version: 1
+        kind: evidence-shortlist
+        application: test
+        requirements:
+          - term: app performance
+            priority: required
+            critical: false
+            aliases: [performance]
+            candidates:
+              - ref: sample-001
+                project: sample
+                strength: 5.0
+                signals: []
+                claim: a matching project anecdote
+            profile_candidates:
+              - ref: profile-skill-001
+                origin: skill-group
+                label: Engineering practices
+            selected: [profile-skill-001]
+            reason: Non-critical skill is correctly stated; the project record is not independently worth another bullet.
+      YAML
+
+      report, status = check_with_shortlist(dir, model, shortlist)
+      assert status.success?, "errors: #{report['errors']}"
+      refute(
+        report["warnings"].any? { |warning| warning.include?("sample-001") },
+        "the unused project match must not be treated as a resume gap: #{report['warnings']}"
+      )
+      assert_equal 100, report.dig("selection_score", "dimensions", "required_coverage", "value")
+      gap = report.dig("external_signals", "keyword_gap") || []
+      refute gap.any? { |entry| entry["term"] == "app performance" },
+             "a supported non-critical skill is not a keyword gap"
+    end
+  end
+
+  def test_legacy_required_demonstrated_rubric_uses_expected_depth_semantics
+    with_workspace do |dir|
+      model = base_model
+      model["alignment"]["requirements"][0]["critical"] = false
+      legacy_rubric = JSON.parse(File.read(File.join(ROOT, "config", "review-rubric.json")))
+      dimension = legacy_rubric["dimensions"].delete("required_coverage")
+      legacy_rubric["dimensions"]["required_demonstrated"] = dimension
+      rubric_path = File.join(dir, "legacy-review-rubric.json")
+      File.write(rubric_path, JSON.pretty_generate(legacy_rubric))
+
+      report, status = check_with_shortlist(dir, model, SHORTLIST, rubric_path)
+      assert status.success?, "errors: #{report['errors']}"
+      assert_equal 100,
+                   report.dig("selection_score", "dimensions", "required_coverage", "value")
+      refute report.dig("selection_score", "dimensions").key?("required_demonstrated")
     end
   end
 

@@ -275,8 +275,14 @@ you know why.
 How the private selection score is computed. It measures **how well a resume
 used the evidence available to it**, never your fit for the job.
 
-Weights: `required_demonstrated` 45, `critical_demonstrated` 25,
+Weights: `required_coverage` 45, `critical_demonstrated` 25,
 `strongest_evidence_used` 20, `decisions_recorded` 10.
+
+`required_coverage` means expected depth, not achievement prose everywhere:
+critical requirements must be demonstrated, while a supported non-critical
+tool or routine workflow may correctly remain in Skills. Older workspace
+overrides using the name `required_demonstrated` are read with these corrected
+semantics and normalized to `required_coverage` in validation reports.
 
 `calibration.observations` is empty and yours to fill. Each time you get an
 external review of a generated resume, record its number beside the internal

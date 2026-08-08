@@ -266,6 +266,11 @@ HEADER = """# EVIDENCE SHORTLIST. Candidates are generated; decisions are author
 #   `reason` why that beats the runner-up. When the winner is NOT the strongest
 #   candidate listed, the reason must say what outranked strength: a page-limit
 #   cut, a counting rule, non-redundant coverage that matters more.
+#   A keyword match is retrieval, not an instruction to publish the record. For
+#   non-critical commodity tools such as Git, prefer a supported profile source
+#   unless the project candidate is independently worth resume space. Never add
+#   an internal recovery or maintenance anecdote solely to raise coverage from
+#   `stated` to `demonstrated`.
 #
 # WHAT IT IS NOT
 #   Not evidence. `strength` and `claim` are derived from the curated record and
