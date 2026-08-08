@@ -3,9 +3,9 @@
 Turn your Git history into career evidence you can defend in an interview.
 
 The EKB Toolkit helps Flutter engineers build a private, structured record of
-their work, then use it to prepare interview stories, project bullets, and
-tailored resumes. An AI coding agent examines repository history, proposes
-evidence, and asks you to confirm anything it cannot observe.
+their work, then use it to prepare interview stories, project bullets, tailored
+resumes, and cover letters. An AI coding agent examines repository history,
+proposes evidence, and asks you to confirm anything it cannot observe.
 
 The toolkit keeps three things separate:
 
@@ -92,14 +92,15 @@ You can keep using the guide in plain language:
 | Create project bullets | `Follow prompts/guide.md and create bullets for my-project` |
 | Check a job posting | `Follow prompts/guide.md and screen this job: <paste posting>` |
 | Tailor a resume | `Follow prompts/guide.md and create a resume for: <paste posting>` |
+| Create a cover letter | `Follow prompts/cover-letter.md with APPLICATION_ID=<existing-id>` |
 
 The usual workflow is:
 
 1. **Capture** — the agent examines a repository and proposes evidence.
 2. **Review** — you confirm, correct, or discard the proposals as one batch.
 3. **Generate** — the toolkit creates interview stories or project bullets.
-4. **Tailor** — when applying, it screens the posting before selecting evidence
-   and rendering a resume.
+4. **Tailor** — when applying, it screens the posting before selecting evidence,
+   rendering a resume, and optionally generating a cover letter.
 
 The job-screening step always stops for your `proceed`, `declined`, or
 `deferred` decision, even when it finds no blockers.
@@ -116,13 +117,14 @@ workspace/
 ├── projects/       reviewed evidence from each repository
 ├── context/        your answers and review decisions
 ├── applications/   job screenings and evidence selections
-├── artifacts/      interview guides, bullet banks, and resumes
+├── artifacts/      interview guides, bullets, resumes, and cover letters
 ├── index/          generated evidence index
 └── EXCLUSIONS.md   paths the agent must never read
 ```
 
-Generated documents are disposable. If a resume or interview guide is wrong,
-correct the underlying record and regenerate it instead of editing the output.
+Generated documents are disposable. If a resume, cover letter, or interview
+guide is wrong, correct the underlying record and regenerate it instead of
+editing the output.
 
 ## Before using a private repository
 

@@ -8,7 +8,7 @@ Run `scripts/ekb init` to scaffold it:
     projects/        one curated YAML file per analyzed repository
     context/         the conversation behind each project's records
     applications/    frozen job postings, screenings, evidence shortlists
-    artifacts/       generated interview guides, bullet banks, resumes
+    artifacts/       generated interview guides, bullet banks, resumes, letters
     index/           the generated evidence index
     EXCLUSIONS.md    what analyzers must never read
 

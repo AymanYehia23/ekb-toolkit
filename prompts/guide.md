@@ -20,6 +20,9 @@ Before resolving anything else:
 - `resume`, `job`, `apply`, or a pasted posting with stated intent to apply →
   `prompts/resume.md`. A full application resume is cross-project; do not ask
   the user to pick one project.
+- `cover letter` for an existing application → `prompts/cover-letter.md`. If
+  that application has no completed, validated resume, route through
+  `prompts/resume.md` first.
 - `screen`, `check this job`, `is this worth applying to`, or a pasted posting
   with no stated intent → `prompts/screen.md` alone. Offer the resume only
   after the decision is `proceed`.
@@ -30,6 +33,11 @@ Before resolving anything else:
 The screening gate is the one place this file's "continue automatically" rule
 does not apply. It always stops for the user's decision, including on a clean
 report.
+
+After every successful job-targeted resume delivery, ask the single cover-letter
+opt-in question required by `prompts/resume.md`. The question is a user choice,
+so stop there. A yes resumes through `prompts/cover-letter.md` without repeating
+the screening gate or asking for the posting again.
 
 ## 2. Resolve the project
 

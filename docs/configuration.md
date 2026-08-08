@@ -100,6 +100,13 @@ names no location.
 selection strategies and score them against each other. It costs a second full
 selection pass, which a routine application does not earn.
 
+### `cover_letter.target_words` / `cover_letter.maximum_words`
+
+The optional letter aims at 300 words and has a hard 400-word ceiling by
+default. A shorter user-requested length wins. These settings change space, not
+evidence eligibility: the letter still reuses only the screened application's
+selected, validated claims.
+
 ### `screening.enabled`
 
 `true` by default. Setting it to `false` lets postings flow straight into a full

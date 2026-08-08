@@ -6,7 +6,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- **Optional cover-letter generation.** Every completed job-targeted resume now
+  ends with an opt-in question. The new procedure reuses the screened
+  application and selected evidence, follows a three-paragraph framework, and
+  keeps candidate claims traceable through private source comments.
 
 ## [0.1.0] - 2026-08-02
 

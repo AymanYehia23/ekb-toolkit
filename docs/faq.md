@@ -65,9 +65,13 @@ applications is the signature. Read the warning and move on; it only errors on
 
 **Can I generate a cover letter?**
 
-Not yet. It is the first item on the roadmap, and it will run behind the same
-gate and cite the same evidence. `prompts/summary.md` with
-`VENUE=cover-letter` produces the opening paragraph today.
+Yes. After every successfully delivered job-targeted resume, the agent asks if
+you want one. A yes runs `prompts/cover-letter.md` against the same frozen
+application, screening decision, shortlist, and validated resume. It writes a
+full three-paragraph letter to `artifacts/applications/<id>/cover-letter.md`.
+
+For an opening paragraph without a complete application, use
+`prompts/summary.md` with `VENUE=cover-letter` instead.
 
 **Can I run this without an AI agent?**
 

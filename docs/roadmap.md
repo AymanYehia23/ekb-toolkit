@@ -6,10 +6,6 @@ Ordered by how likely each is to actually happen. Nothing here is a commitment.
 
 ## Near term
 
-**Cover letter generation.** The same evidence layer, the same gate, a different
-output shape. The hard part is not the letter; it is resisting the pull toward
-enthusiasm claims that nothing supports.
-
 **`ekb verify`.** Re-resolve every record's evidence against the current
 repository and report what has drifted: a commit range that no longer exists
 after a rebase, a file path that moved, a record whose supporting diff is gone.
