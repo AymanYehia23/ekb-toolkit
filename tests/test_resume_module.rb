@@ -50,6 +50,20 @@ class ResumeModuleTest < Minitest::Test
     [output, stdout, stderr, status]
   end
 
+  def summary_text(word_count, sentences: 4)
+    raise ArgumentError, "summary needs at least two words per sentence" if word_count < sentences * 2
+
+    words = ["Software", "Engineer"] + Array.new(word_count - 3, "Ruby") + ["PostgreSQL"]
+    base, remainder = word_count.divmod(sentences)
+    cursor = 0
+    Array.new(sentences) do |index|
+      size = base + (index < remainder ? 1 : 0)
+      sentence = words.slice(cursor, size).join(" ") + "."
+      cursor += size
+      sentence
+    end.join(" ")
+  end
+
   # Office Open XML is UTF-8. Reading it with the shell's default external
   # encoding raises on any non-ASCII byte, which a real resume routinely has.
   def docx_runs(path)
@@ -291,7 +305,14 @@ class ResumeModuleTest < Minitest::Test
       )
       assert status.success?, stderr
       assert JSON.parse(stdout)["valid"]
-      %w[resume.docx resume.pdf validation.json validation.md].each do |name|
+      %w[
+        resume.docx
+        resume.pdf
+        Casey_Engineer_Software_Engineer_CV.docx
+        Casey_Engineer_Software_Engineer_CV.pdf
+        validation.json
+        validation.md
+      ].each do |name|
         path = File.join(output, name)
         assert File.file?(path), "missing #{name}"
         assert_operator File.size(path), :>, 100
@@ -309,6 +330,15 @@ class ResumeModuleTest < Minitest::Test
       assert_equal 20.0, report.dig("presentation", "bullet_layout", "text_indent_pt")
       assert_equal 11.0, report.dig("presentation", "bullet_layout", "hanging_pt")
       assert_equal(-1.5, report.dig("presentation", "bullet_layout", "marker_vertical_offset_pt"))
+      assert_equal "Casey_Engineer_Software_Engineer_CV",
+                   report.dig("presentation", "attachment_stem")
+      refute report.dig("document_validation", "pdf_password_protected")
+      assert_includes report.dig("document_validation", "warnings").join(" "),
+                      "no phone number"
+      assert_includes report.dig("document_validation", "warnings").join(" "),
+                      "no confirmed professional profile link"
+      assert_includes report.dig("document_validation", "warnings").join(" "),
+                      "no CEFR level"
     end
   end
 
@@ -361,13 +391,12 @@ class ResumeModuleTest < Minitest::Test
     end
   end
 
-  def test_north_american_resume_uses_letter_and_accepts_45_word_override
+  def test_north_american_resume_uses_letter_and_accepts_120_word_override
     with_model do |model, path, directory|
       model["target"]["market"] = "north-america"
       model["target"]["market_basis"] = "user-override"
-      model["layout"]["summary_word_limit"] = 45
-      model["summary"][0]["text"] =
-        ("Software Engineer " + "Ruby " * 42 + "PostgreSQL").strip
+      model["layout"]["summary_word_limit"] = 120
+      model["summary"][0]["text"] = summary_text(120)
       write_model(path, model)
       output = File.join(directory, "output")
       _stdout, stderr, status = run_tool(
@@ -380,44 +409,57 @@ class ResumeModuleTest < Minitest::Test
     end
   end
 
-  def test_summary_defaults_to_forty_words_in_every_market
+  def test_summary_defaults_to_ninety_words_and_four_sentences_in_every_market
     with_model do |model, path, _directory|
-      # 40 words passes; the market no longer changes the default.
-      model["summary"][0]["text"] =
-        ("Software Engineer " + "Ruby " * 37 + "PostgreSQL").strip
+      model["summary"][0]["text"] = summary_text(90)
       _stdout, stderr, status = validate(model, path)
       assert status.success?, stderr
     end
   end
 
-  def test_summary_rejects_more_than_forty_words
+  def test_summary_rejects_more_than_ninety_words
     with_model do |model, path, _directory|
-      model["summary"][0]["text"] =
-        ("Software Engineer " + "Ruby " * 38 + "PostgreSQL").strip
+      model["summary"][0]["text"] = summary_text(91)
       _stdout, stderr, status = validate(model, path)
       refute status.success?
-      assert_includes stderr, "40-word"
+      assert_includes stderr, "90-word"
     end
   end
 
   def test_summary_honors_an_explicit_shorter_override
     with_model do |model, path, _directory|
-      model["layout"]["summary_word_limit"] = 15
-      model["summary"][0]["text"] =
-        ("Software Engineer " + "Ruby " * 13 + "PostgreSQL").strip
+      model["layout"]["summary_word_limit"] = 60
+      model["summary"][0]["text"] = summary_text(61)
       _stdout, stderr, status = validate(model, path)
       refute status.success?
-      assert_includes stderr, "15-word"
+      assert_includes stderr, "60-word"
     end
   end
 
   def test_summary_accepts_an_explicit_longer_override
     with_model do |model, path, _directory|
-      model["layout"]["summary_word_limit"] = 45
-      model["summary"][0]["text"] =
-        ("Software Engineer " + "Ruby " * 42 + "PostgreSQL").strip
+      model["layout"]["summary_word_limit"] = 120
+      model["summary"][0]["text"] = summary_text(120)
       _stdout, stderr, status = validate(model, path)
       assert status.success?, stderr
+    end
+  end
+
+  def test_summary_rejects_fewer_than_four_sentences
+    with_model do |model, path, _directory|
+      model["summary"][0]["text"] = summary_text(45, sentences: 3)
+      _stdout, stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes stderr, "4 to 6 complete sentences; found 3"
+    end
+  end
+
+  def test_summary_rejects_more_than_six_sentences
+    with_model do |model, path, _directory|
+      model["summary"][0]["text"] = summary_text(70, sentences: 7)
+      _stdout, stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes stderr, "4 to 6 complete sentences; found 7"
     end
   end
 
@@ -603,7 +645,7 @@ class ResumeModuleTest < Minitest::Test
   def test_warns_without_blocking_when_a_summary_project_has_no_confirmed_link
     with_model do |model, path, _directory|
       model["summary"] = [{
-        "text" => "Software engineer implementing a scheduling service with Ruby.",
+        "text" => summary_text(40),
         "source_ref" => "stronger-001"
       }]
       stdout, stderr, status = validate(model, path)
@@ -811,7 +853,7 @@ class ResumeModuleTest < Minitest::Test
         "source_ref" => "stronger-001"
       }]
       model["summary"] = [{
-        "text" => "Software Engineer implementing scheduling services with Ruby and PostgreSQL.",
+        "text" => summary_text(40),
         "source_ref" => "stronger-001"
       }]
       model["skills"] = [{"name" => "Technologies", "items" => [

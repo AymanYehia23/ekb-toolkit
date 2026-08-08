@@ -49,10 +49,34 @@
     "Interests"
   ],
   "summary": {
-    "default_words": 40,
-    "minimum_override": 15,
-    "maximum_override": 45,
-    "note": "40 words is two to three rendered lines, and it is a ceiling rather than a target. The summary is the only place a cross-project fact can live, because a bullet describes one project. Omit the summary entirely rather than padding it."
+    "default_words": 90,
+    "minimum_override": 40,
+    "maximum_override": 120,
+    "minimum_sentences": 4,
+    "maximum_sentences": 6,
+    "note": "Use four to six complete sentences with a 90-word ceiling. Cover the supported professional identity, relevant experience and expertise, career direction, and relocation or work-authorization context only when applicable and confirmed. The summary is the only place a cross-project fact can live, because a bullet describes one project. Do not pad a sentence or invent context to reach the minimum."
+  },
+  "page_length": {
+    "one_page_through_years": 5,
+    "page_maximum": 2,
+    "note": "Prefer one page for a confirmed career span of up to five years. A second page is available for longer careers when relevant evidence needs it; it is not a target and the renderer never invents or recalculates a years-of-experience claim."
+  },
+  "contact_hygiene": {
+    "require_email": true,
+    "recommend_phone": true,
+    "recommend_profile_link": true,
+    "note": "The validation report flags missing contact categories but does not invent them. Use a professional personal email address; do not use a previous employer address. Location and work authorization belong in the header only when relevant and confirmed in profile.yaml."
+  },
+  "languages": {
+    "prefer_cefr": true,
+    "cefr_pattern": "\\b(?:A1|A2|B1|B2|C1|C2)\\b",
+    "note": "Prefer CEFR levels for European applications. A missing level is a warning, not an automatic conversion: the user's recorded proficiency must be preserved until they confirm a CEFR mapping. Never render visual skill bars or stars."
+  },
+  "delivery": {
+    "attachment_pattern": "FirstName_LastName_TargetRole_CV.pdf",
+    "required_format": "PDF",
+    "password_protected": false,
+    "note": "Rendering keeps stable resume.docx and resume.pdf files for tooling and also writes professionally named attachment copies derived only from the confirmed name and target role."
   },
   "job_targeted_content_balance": {
     "summary_lead": "Begin with the primary discipline advertised by the role. Put an unrequested vendor, platform, or domain specialization later.",
@@ -201,6 +225,7 @@
     "text_boxes": false,
     "images": false,
     "selectable_pdf_text": true,
+    "password_protected_pdf": false,
     "page_target": 1,
     "page_maximum": 2,
     "selected_projects_minimum": 2

@@ -40,7 +40,7 @@ Never read candidate files, generated artifacts, or target repositories.
 
 | Venue | Budget | Voice | Notes |
 |---|---|---|---|
-| `resume` | 40 words | third person, implied subject | Ceiling, not a target. Governed by `prompts/resume-presentation.md`. |
+| `resume` | 4–6 sentences, 90 words maximum | third person, implied subject | The word count is a ceiling. Governed by `prompts/resume-presentation.md`. |
 | `profile-headline` | 15 words | noun phrase | Role identity plus the one specialization the evidence supports. |
 | `profile-about` | 120 words | first person | The only venue where first person reads naturally. |
 | `portfolio` | 80 words | third person | Written for someone who arrived from a project page and wants context. |

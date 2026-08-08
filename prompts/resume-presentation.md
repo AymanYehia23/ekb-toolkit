@@ -125,15 +125,29 @@ Writing should be concise and sound like an experienced engineer:
 
 ## 4. Length and structure budgets
 
-**Summary.** About 40 words across two or three rendered lines, in every market.
-Never pad to reach it; 40 is a ceiling, not a target. Set
-`layout.summary_word_limit` between 15 and 45 for a one-document override
-without changing market or page size. What the summary should SAY is in
-`prompts/resume.md`.
+**Summary.** Four to six complete sentences with a 90-word ceiling in every
+market. Cover the supported professional identity, relevant experience and
+expertise, career direction, and relocation or work-authorization context only
+when applicable and confirmed. Never pad a sentence or invent context to reach
+four. Set `layout.summary_word_limit` between 40 and 120 for a one-document
+override without changing market or page size; the four-to-six-sentence rule
+still applies. What the summary should SAY is in `prompts/resume.md`.
 
 **Bullets.** Roles stay reverse chronological. For a flat role: three bullets
 for current or highly relevant roles, one or two for older roles, four as the
 hard maximum.
+
+**Header.** Keep the confirmed name, professional personal email, phone number,
+readable professional-profile address, and location together at the top. Add
+work authorization only when it is relevant to the target and explicitly
+recorded. Never substitute a previous employer's email address. Missing contact
+categories are validation warnings because the renderer cannot invent them.
+
+**Languages.** Prefer CEFR levels (A1-C2) for European applications when the
+profile records one. Never translate “fluent”, “professional working”, or
+another user-stated label into CEFR without confirmation. The validation report
+flags the missing mapping; it does not manufacture it. Do not use bars, stars,
+or charts for proficiency.
 
 **Engagements.** When a role uses `experience[].engagements`: one or two
 role-level framing lines, two to four engagements, one or two bullets each.
@@ -148,7 +162,9 @@ own bullets sit one level deeper, giving three visible depths: employer, named
 project, achievement. Do not rely on a viewer's default list indentation.
 
 **Page size and count.** A4 for Europe, Letter for North America. Prefer one
-page, compact once when it overflows, and reject anything longer than two. The
+page through five confirmed years of experience. For a longer career, use a
+second page only when relevant evidence needs it. Compact once when the document
+overflows, and reject anything longer than two. The
 first page must contain contact information in the body; a later page may repeat
 only the exact name and contact line in its header. A two-page resume may set
 `layout.page_break_before` when visual review shows a deliberate break produces
@@ -169,6 +185,11 @@ removed.
 The tool must pass source eligibility checks before writing any public
 document, then verify DOCX and PDF text extraction and write `validation.json`
 plus `validation.md`.
+
+The output directory keeps stable `resume.docx` and `resume.pdf` names for
+tooling and also contains attachment-ready copies named
+`FirstName_LastName_TargetRole_CV.docx` and `.pdf`. Submit the PDF copy. The
+renderer rejects password-protected PDFs.
 
 If `ekb render` reports missing dependencies, run `scripts/ekb doctor`.
 

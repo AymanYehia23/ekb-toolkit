@@ -9,10 +9,12 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
 from typing import Any, Iterable
+import unicodedata
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -280,15 +282,13 @@ def sourced_list(value: Any, path: str, minimum: int = 0) -> list[dict[str, str]
     return [sourced(item, f"{path}[{index}]") for index, item in enumerate(value)]  # type: ignore[list-item]
 
 
-# Default summary length, in words. Set to 40 on 2026-07-28 by user decision,
-# replacing a 15-word European default that was too tight for this profile.
-# The summary is the only place a cross-project fact can live — shipping scale,
-# domain breadth, client-facing work — because no single bullet spans projects.
-# Fifteen words forced all of it out, which made the document open weaker than
-# the evidence supports. Forty words is two to three rendered lines: enough for
-# a positioning line plus the strongest cross-cutting fact, short enough that a
-# recruiter still reads it.
-SUMMARY_DEFAULT_WORDS = 40
+# Default summary length, in words. Four to six sentences need room for the
+# supported identity, relevant experience and expertise, career direction, and
+# applicable mobility context. The ceiling keeps that overview compact; it is
+# not permission to pad beyond the available evidence.
+SUMMARY_DEFAULT_WORDS = 90
+SUMMARY_MINIMUM_SENTENCES = 4
+SUMMARY_MAXIMUM_SENTENCES = 6
 
 
 def summary_limit(model: dict[str, Any], policy: dict[str, Any] | None = None) -> int:
@@ -298,6 +298,16 @@ def summary_limit(model: dict[str, Any], policy: dict[str, Any] | None = None) -
     if policy:
         return int(policy.get("summary", {}).get("default_words", SUMMARY_DEFAULT_WORDS))
     return SUMMARY_DEFAULT_WORDS
+
+
+def summary_sentence_count(text: str) -> int:
+    """Count complete prose sentences using terminal punctuation.
+
+    Resume summaries should avoid abbreviations that make sentence boundaries
+    ambiguous. Requiring terminal punctuation also catches fragments that would
+    otherwise satisfy a raw item count.
+    """
+    return len(re.findall(r"[.!?]+(?=(?:[\"')\]]*)\s|$)", text.strip()))
 
 
 def public_resume_text(model: dict[str, Any]) -> list[tuple[str, str]]:
@@ -471,11 +481,17 @@ def validate_model(model: dict[str, Any], policy: dict[str, Any] | None = None) 
         raise ResumeError("layout.hyperlinks must be auto or off")
     if layout.get("emphasis", "matched-requirements") not in {"matched-requirements", "none"}:
         raise ResumeError("layout.emphasis must be matched-requirements or none")
+    summary_policy = (policy or {}).get("summary", {})
+    minimum_override = int(summary_policy.get("minimum_override", 40))
+    maximum_override = int(summary_policy.get("maximum_override", 120))
     if "summary_word_limit" in layout and (
         not isinstance(layout["summary_word_limit"], int)
-        or not 15 <= layout["summary_word_limit"] <= 45
+        or not minimum_override <= layout["summary_word_limit"] <= maximum_override
     ):
-        raise ResumeError("layout.summary_word_limit must be an integer from 15 to 45")
+        raise ResumeError(
+            "layout.summary_word_limit must be an integer from "
+            f"{minimum_override} to {maximum_override}"
+        )
     if "page_break_before" in layout and layout["page_break_before"] not in {"selected-projects"}:
         raise ResumeError("layout.page_break_before must be selected-projects when present")
 
@@ -490,6 +506,24 @@ def validate_model(model: dict[str, Any], policy: dict[str, Any] | None = None) 
     limit = summary_limit(model, policy)
     if summary and len(re.findall(r"\b[\w’'-]+\b", summary_text)) > limit:
         raise ResumeError(f"summary exceeds the {limit}-word limit")
+    if summary:
+        minimum_sentences = int(
+            summary_policy.get("minimum_sentences", SUMMARY_MINIMUM_SENTENCES)
+        )
+        maximum_sentences = int(
+            summary_policy.get("maximum_sentences", SUMMARY_MAXIMUM_SENTENCES)
+        )
+        if minimum_sentences < 1 or maximum_sentences < minimum_sentences:
+            raise ResumeError(
+                "policy.summary sentence bounds must be positive and ordered"
+            )
+        sentence_count = summary_sentence_count(summary_text)
+        if not minimum_sentences <= sentence_count <= maximum_sentences:
+            raise ResumeError(
+                "summary must contain "
+                f"{minimum_sentences} to {maximum_sentences} complete sentences; "
+                f"found {sentence_count}"
+            )
     if target["mode"] == "job-targeted":
         lead = target.get("summary_lead")
         if not lead:
@@ -1593,6 +1627,8 @@ def pdf_content_fill_ratio(page: Any, policy: dict[str, Any]) -> float:
 
 def extract_pdf(path: Path, policy: dict[str, Any]) -> tuple[str, int, str, list[float]]:
     reader = PdfReader(str(path))
+    if reader.is_encrypted:
+        raise ResumeError("PDF is password-protected; application resumes must open without a password")
     pages = [(page.extract_text() or "") for page in reader.pages]
     first = reader.pages[0].mediabox
     width, height = round(float(first.width)), round(float(first.height))
@@ -1626,6 +1662,42 @@ def sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(65536), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def filename_tokens(value: str) -> list[str]:
+    """Portable filename words without guessing or adding resume facts."""
+    ascii_value = (
+        unicodedata.normalize("NFKD", value)
+        .encode("ascii", "ignore")
+        .decode("ascii")
+    )
+    return re.findall(r"[A-Za-z0-9]+", ascii_value)
+
+
+def delivery_stem(model: dict[str, Any], policy: dict[str, Any]) -> str:
+    """Human-facing filename recommended for the application attachment.
+
+    The stable ``resume.*`` files remain available for tooling. The additional
+    attachment copies make the output directory directly usable without a
+    manual rename such as ``CV_FINAL_v3.pdf``.
+    """
+    name = filename_tokens(text_of(model["basics"]["name"]))
+    role = filename_tokens(model["target"]["role"])
+    values = {
+        "FirstName": name[0] if name else "Resume",
+        "LastName": "_".join(name[1:]),
+        "TargetRole": "_".join(role) if role else "Role",
+    }
+    pattern = str(
+        policy.get("delivery", {}).get(
+            "attachment_pattern", "FirstName_LastName_TargetRole_CV.pdf"
+        )
+    )
+    pattern = re.sub(r"\.(?:pdf|docx)$", "", pattern, flags=re.IGNORECASE)
+    for key, value in values.items():
+        pattern = pattern.replace(key, value)
+    stem = "_".join(filename_tokens(pattern))
+    return stem or "Resume_CV"
 
 
 def count_links(model: dict[str, Any]) -> int:
@@ -1705,6 +1777,53 @@ def emphasis_warnings(model: dict[str, Any], policy: dict[str, Any], emphasizer:
             f"{prose} emphasized fragments across {bullets} bullets reads as heavily bolded; "
             "reduce the term set"
         )
+    return warnings
+
+
+def application_guidance_warnings(model: dict[str, Any], policy: dict[str, Any]) -> list[str]:
+    """Report presentation guidance that cannot safely be auto-corrected.
+
+    Contact types and language levels are user facts. A renderer may point out
+    a missing convention, but it must never invent a phone number, classify an
+    employer email, or translate a proficiency label into CEFR by itself.
+    """
+    warnings: list[str] = []
+    contact_policy = policy.get("contact_hygiene", {})
+    contact = model["basics"]["contact"]
+    links = model["basics"]["links"]
+    visible_contact = [text_of(item).strip() for item in contact]
+    urls = [url_of(item) for item in contact]
+
+    if contact_policy.get("require_email", True) and not any(
+        "@" in text or url.startswith("mailto:")
+        for text, url in zip(visible_contact, urls)
+    ):
+        warnings.append("Header has no recognizable professional email address")
+    if contact_policy.get("recommend_phone", True) and not any(
+        url.startswith("tel:") or len(re.sub(r"\D", "", text)) >= 7
+        for text, url in zip(visible_contact, urls)
+    ):
+        warnings.append("Header has no phone number; add one only from confirmed profile data")
+    if contact_policy.get("recommend_profile_link", True) and not any(
+        url_of(item) for item in links
+    ):
+        warnings.append(
+            "Header has no confirmed professional profile link; never guess or construct one"
+        )
+
+    language_policy = policy.get("languages", {})
+    cefr_pattern = language_policy.get("cefr_pattern", r"\b(?:A1|A2|B1|B2|C1|C2)\b")
+    if language_policy.get("prefer_cefr", True):
+        try:
+            cefr = re.compile(str(cefr_pattern), flags=re.IGNORECASE)
+        except re.error as exc:
+            raise ResumeError(f"policy.languages.cefr_pattern is invalid: {exc}") from exc
+        for index, item in enumerate(model.get("languages", []), 1):
+            if not cefr.search(text_of(item)):
+                warnings.append(
+                    f"Language entry {index} has no CEFR level (A1-C2); preserve the recorded "
+                    "proficiency unless the user confirms a CEFR mapping"
+                )
     return warnings
 
 
@@ -1825,6 +1944,7 @@ def render(args: argparse.Namespace) -> int:
         pdf_text, pdf_pages, detected_page_size, fill_ratios = extract_pdf(pdf_path, policy)
         errors: list[str] = []
         warnings = editorial_warnings(model)
+        warnings.extend(application_guidance_warnings(model, policy))
         warnings.extend(content_density_warnings(model, policy, pdf_pages, fill_ratios))
         warnings.extend(link_warnings(model))
         warnings.extend(emphasis_warnings(model, policy, emphasizer))
@@ -1847,7 +1967,17 @@ def render(args: argparse.Namespace) -> int:
         if pdf_pages > model["layout"]["page_target"]:
             warnings.append(f"PDF exceeds the preferred {model['layout']['page_target']}-page target")
 
-        outputs = {"resume.docx": docx_path, "resume.pdf": pdf_path}
+        attachment_stem = delivery_stem(model, policy)
+        attachment_docx = temp_dir / f"{attachment_stem}.docx"
+        attachment_pdf = temp_dir / f"{attachment_stem}.pdf"
+        shutil.copyfile(docx_path, attachment_docx)
+        shutil.copyfile(pdf_path, attachment_pdf)
+        outputs = {
+            "resume.docx": docx_path,
+            "resume.pdf": pdf_path,
+            attachment_docx.name: attachment_docx,
+            attachment_pdf.name: attachment_pdf,
+        }
         if args.include_text:
             text_path = temp_dir / "resume.txt"
             text_path.write_text("\n".join(text_export_lines(model, policy)) + "\n", encoding="utf-8")
@@ -1868,6 +1998,7 @@ def render(args: argparse.Namespace) -> int:
                 "emphasis_applied": emphasizer.count,
                 "linked_items": count_links(model),
                 "bullet_layout": bullet_layout(policy),
+                "attachment_stem": attachment_stem,
             },
             "document_validation": {
                 "errors": errors,
@@ -1875,6 +2006,7 @@ def render(args: argparse.Namespace) -> int:
                 "docx_structure": docx_structure,
                 "pdf_pages": pdf_pages,
                 "page_size": detected_page_size,
+                "pdf_password_protected": False,
                 "content_fill_ratios": fill_ratios,
                 "expected_lines": len(expected),
             },
@@ -1892,6 +2024,7 @@ def render(args: argparse.Namespace) -> int:
             f"- Application: `{model['application_id']}`\n"
             f"- Resume mode: {report['resume_mode']}\n"
             f"- ATS policy: v{policy['version']}\n"
+            f"- Recommended attachment: `{attachment_pdf.name}`\n"
             f"- Selected sources: {', '.join(source_report['selected_sources'])}\n"
             f"- Hyperlinks: {report['presentation']['hyperlinks']} "
             f"({report['presentation']['linked_items']} linked items; "

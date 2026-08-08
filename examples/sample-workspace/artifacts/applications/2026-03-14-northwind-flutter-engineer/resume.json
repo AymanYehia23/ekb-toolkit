@@ -39,13 +39,20 @@
   },
   "summary": [
     {
-      "text": "Flutter Mobile Engineer building offline-capable shopping and tracking apps shipped to both stores.",
-      "source_refs": ["fittrack-002", "mealmate-001"],
-      "url": "https://play.google.com/store/apps/details?id=com.example.fittrack"
+      "text": "Flutter Mobile Engineer with experience in offline tracking and checkout payment flows.",
+      "source_refs": ["fittrack-002", "mealmate-001"]
     },
     {
       "text": "Worked directly with product stakeholders to turn feature requests into technical scope before implementation.",
       "source_ref": "profile-responsibility-001"
+    },
+    {
+      "text": "Investigated production reports from released apps and traced them to their cause in the codebase.",
+      "source_ref": "profile-responsibility-002"
+    },
+    {
+      "text": "Right to work across the EU. No sponsorship required in the EU. Open to relocation within the EU.",
+      "source_refs": ["profile-eligibility-002", "profile-eligibility-003"]
     }
   ],
   "experience": [

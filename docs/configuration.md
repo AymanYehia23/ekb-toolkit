@@ -202,9 +202,11 @@ auditable rather than becoming folklore.
 
 ### `summary.default_words`
 
-40, across two or three rendered lines. **A ceiling, not a target.** The summary
-is the only place a cross-project fact can live, because a bullet describes one
-project. Omit it entirely rather than padding it.
+90, across four to six complete sentences. **A ceiling, not a target.** The
+summary covers supported professional identity, relevant experience and
+expertise, career direction, and applicable confirmed mobility context. It is
+also the only place a cross-project fact can live, because a bullet describes
+one project. Never pad or invent context to fill the sentence count.
 
 ### `emphasis.max_terms`
 
@@ -222,6 +224,25 @@ dense role is not cut by policy.
 0.84. A one-page resume using less than 84% of the printable height is
 underfilled even with no clipping. The fix is more evidence, never a longer
 summary.
+
+### `page_length`
+
+One page through five confirmed years of experience; up to two pages for a
+longer career when relevant evidence needs the space. This controls editorial
+planning, not a public years-of-experience claim.
+
+### `contact_hygiene` and `languages`
+
+Missing email, phone, professional profile links, and CEFR language levels are
+reported as advisory warnings. The renderer never fills those gaps itself:
+contact information and proficiency mappings must come from confirmed profile
+data.
+
+### `delivery`
+
+The renderer keeps stable `resume.*` files for scripts and writes additional
+attachment-ready copies using `FirstName_LastName_TargetRole_CV`. PDF output is
+checked to ensure it is selectable and not password-protected.
 
 ### `bullets.*_indent_pt`
 

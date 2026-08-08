@@ -19,4 +19,6 @@ workspace/*
 # the validation report are what is worth reading.
 examples/**/resume.docx
 examples/**/resume.pdf
+examples/**/*_CV.docx
+examples/**/*_CV.pdf
 examples/**/validation.json

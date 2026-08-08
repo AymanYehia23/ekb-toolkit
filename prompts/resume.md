@@ -356,6 +356,14 @@ domain breadth, the client-facing work that leaves no Git trace, the
 specialization the whole document supports. Do not repeat a fact a selected
 bullet already carries.
 
+Write four to six complete sentences within the presentation policy's 90-word
+ceiling. Use separate sourced items when sentences rely on different records so
+the provenance remains auditable. A useful order is: supported target-facing
+identity; relevant experience; strongest expertise; career direction; then
+relocation or work authorization only when applicable and explicitly recorded.
+When the evidence cannot support one of those topics, use another supported
+technical dimension instead. Never invent a sentence merely to fill the shape.
+
 Do not state a years-of-experience figure. The Experience dates already do that
 work, and a stated figure only invites the reader to check the arithmetic.
 
@@ -468,8 +476,10 @@ never by wording.
 
 ## 7. Deliver
 
-Return clickable paths to `resume.docx`, `resume.pdf`, and the validation
-report. Then state:
+Return clickable paths to the attachment-ready
+`FirstName_LastName_TargetRole_CV.docx` and `.pdf` copies, the stable
+`resume.docx` and `resume.pdf` tool outputs, and the validation report. Then
+state:
 
 - the selected curated record IDs, and any intentionally omitted uncertainty;
 - which projects were selected, and the reason for any rank inversion;

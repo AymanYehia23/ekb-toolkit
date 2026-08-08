@@ -103,9 +103,9 @@
         },
         "summary_word_limit": {
           "type": "integer",
-          "minimum": 15,
-          "maximum": 45,
-          "description": "Optional explicit user override for summary length. The default is 40 words in every market (resume/policy.json summary.default_words), which renders as two to three lines."
+          "minimum": 40,
+          "maximum": 120,
+          "description": "Optional explicit user override for the summary word ceiling. The default is 90 words in every market; the summary must still contain four to six complete sentences."
         },
         "page_break_before": {
           "enum": [
@@ -160,6 +160,7 @@
     },
     "summary": {
       "type": "array",
+      "description": "Four to six complete sentences in total for a job-targeted resume. Split sentences into separate sourced items when they rely on different evidence.",
       "items": {
         "$ref": "#/$defs/sourcedText"
       }
