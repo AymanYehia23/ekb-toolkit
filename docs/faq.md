@@ -1,7 +1,7 @@
 # FAQ
 
-The README carries the common questions. These are the ones that come up once
-someone has used the toolkit for a week.
+The README covers setup and the common workflow. These questions address issues
+that tend to come up after someone has used the toolkit for a while.
 
 ---
 
