@@ -59,7 +59,20 @@ def workspace_root() -> str:
 
 
 def config_path(name: str) -> str:
-    """Absolute path to a file under config/."""
+    """Resolve a config file, preferring a private workspace override.
+
+    The toolkit ships safe, versioned defaults in ``config/``. A user may put
+    a file with the same name in ``<workspace>/config/`` to keep personal
+    writing preferences, calibration, and role vocabulary out of the public
+    toolkit repository. ``workspace_root`` deliberately reads the shipped
+    ``toolkit.yaml`` directly while locating the workspace, so this lookup
+    cannot recurse.
+    """
+    if os.path.basename(name) != name:
+        raise ValueError("config names must be filenames")
+    private = os.path.join(workspace_root(), "config", name)
+    if os.path.isfile(private):
+        return private
     return os.path.join(CONFIG_DIR, name)
 
 

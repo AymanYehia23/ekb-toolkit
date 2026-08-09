@@ -6,6 +6,21 @@ require "optparse"
 require "set"
 require "yaml"
 
+# `Enumerable#filter_map` was added in Ruby 2.7. Keep the checker usable with
+# the Ruby 2.6 runtime still bundled with some supported macOS releases.
+unless Enumerable.method_defined?(:filter_map)
+  module Enumerable
+    def filter_map
+      return enum_for(__method__) unless block_given?
+
+      each_with_object([]) do |item, result|
+        value = yield(item)
+        result << value if value
+      end
+    end
+  end
+end
+
 options = {}
 OptionParser.new do |parser|
   parser.banner = "usage: resume_source_check.rb --model FILE --profile FILE --projects DIR"

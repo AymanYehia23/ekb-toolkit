@@ -1,18 +1,24 @@
 # Configuration reference
 
-Everything in `config/` is a default you are meant to change. No prompt
-hardcodes a preference that belongs to one person's career.
+Everything in `config/` is a safe, shared default. No prompt hardcodes a
+preference that belongs to one person's career.
 
-Files in `config/` ship with the toolkit and are overwritten when you pull.
-`ekb init` copies the ones you own into your workspace; edit those.
+Keep personal settings in `workspace/config/`, outside the public toolkit
+repository. A file there with the same name overrides the shipped default, so
+you can pull or push the toolkit without carrying your preferences with it.
+`EKB_WORKSPACE` is the recommended way to select an external workspace.
 
-| File | Lives in | Yours to edit |
+| File | Shipped default | Private override |
 |---|---|---|
-| `config/toolkit.yaml` | toolkit | yes, in place |
-| `config/resume-policy.json` | toolkit | yes, in place |
-| `config/review-rubric.json` | toolkit | yes, in place |
-| `config/capability-tags.yaml` | toolkit | yes, in place |
-| `config/screening-criteria.yaml` | toolkit | **copied to workspace by `ekb init`; edit the copy** |
+| `toolkit.yaml` | `config/toolkit.yaml` | `workspace/config/toolkit.yaml` after `EKB_WORKSPACE` has selected the workspace |
+| `resume-policy.json` | `config/resume-policy.json` | `workspace/config/resume-policy.json` |
+| `review-rubric.json` | `config/review-rubric.json` | `workspace/config/review-rubric.json` |
+| `capability-tags.yaml` | `config/capability-tags.yaml` | `workspace/config/capability-tags.yaml` |
+| `screening-criteria.yaml` | `config/screening-criteria.yaml` | `workspace/profile/screening-criteria.yaml` |
+
+The initial workspace location still comes from `$EKB_WORKSPACE` or the shipped
+`config/toolkit.yaml`; a private `toolkit.yaml` cannot select itself. Once the
+workspace is selected, it can override the remaining global settings.
 
 ---
 

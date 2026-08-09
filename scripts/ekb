@@ -135,7 +135,7 @@ validate | render)
   [[ -f "$model" ]] || die "no resume model at $model"
   args=(--model "$model" --profile "$ws/profile/profile.yaml" --projects "$ws/projects")
   if [[ "$command" == "render" ]]; then
-    args+=(--policy "$TOOLKIT/config/resume-policy.json" --output-dir "$ws/artifacts/applications/$id")
+    args+=(--output-dir "$ws/artifacts/applications/$id")
   fi
   exec "$PYTHON" "$TOOLKIT/scripts/resume_render.py" "$command" "${args[@]}" "$@"
   ;;

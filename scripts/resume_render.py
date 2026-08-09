@@ -29,6 +29,8 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import KeepTogether, ListFlowable, ListItem, PageBreak, Paragraph, SimpleDocTemplate
 
+from ekb_paths import config_path
+
 
 class ResumeError(Exception):
     pass
@@ -706,6 +708,9 @@ def run_source_check(
         index = profile.parent.parent / "index" / "evidence-index.yaml"
     if index.is_file():
         command += ["--index", str(index)]
+    rubric = Path(config_path("review-rubric.json"))
+    if rubric.is_file():
+        command += ["--rubric", str(rubric)]
     process = subprocess.run(
         command,
         text=True,
@@ -1913,7 +1918,7 @@ def render(args: argparse.Namespace) -> int:
     model_path = Path(args.model).resolve()
     profile_path = Path(args.profile).resolve()
     projects_path = Path(args.projects).resolve()
-    policy_path = Path(args.policy).resolve()
+    policy_path = Path(args.policy).resolve() if args.policy else Path(config_path("resume-policy.json"))
     output_dir = Path(args.output_dir).resolve()
     ranking_path = Path(args.ranking).resolve() if args.ranking else profile_path.with_name("project-ranking.yaml")
 
@@ -2080,7 +2085,7 @@ def validate(args: argparse.Namespace) -> int:
     policy_path = (
         Path(args.policy).resolve()
         if args.policy
-        else Path(__file__).resolve().parent.parent / "config" / "resume-policy.json"
+        else Path(config_path("resume-policy.json"))
     )
     policy = load_json(policy_path)
     validate_model(model, policy)
@@ -2103,7 +2108,10 @@ def parser() -> argparse.ArgumentParser:
             help="global project ranking; defaults to project-ranking.yaml beside the profile",
         )
         if name == "render":
-            command.add_argument("--policy", required=True)
+            command.add_argument(
+                "--policy",
+                help="writing and structure policy; defaults to config/resume-policy.json or its workspace override",
+            )
             command.add_argument("--output-dir", required=True)
             command.add_argument("--include-text", action="store_true")
             command.add_argument(
