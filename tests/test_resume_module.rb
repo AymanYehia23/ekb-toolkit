@@ -720,6 +720,23 @@ class ResumeModuleTest < Minitest::Test
     end
   end
 
+  def test_generic_product_and_ui_aliases_are_not_emphasized
+    with_model do |model, _path, directory|
+      model["alignment"]["requirements"][0]["aliases"].concat(
+        ["app", "mobile", "screen", "widget"]
+      )
+      output, _stdout, stderr, status = render_model(model, directory)
+      assert status.success?, stderr
+      terms = JSON.parse(File.read(File.join(output, "validation.json")))
+        .dig("presentation", "emphasis_terms")
+      assert_includes terms, "Ruby"
+      refute_includes terms, "app"
+      refute_includes terms, "mobile"
+      refute_includes terms, "screen"
+      refute_includes terms, "widget"
+    end
+  end
+
   def test_emphasis_is_capped_and_reports_what_it_dropped
     with_model do |model, _path, directory|
       extra = (1..15).map do |index|

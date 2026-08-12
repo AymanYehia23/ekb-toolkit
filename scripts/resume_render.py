@@ -199,11 +199,17 @@ def emphasis_plan(model: dict[str, Any], policy: dict[str, Any]) -> tuple[list[s
 
     terms: list[str] = []
     seen: set[str] = set()
+    excluded = {
+        str(term).strip().casefold()
+        for term in policy.get("emphasis", {}).get("excluded_terms", [])
+        if str(term).strip()
+    }
     for requirement in kept:
         for term in [requirement["term"], *requirement["aliases"]]:
             cleaned = term.strip()
-            if cleaned and cleaned.casefold() not in seen:
-                seen.add(cleaned.casefold())
+            folded = cleaned.casefold()
+            if cleaned and folded not in excluded and folded not in seen:
+                seen.add(folded)
                 terms.append(cleaned)
     # Longest first so "Clean Architecture" wins over a nested "architecture".
     return sorted(terms, key=len, reverse=True), dropped

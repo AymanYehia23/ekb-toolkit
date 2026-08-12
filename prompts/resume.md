@@ -169,6 +169,15 @@ recruiter-facing. It remains a **suggestion, not evidence**. Adapt it to the
 target, keep the record's involvement wording and caps, and where a phrasing and
 its record disagree, the record wins.
 
+Every candidate also carries `cautions`, copied from the curated record's
+limitations. Read them before choosing or phrasing the record. A shortlist claim
+without its cautions is an incomplete representation of the evidence. In
+particular, a migration-away record does not by itself demonstrate the
+target-facing use of the technology that was removed. When a caution confirms
+the candidate implemented the earlier technology, describe that direct work and
+co-cite any required profile skill; do not make the migration sentence answer a
+requirement that asks for experience using the earlier technology.
+
 ### Eligible sources
 
 Project records are eligible when `kind` and `involvement` are in the sets
@@ -262,6 +271,14 @@ the matching keyword?** If not, keep the supported skill or responsibility in
 Skills or Summary and record why the technically matching project record was
 not selected. Neither a validator warning nor the private selection score may
 override this test.
+
+Treat narrow compatibility repairs, dependency pins, one-package workarounds,
+routine toolchain fixes, and similarly local maintenance as supporting evidence,
+not default Experience bullets. They may be useful in interview preparation or
+as proof behind a stated skill. Give them public space only when the posting
+explicitly makes that exact maintenance problem central and the record still
+passes the editorial-value test. A generic request to follow Flutter trends or
+keep dependencies current is not enough.
 
 A **critical** requirement left at `stated` while the index holds eligible
 project evidence, with the term appearing in no achievement text, is an **error**.
@@ -427,6 +444,16 @@ places.
 
 Run a balance audit before finalizing Experience.
 
+Each distinct employer or contract entry must represent the meaningful scope of
+that role, not merely the narrow record that happened to match one requirement
+most literally. If an entry has only one project bullet, it must describe the
+broadest defensible product, workflow, system, or recurring responsibility
+available for that role. A single-screen repair, isolated widget, package pin,
+or local bug fix may supplement broader work, but it must not be the sole public
+summary when eligible end-to-end, multi-surface, integration, or product-flow
+evidence exists. When space permits two bullets, choose complementary proof
+points rather than two details from the same small area.
+
 When a posting asks for customer-facing products and a current or highly
 relevant role has eligible product, UI, or user-workflow evidence, retain at
 least one bullet about that concrete user journey. Authentication,
@@ -467,6 +494,11 @@ adjectives, vary repeated openings, normalize grammar and terminal punctuation,
 and use any stronger verified detail that was missed.
 
 This pass may improve wording and selection. **It may not create evidence.**
+
+Re-run the candidate cautions, editorial-value, and role-scope checks after this
+pass. A keyword-dense sentence is still wrong when it reverses the record's
+selection guidance, and a precise sentence is still weak when it reduces a role
+to a local implementation detail.
 
 ## 6. Validate and render
 

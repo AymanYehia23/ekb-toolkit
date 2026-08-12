@@ -100,13 +100,24 @@
     "default": "matched-requirements",
     "max_terms": 12,
     "occurrences_per_term_per_section": 1,
+    "excluded_terms": [
+      "app",
+      "apps",
+      "application",
+      "applications",
+      "mobile",
+      "screen",
+      "screens",
+      "widget",
+      "widgets"
+    ],
     "sections": [
       "Summary",
       "Experience",
       "Selected Projects",
       "Skills"
     ],
-    "note": "Bold is real character formatting, which every ATS parser discards harmlessly along with the rest of the run properties. The cap exists for the human reader: past roughly a dozen terms nothing stands out any more."
+    "note": "Bold is real character formatting, which every ATS parser discards harmlessly along with the rest of the run properties. Generic product and UI nouns are excluded because bolding words such as screen or app adds no recruiting signal. The cap exists for the human reader: past roughly a dozen terms nothing stands out any more."
   },
   "writing_style": {
     "forbidden_symbols": {

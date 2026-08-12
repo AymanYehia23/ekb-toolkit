@@ -17,6 +17,7 @@ class ResumeCoverageTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   CHECKER = File.join(ROOT, "scripts", "resume_source_check.rb")
   INDEXER = File.join(ROOT, "scripts", "ekb_index.py")
+  SHORTLISTER = File.join(ROOT, "scripts", "ekb_shortlist.py")
 
   # A small self-contained knowledge base: one capability (`performance`) with a
   # strong unused record, and one profile skill that merely claims it.
@@ -240,6 +241,38 @@ class ResumeCoverageTest < Minitest::Test
       row = index["records"].find { |record| record["id"] == "sample-001" }
       assert row["eligible"]
       assert_equal "implemented", row["involvement"]
+    end
+  end
+
+  def test_index_and_shortlist_surface_record_limitations_as_selection_cautions
+    with_workspace do |dir|
+      index = YAML.safe_load(File.read(File.join(dir, "index", "evidence-index.yaml")))
+      row = index["records"].find { |record| record["id"] == "sample-001" }
+      assert_includes row["cautions"], "No release-mode measurement exists."
+
+      FileUtils.mkdir_p(File.join(dir, "applications"))
+      File.write(File.join(dir, "applications", "test.yaml"), <<~YAML)
+        schema_version: 1
+        id: test
+        targeting:
+          requirements:
+            - term: app performance
+              aliases: [performance]
+              priority: required
+              critical: true
+      YAML
+      _out, err, status = Open3.capture3(
+        "python3", SHORTLISTER, "--root", dir, "--application", "test"
+      )
+      assert status.success?, err
+      shortlist = YAML.safe_load(
+        File.read(File.join(dir, "applications", "test.evidence.yaml"))
+      )
+      candidate = shortlist["requirements"].first["candidates"].find do |entry|
+        entry["ref"] == "sample-001"
+      end
+      refute_nil candidate
+      assert_includes candidate["cautions"], "No release-mode measurement exists."
     end
   end
 

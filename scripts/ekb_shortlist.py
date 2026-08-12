@@ -218,6 +218,7 @@ def build(root: str, application_id: str, limit: int) -> dict:
                         "strength": row["strength"],
                         "signals": row.get("signals") or [],
                         "claim": row.get("bullet") or row.get("claim", ""),
+                        "cautions": row.get("cautions") or [],
                         **(
                             {"profile_bridges": row["profile_bridges"]}
                             if row.get("profile_bridges")
@@ -271,6 +272,8 @@ HEADER = """# EVIDENCE SHORTLIST. Candidates are generated; decisions are author
 #   unless the project candidate is independently worth resume space. Never add
 #   an internal recovery or maintenance anecdote solely to raise coverage from
 #   `stated` to `demonstrated`.
+#   Read every candidate's `cautions` before selecting it. They are copied from
+#   the curated record's limitations and bind both the decision and the wording.
 #
 # WHAT IT IS NOT
 #   Not evidence. `strength` and `claim` are derived from the curated record and

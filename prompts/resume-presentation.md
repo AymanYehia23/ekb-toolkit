@@ -92,6 +92,12 @@ Two controls shape the result:
   bolded, so a verb alias produces a bolded verb at the start of a bullet, which
   reads like emphasis on the wrong word.
 
+The render policy also excludes generic product and UI nouns such as `app`,
+`mobile`, `screen`, and `widget`. They may remain aliases for retrieval and
+coverage, but bolding them adds no meaning and makes ordinary prose look noisy.
+Use a more specific phrase such as `Clean Architecture`, `Riverpod`, `REST API`,
+or a named integration when emphasis is useful.
+
 The policy bolds each term at most once per section and caps highlighted
 requirements at twelve, choosing required-and-critical first. Overflow is
 reported, never silently dropped, and never blocks rendering. Past about a dozen

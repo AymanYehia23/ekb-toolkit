@@ -499,6 +499,15 @@ def build(root: str) -> dict:
             kind = str(record.get("kind") or "")
             tags = canonical_tags(record.get("tags"))
             statement = str(record.get("statement") or "")
+            raw_limitations = record.get("limitations") or []
+            if isinstance(raw_limitations, str):
+                cautions = [raw_limitations.strip()] if raw_limitations.strip() else []
+            else:
+                cautions = [
+                    str(value).strip()
+                    for value in raw_limitations
+                    if str(value).strip()
+                ]
             material_number = has_material_number(statement)
             score, signals = score_record(
                 involvement=involvement,
@@ -532,6 +541,12 @@ def build(root: str) -> dict:
                     "signals": signals,
                     "tags": tags,
                     "claim": first_sentence(statement),
+                    # Selection must see the same boundaries that bind the
+                    # eventual public wording. Keeping them beside the derived
+                    # claim prevents a strong keyword match from hiding a
+                    # migration-away note, participation cap, or other reason
+                    # the record needs different framing.
+                    "cautions": cautions,
                     **phrasing,
                 }
             )
@@ -607,6 +622,8 @@ HEADER = """# GENERATED FILE. Do not hand-edit.
 #   Not a source of facts and not a claim. `strength` orders candidates for
 #   selection; it is private, never printed, and never wording. Every visible
 #   line in a generated document still cites the curated record itself.
+#   `cautions` repeats the curated record's limitations so selection cannot
+#   assess a convenient claim while missing the boundaries that govern it.
 """
 
 
