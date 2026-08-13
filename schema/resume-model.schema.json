@@ -290,7 +290,12 @@
           "type": "string",
           "minLength": 1,
           "pattern": "^(https://|mailto:|tel:)",
-          "description": "Optional hyperlink target. When present the item renders as a clickable link in DOCX and PDF; the visible text stays whatever 'text' says. Keep 'text' meaningful — text-only ATS parsers read the text and discard the target."
+          "description": "Optional hyperlink target. Whole-item links are reserved for contact/profile values, source-driven summary items, and entity labels. Narrative prose must also set link_text so only the named entity is linked."
+        },
+        "link_text": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional exact substring that alone receives url. It must occur exactly once in text, must not equal the whole text, and is required when narrative prose carries a url."
         },
         "source_refs": {
           "type": "array",
@@ -302,6 +307,11 @@
           },
           "description": "Two to four source IDs for a claim that is inherently plural, such as a shipping count spanning many apps, which no single record supports. Use `source_ref` for the normal one-source case; the two are mutually exclusive. Every listed source must be independently eligible, the strictest involvement governs the wording, and every number must be carried by at least one of them."
         }
+      },
+      "dependentRequired": {
+        "link_text": [
+          "url"
+        ]
       },
       "oneOf": [
         {

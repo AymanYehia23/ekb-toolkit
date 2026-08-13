@@ -572,10 +572,14 @@ class ResumeModuleTest < Minitest::Test
       model["experience"][0]["bullets"] = Array.new(4) { bullet.dup }
       model["experience"] = Array.new(8) { model["experience"][0].transform_values { |value| value.is_a?(Array) ? value.map(&:dup) : value } }
       model["layout"]["page_target"] = 2
+      profile = YAML.safe_load(File.read(PROFILE), permitted_classes: [Date])
+      profile["preferences"]["page_target"] = 2
+      profile_path = File.join(directory, "profile.yaml")
+      File.write(profile_path, YAML.dump(profile))
       write_model(path, model)
       output = File.join(directory, "output")
       _stdout, stderr, status = run_tool(
-        "render", "--model", path, "--profile", PROFILE, "--projects", PROJECTS,
+        "render", "--model", path, "--profile", profile_path, "--projects", PROJECTS,
         "--policy", POLICY, "--output-dir", output
       )
       assert status.success?, stderr
@@ -586,6 +590,25 @@ class ResumeModuleTest < Minitest::Test
   end
 
   # --- Enhancement 1: automatic hyperlinks ---------------------------------
+
+  def test_rejects_page_target_that_ignores_profile_preference
+    with_model do |model, path, _directory|
+      model["layout"]["page_target"] = 2
+      stdout, _stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "),
+                      "does not match profile.preferences.page_target 1"
+    end
+  end
+
+  def test_rejects_deliberate_page_break_on_one_page_target
+    with_model do |model, path, _directory|
+      model["layout"]["page_break_before"] = "selected-projects"
+      _stdout, stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes stderr, "only valid when page_target is 2"
+    end
+  end
 
   def test_accepts_a_hyperlink_recorded_in_the_profile
     with_model do |model, path, _directory|
@@ -619,6 +642,33 @@ class ResumeModuleTest < Minitest::Test
       stdout, stderr, status = validate(model, path)
       assert status.success?, stderr
       assert_includes JSON.parse(stdout)["warnings"].join(" "), "renders unlinked"
+    end
+  end
+
+  def test_rejects_a_whole_bullet_hyperlink
+    with_model do |model, path, _directory|
+      model["experience"][0]["bullets"][0]["url"] = "https://play.example.test/fixture"
+      _stdout, stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes stderr, "would hyperlink narrative prose"
+    end
+  end
+
+  def test_renders_only_link_text_inside_narrative_prose
+    with_model do |model, _path, directory|
+      model["projects"][0]["details"][0] = {
+        "text" => "Data Importer contributed a pipeline supporting 3 formats.",
+        "source_ref" => "fixture-001",
+        "url" => "https://play.example.test/fixture",
+        "link_text" => "Data Importer"
+      }
+      output, _stdout, stderr, status = render_model(model, directory)
+      assert status.success?, stderr
+      document = docx_runs(File.join(output, "resume.docx"))
+      hyperlinks = document.scan(%r{<w:hyperlink\b.*?</w:hyperlink>}m)
+      partial = hyperlinks.find { |element| element.include?("Data Importer") }
+      refute_nil partial
+      refute_includes partial, "contributed a pipeline"
     end
   end
 
@@ -908,9 +958,13 @@ class ResumeModuleTest < Minitest::Test
       model["experience"][0]["bullets"] = Array.new(4) { bullet.dup }
       model["experience"] = Array.new(20) { model["experience"][0].transform_values { |value| value.is_a?(Array) ? value.map(&:dup) : value } }
       model["layout"]["page_target"] = 2
+      profile = YAML.safe_load(File.read(PROFILE), permitted_classes: [Date])
+      profile["preferences"]["page_target"] = 2
+      profile_path = File.join(directory, "profile.yaml")
+      File.write(profile_path, YAML.dump(profile))
       write_model(path, model)
       _stdout, stderr, status = run_tool(
-        "render", "--model", path, "--profile", PROFILE, "--projects", PROJECTS,
+        "render", "--model", path, "--profile", profile_path, "--projects", PROJECTS,
         "--policy", POLICY, "--output-dir", File.join(directory, "output")
       )
       refute status.success?

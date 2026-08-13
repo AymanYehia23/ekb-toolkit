@@ -17,9 +17,15 @@ presentation of prose that selection has already chosen.
 
 ## 1. Hyperlinks are automatic
 
-Any sourced item may carry a `url`, which renders as a clickable hyperlink in
-both DOCX and PDF while the visible text stays whatever `text` says. A `url` is
-presentation, not a claim, so it needs no source of its own.
+Entity labels and contact/profile values may carry a `url`, which renders as a
+clickable hyperlink in both DOCX and PDF while the visible text stays whatever
+`text` says. A `url` is presentation, not a claim, so it needs no source of its
+own.
+
+Narrative prose must never become one large hyperlink. When a bullet or detail
+names a linked project, add `link_text` with the exact project-name substring;
+the renderer links only that substring. If the prose does not name the project,
+omit `url`. The validator rejects a narrative `url` without `link_text`.
 
 It is also never an invention. `profile/profile.yaml` is the only link registry,
 and the source checker rejects any address absent from it or whose entry is not
@@ -167,10 +173,12 @@ body-text baseline. An engagement title aligns with the role bullet text and its
 own bullets sit one level deeper, giving three visible depths: employer, named
 project, achievement. Do not rely on a viewer's default list indentation.
 
-**Page size and count.** A4 for Europe, Letter for North America. Prefer one
-page through five confirmed years of experience. For a longer career, use a
-second page only when relevant evidence needs it. Compact once when the document
-overflows, and reject anything longer than two. The
+**Page size and count.** A4 for Europe, Letter for North America. Honor
+`profile.preferences.page_target`; the source validator rejects a model that
+silently changes it. Default that profile preference to one page through five
+confirmed years of experience. For a longer career, use a second page only when
+relevant evidence needs it and the preference records that choice. Compact once
+when the document overflows, and reject anything longer than two. The
 first page must contain contact information in the body; a later page may repeat
 only the exact name and contact line in its header. A two-page resume may set
 `layout.page_break_before` when visual review shows a deliberate break produces

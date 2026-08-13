@@ -194,6 +194,18 @@ def collect_link_registry(profile)
   registry
 end
 
+def whole_item_link_allowed?(path)
+  patterns = [
+    /\Aresume\.basics\.(?:contact|links)\[\d+\]\z/,
+    /\Aresume\.summary\[\d+\]\z/,
+    /\Aresume\.experience\[\d+\]\.organization\z/,
+    /\Aresume\.experience\[\d+\]\.engagements\[\d+\]\.name\z/,
+    /\Aresume\.projects\[\d+\]\.primary\z/,
+    /\Aresume\.(?:education|certifications|awards|activities)\[\d+\]\.primary\z/
+  ]
+  patterns.any? { |pattern| path.match?(pattern) }
+end
+
 def check_model_links(value, registry, errors, path = "resume")
   case value
   when Hash
@@ -205,6 +217,18 @@ def check_model_links(value, registry, errors, path = "resume")
                   "#{blocked['owner']} and may not be rendered"
       elsif !registry["allowed"].key?(key)
         errors << "#{path}.url is not a link recorded in profile.yaml"
+      end
+      link_text = value["link_text"]
+      if link_text
+        unless link_text.is_a?(String) && !link_text.strip.empty?
+          errors << "#{path}.link_text must be a non-empty string"
+        else
+          occurrences = value["text"].to_s.scan(Regexp.new(Regexp.escape(link_text))).length
+          errors << "#{path}.link_text must occur exactly once in text" unless occurrences == 1
+          errors << "#{path}.link_text must identify only part of text" if link_text == value["text"]
+        end
+      elsif !whole_item_link_allowed?(path)
+        errors << "#{path}.url would hyperlink narrative prose; add link_text for the named entity or remove url"
       end
       return
     end
@@ -550,9 +574,9 @@ def collect_visible_items(value, items, errors, path = "resume")
     has_text = value.key?("text")
     has_source = value.key?("source_ref") || value.key?("source_refs")
     if has_text || has_source
-      allowed = %w[source_ref source_refs text url]
+      allowed = %w[source_ref source_refs text url link_text]
       unless (value.keys - allowed).empty? && has_text && has_source
-        errors << "#{path} must contain text and source_ref or source_refs, and may contain url"
+        errors << "#{path} must contain text and source_ref or source_refs, and may contain url and link_text"
       end
       unless value["text"].is_a?(String) && !value["text"].strip.empty?
         errors << "#{path}.text must be a non-empty string"
@@ -595,6 +619,9 @@ def collect_visible_items(value, items, errors, path = "resume")
           errors << "#{path}.url must start with https://, mailto:, or tel:"
         end
       end
+      if value.key?("link_text") && !value.key?("url")
+        errors << "#{path}.link_text requires url"
+      end
       items << {
         "path" => path,
         "text" => value["text"],
@@ -602,7 +629,8 @@ def collect_visible_items(value, items, errors, path = "resume")
         # `refs` is the complete list a composed item resolves to.
         "source_ref" => refs.first,
         "refs" => refs,
-        "url" => value["url"]
+        "url" => value["url"],
+        "link_text" => value["link_text"]
       }
       return
     end
@@ -974,6 +1002,17 @@ def timeline_warnings(profile)
   results
 end
 
+def validate_page_target(model, profile, errors)
+  preferred = profile.dig("preferences", "page_target")
+  return unless [1, 2].include?(preferred)
+
+  actual = model.dig("layout", "page_target")
+  return if actual == preferred
+
+  errors << "resume.layout.page_target #{actual.inspect} does not match " \
+            "profile.preferences.page_target #{preferred.inspect}"
+end
+
 errors = []
 warnings = []
 sources = {}
@@ -994,6 +1033,7 @@ end
 profile = load_yaml(options[:profile])
 collect_profile_sources(profile, sources, errors)
 warnings.concat(timeline_warnings(profile))
+validate_page_target(model, profile, errors)
 link_registry = collect_link_registry(profile)
 
 ranking = nil

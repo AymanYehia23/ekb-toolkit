@@ -46,11 +46,33 @@ def load_json(path: Path) -> dict[str, Any]:
     return value
 
 
+def whole_item_link_allowed(path: str) -> bool:
+    """Whether a sourced item's entire visible text may be a hyperlink.
+
+    Whole-item links are reserved for contact/profile values, summary items
+    (whose project links are source-driven), and entity labels. Narrative prose
+    must name the linked entity explicitly through ``link_text`` so a project
+    URL cannot turn an entire achievement bullet into blue underlined text.
+    """
+    patterns = (
+        r"basics\.(?:contact|links)\[\d+\]",
+        r"summary\[\d+\]",
+        r"experience\[\d+\]\.organization",
+        r"experience\[\d+\]\.engagements\[\d+\]\.name",
+        r"projects\[\d+\]\.primary",
+        r"(?:education|certifications|awards|activities)\[\d+\]\.primary",
+    )
+    return any(re.fullmatch(pattern, path) for pattern in patterns)
+
+
 def sourced(value: Any, path: str, nullable: bool = False) -> dict[str, str] | None:
     if value is None and nullable:
         return None
-    if not isinstance(value, dict) or set(value) - {"text", "source_ref", "source_refs", "url"}:
-        raise ResumeError(f"{path} must contain text and source_ref or source_refs, and may contain url")
+    allowed = {"text", "source_ref", "source_refs", "url", "link_text"}
+    if not isinstance(value, dict) or set(value) - allowed:
+        raise ResumeError(
+            f"{path} must contain text and source_ref or source_refs, and may contain url and link_text"
+        )
     has_one = "source_ref" in value
     has_many = "source_refs" in value
     if has_one == has_many:
@@ -78,12 +100,41 @@ def sourced(value: Any, path: str, nullable: bool = False) -> dict[str, str] | N
             raise ResumeError(f"{path}.url must be a non-empty string when present")
         if not re.match(r"^(https://|mailto:|tel:)", url.strip()):
             raise ResumeError(f"{path}.url must start with https://, mailto:, or tel:")
+    if "link_text" in value:
+        link_text = value["link_text"]
+        if "url" not in value:
+            raise ResumeError(f"{path}.link_text requires url")
+        if not isinstance(link_text, str) or not link_text.strip():
+            raise ResumeError(f"{path}.link_text must be a non-empty string when present")
+        if value["text"].count(link_text) != 1:
+            raise ResumeError(f"{path}.link_text must occur exactly once in text")
+        if link_text == value["text"]:
+            raise ResumeError(f"{path}.link_text must identify only part of text")
+    elif "url" in value and not whole_item_link_allowed(path):
+        raise ResumeError(
+            f"{path}.url would hyperlink narrative prose; add link_text for the named entity or remove url"
+        )
     return value
 
 
 def url_of(value: dict[str, str] | None) -> str:
     """Optional hyperlink target for a sourced item; empty when it is plain text."""
     return "" if value is None else str(value.get("url", "")).strip()
+
+
+def link_text_of(value: dict[str, str] | None) -> str:
+    """Optional substring that alone receives the item's hyperlink."""
+    return "" if value is None else str(value.get("link_text", ""))
+
+
+def link_fragments(value: dict[str, str]) -> list[tuple[str, bool]]:
+    """Split sourced text into plain and linked fragments."""
+    text = text_of(value)
+    link_text = link_text_of(value)
+    if not link_text:
+        return [(text, True)]
+    before, after = text.split(link_text, 1)
+    return [(before, False), (link_text, True), (after, False)]
 
 
 def links_enabled(model: dict[str, Any]) -> bool:
@@ -502,6 +553,8 @@ def validate_model(model: dict[str, Any], policy: dict[str, Any] | None = None) 
         )
     if "page_break_before" in layout and layout["page_break_before"] not in {"selected-projects"}:
         raise ResumeError("layout.page_break_before must be selected-projects when present")
+    if "page_break_before" in layout and layout["page_target"] != 2:
+        raise ResumeError("layout.page_break_before is only valid when page_target is 2")
 
     basics = model["basics"]
     if not isinstance(basics, dict) or set(basics) != {"name", "contact", "links"}:
@@ -928,7 +981,7 @@ def text_export_lines(model: dict[str, Any], policy: dict[str, Any]) -> list[str
         if isinstance(value, dict):
             if "text" in value and ("source_ref" in value or "source_refs" in value):
                 url = url_of(value)
-                label = text_of(value)
+                label = link_text_of(value) or text_of(value)
                 # Skip anything whose visible text already IS the address: the
                 # profile deliberately prints full addresses for contact and
                 # profile links, and an employer's name can equal its domain.
@@ -1035,24 +1088,25 @@ def add_docx_sourced_runs(
     size = policy["sizes_pt"]["body"]
     target = link_of(model, item)
     color, underline = link_appearance(policy)
-    fragments = emphasizer.split(text_of(item)) if emphasizer else [(text_of(item), False)]
-    for fragment, emphasized in fragments:
-        if not fragment:
-            continue
-        fragment_bold = bold or emphasized
-        if target:
-            add_docx_hyperlink(
-                paragraph,
-                fragment,
-                target,
-                font,
-                size,
-                bold=fragment_bold,
-                color=color,
-                underline=underline,
-            )
-        else:
-            set_run_font(paragraph.add_run(fragment), font, size, bold=fragment_bold)
+    for link_fragment, is_linked in link_fragments(item):
+        fragments = emphasizer.split(link_fragment) if emphasizer else [(link_fragment, False)]
+        for fragment, emphasized in fragments:
+            if not fragment:
+                continue
+            fragment_bold = bold or emphasized
+            if target and is_linked:
+                add_docx_hyperlink(
+                    paragraph,
+                    fragment,
+                    target,
+                    font,
+                    size,
+                    bold=fragment_bold,
+                    color=color,
+                    underline=underline,
+                )
+            else:
+                set_run_font(paragraph.add_run(fragment), font, size, bold=fragment_bold)
 
 
 def set_run_font(run: Any, name: str, size: float, bold: bool | None = None, color: RGBColor | None = None) -> None:
@@ -1363,19 +1417,7 @@ def render_docx(model: dict[str, Any], policy: dict[str, Any], output: Path) -> 
                 paragraph.add_run(f" | {tail}")
             for detail in entry["details"]:
                 detail_paragraph = document.add_paragraph()
-                detail_url = link_of(model, detail)
-                if detail_url:
-                    add_docx_hyperlink(
-                        detail_paragraph,
-                        text_of(detail),
-                        detail_url,
-                        policy["fonts"]["primary"],
-                        policy["sizes_pt"]["body"],
-                        color=hyperlink_color,
-                        underline=hyperlink_underline,
-                    )
-                else:
-                    set_run_font(detail_paragraph.add_run(text_of(detail)), policy["fonts"]["primary"], policy["sizes_pt"]["body"])
+                add_docx_sourced_runs(detail_paragraph, model, detail, policy)
 
     if model.get("hobbies"):
         add_docx_section_heading(document, "Interests", policy)
@@ -1422,22 +1464,34 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
 
     story: list[Any] = [paragraph(text_of(model["basics"]["name"]), "name")]
 
-    def linked(item: dict[str, str], label: str | None = None) -> str:
-        body = html.escape(text_of(item)) if label is None else label
-        target = link_of(model, item)
-        if not target:
-            return body
+    def anchor(body: str, target: str) -> str:
         if hyperlink_underline:
             body = f"<u>{body}</u>"
-        # Set the color on the anchor itself so PDF readers do not need to infer
-        # presentation from the presence of a live annotation.
         return (
             f'<a href="{html.escape(target, quote=True)}" '
             f'color="#{hyperlink_color}">{body}</a>'
         )
 
+    def linked(item: dict[str, str]) -> str:
+        target = link_of(model, item)
+        if not target:
+            return html.escape(text_of(item))
+        return "".join(
+            anchor(html.escape(fragment), target) if is_linked else html.escape(fragment)
+            for fragment, is_linked in link_fragments(item)
+        )
+
+    def linked_emphasized_markup(item: dict[str, str]) -> str:
+        target = link_of(model, item)
+        return "".join(
+            anchor(emphasizer.markup(fragment), target)
+            if target and is_linked
+            else emphasizer.markup(fragment)
+            for fragment, is_linked in link_fragments(item)
+        )
+
     def linked_emphasized(item: dict[str, str], style: str = "body") -> Paragraph:
-        return Paragraph(linked(item, emphasizer.markup(text_of(item))), styles[style])
+        return Paragraph(linked_emphasized_markup(item), styles[style])
 
     contact_items = model["basics"]["contact"] + model["basics"]["links"]
     if contact_items:
@@ -1449,7 +1503,7 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
         story.extend(section("Summary"))
         story.append(
             Paragraph(
-                " ".join(linked(item, emphasizer.markup(text_of(item))) for item in summary),
+                " ".join(linked_emphasized_markup(item) for item in summary),
                 styles["body"],
             )
         )
@@ -1457,7 +1511,7 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
     emphasizer.enter("Experience")
     story.extend(section("Experience"))
     for entry in model["experience"]:
-        organization = linked(entry["organization"], html.escape(text_of(entry["organization"])))
+        organization = linked(entry["organization"])
         heading = Paragraph(
             f"<b>{organization} | {html.escape(text_of(entry['title']))}</b>",
             styles["entry"],
@@ -1481,7 +1535,7 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
         story.extend([heading, paragraph(date_location, "meta"), bullets])
 
         for engagement in engagements_of(entry):
-            name = linked(engagement["name"], html.escape(text_of(engagement["name"])))
+            name = linked(engagement["name"])
             context = text_of(engagement.get("context"))
             label = f"<b>{name}</b>"
             if context:
@@ -1511,7 +1565,7 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
             story.append(PageBreak())
         story.extend(section("Selected Projects"))
         for entry in model["projects"]:
-            primary = linked(entry["primary"], html.escape(text_of(entry["primary"])))
+            primary = linked(entry["primary"])
             tail = " | ".join(
                 part for part in (text_of(entry["secondary"]), text_of(entry["date"])) if part
             )
@@ -1550,7 +1604,7 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
         for group in model["skills"]:
             emphasizer.split(group["name"])  # see the DOCX renderer for why
             items = ", ".join(
-                linked(item, emphasizer.markup(text_of(item))) for item in group["items"]
+                linked_emphasized_markup(item) for item in group["items"]
             )
             story.append(Paragraph(f"<b>{html.escape(group['name'])}:</b> {items}", styles["body"]))
 
@@ -1564,7 +1618,7 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
         story.extend(section(heading_label))
         for entry in model[key]:
             tail = " | ".join(part for part in (text_of(entry["secondary"]), text_of(entry["date"])) if part)
-            main = f"<b>{linked(entry['primary'], html.escape(text_of(entry['primary'])))}</b>"
+            main = f"<b>{linked(entry['primary'])}</b>"
             if tail:
                 main += f" | {html.escape(tail)}"
             flowables: list[Any] = [Paragraph(main, styles["body"])]
