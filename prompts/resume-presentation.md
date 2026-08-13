@@ -27,6 +27,9 @@ names a linked project, add `link_text` with the exact project-name substring;
 the renderer links only that substring. If the prose does not name the project,
 omit `url`. The validator rejects a narrative `url` without `link_text`.
 
+Summary prose never carries hyperlinks. Do not attach `url` or `link_text` to a
+summary item, even when its source belongs to a project with a confirmed link.
+
 It is also never an invention. `profile/profile.yaml` is the only link registry,
 and the source checker rejects any address absent from it or whose entry is not
 `link_status: confirmed`.
@@ -41,13 +44,6 @@ the document names and attach the registered address:
   that is the better public destination;
 - certifications → the `url` on each certification entry;
 - contact and profile links → as below.
-
-Summary project links are **source-driven, not name-matched**. Every summary
-item whose `source_ref` belongs to a curated project carries one confirmed URL
-from that project's entry, even when the prose describes the project without
-naming it. This makes a domain description discoverable without duplicating the
-project into Selected Projects. If the project has no confirmed address, leave
-the item unlinked and report that limitation.
 
 Leave an entity unlinked only when the registry has no confirmed address. The
 validation report warns about each unlinked employer, engagement, project, and

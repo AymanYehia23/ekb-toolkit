@@ -197,7 +197,6 @@ end
 def whole_item_link_allowed?(path)
   patterns = [
     /\Aresume\.basics\.(?:contact|links)\[\d+\]\z/,
-    /\Aresume\.summary\[\d+\]\z/,
     /\Aresume\.experience\[\d+\]\.organization\z/,
     /\Aresume\.experience\[\d+\]\.engagements\[\d+\]\.name\z/,
     /\Aresume\.projects\[\d+\]\.primary\z/,
@@ -640,40 +639,11 @@ def collect_visible_items(value, items, errors, path = "resume")
   end
 end
 
-def check_summary_project_links(visible_items, sources, registry, errors, warnings)
+def check_summary_links(visible_items, errors)
   visible_items.each do |item|
     next unless item["path"].match?(/\Aresume\.summary\[\d+\]\z/)
-
-    # A composed summary item spanning several projects has no single project
-    # destination, so the one-URL rule does not apply to it.
-    item_projects = Array(item["refs"]).filter_map { |ref| sources.dig(ref, "project") }.uniq
-    next unless item_projects.length == 1
-    project = item_projects.first
-    next if project.to_s.empty?
-
-    recorded = registry["projects"][project]
-    confirmed_slots =
-      if recorded && recorded["status"] == "confirmed"
-        recorded["slots"].values.reject { |url| url.to_s.strip.empty? }
-      else
-        []
-      end
-
-    if confirmed_slots.empty?
-      warnings << "summary item backed by #{project} has no confirmed project link in profile.yaml"
-      next
-    end
-
-    url = item["url"].to_s.strip
-    if url.empty?
-      errors << "#{item['path']} is backed by project #{project} and must carry one of its confirmed project links"
-      next
-    end
-
-    allowed = confirmed_slots.map { |candidate| normalize_url(candidate) }
-    unless allowed.include?(normalize_url(url))
-      errors << "#{item['path']}.url must belong to its source project #{project}"
-    end
+    errors << "#{item['path']}.url is not allowed; summary prose must render without hyperlinks" \
+      unless item["url"].to_s.strip.empty?
   end
 end
 
@@ -1207,7 +1177,7 @@ end
 
 validate_bridge_presentation(model, evidence_index, sources, visible_items, errors)
 check_model_links(model, link_registry, errors)
-check_summary_project_links(visible_items, sources, link_registry, errors, warnings)
+check_summary_links(visible_items, errors)
 warnings.concat(organization_link_warnings(model, link_registry))
 
 selected_projects = visible_items

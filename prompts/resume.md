@@ -347,7 +347,7 @@ Copy `profile.preferences.page_target` into `layout.page_target`; never replace
 the recorded preference during layout iteration. A narrative item may carry a
 project `url` only when it also sets `link_text` to the exact project name shown
 inside the prose. Otherwise omit the URL. Entity-name fields and the
-source-driven summary rule in the presentation policy remain whole-item links.
+contact/profile fields remain whole-item links. Summary items never carry URLs.
 
 ### Composed claims
 

@@ -672,27 +672,24 @@ class ResumeModuleTest < Minitest::Test
     end
   end
 
-  def test_requires_a_confirmed_link_on_every_project_backed_summary_item
+  def test_accepts_project_backed_summary_without_a_link
     with_model do |model, path, _directory|
-      model["summary"][0].delete("url")
-      stdout, _stderr, status = validate(model, path)
-      refute status.success?
-      assert_includes JSON.parse(stdout)["errors"].join(" "),
-                      "must carry one of its confirmed project links"
+      stdout, stderr, status = validate(model, path)
+      assert status.success?, stderr
+      assert JSON.parse(stdout)["valid"]
     end
   end
 
-  def test_rejects_a_summary_link_owned_by_a_different_entity
+  def test_rejects_any_summary_hyperlink
     with_model do |model, path, _directory|
-      model["summary"][0]["url"] = "https://example.test/systems"
-      stdout, _stderr, status = validate(model, path)
+      model["summary"][0]["url"] = "https://play.example.test/fixture"
+      _stdout, stderr, status = validate(model, path)
       refute status.success?
-      assert_includes JSON.parse(stdout)["errors"].join(" "),
-                      "must belong to its source project fixture"
+      assert_includes stderr, "summary prose must render without hyperlinks"
     end
   end
 
-  def test_warns_without_blocking_when_a_summary_project_has_no_confirmed_link
+  def test_unlinked_summary_project_has_no_link_warning
     with_model do |model, path, _directory|
       model["summary"] = [{
         "text" => summary_text(40),
@@ -700,8 +697,7 @@ class ResumeModuleTest < Minitest::Test
       }]
       stdout, stderr, status = validate(model, path)
       assert status.success?, stderr
-      assert_includes JSON.parse(stdout)["warnings"].join(" "),
-                      "summary item backed by stronger has no confirmed project link"
+      refute_includes JSON.parse(stdout)["warnings"].join(" "), "summary item"
     end
   end
 

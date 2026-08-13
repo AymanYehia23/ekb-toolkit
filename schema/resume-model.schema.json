@@ -162,7 +162,18 @@
       "type": "array",
       "description": "Four to six complete sentences in total for a job-targeted resume. Split sentences into separate sourced items when they rely on different evidence.",
       "items": {
-        "$ref": "#/$defs/sourcedText"
+        "allOf": [
+          {
+            "$ref": "#/$defs/sourcedText"
+          },
+          {
+            "not": {
+              "required": [
+                "url"
+              ]
+            }
+          }
+        ]
       }
     },
     "experience": {
@@ -290,7 +301,7 @@
           "type": "string",
           "minLength": 1,
           "pattern": "^(https://|mailto:|tel:)",
-          "description": "Optional hyperlink target. Whole-item links are reserved for contact/profile values, source-driven summary items, and entity labels. Narrative prose must also set link_text so only the named entity is linked."
+          "description": "Optional hyperlink target. Whole-item links are reserved for contact/profile values and entity labels. Summary items may not carry URLs. Other narrative prose must also set link_text so only the named entity is linked."
         },
         "link_text": {
           "type": "string",

@@ -49,14 +49,13 @@ def load_json(path: Path) -> dict[str, Any]:
 def whole_item_link_allowed(path: str) -> bool:
     """Whether a sourced item's entire visible text may be a hyperlink.
 
-    Whole-item links are reserved for contact/profile values, summary items
-    (whose project links are source-driven), and entity labels. Narrative prose
-    must name the linked entity explicitly through ``link_text`` so a project
-    URL cannot turn an entire achievement bullet into blue underlined text.
+    Whole-item links are reserved for contact/profile values and entity labels.
+    Summary text is always plain. Other narrative prose must name the linked
+    entity explicitly through ``link_text`` so a project URL cannot turn an
+    entire achievement bullet into blue underlined text.
     """
     patterns = (
         r"basics\.(?:contact|links)\[\d+\]",
-        r"summary\[\d+\]",
         r"experience\[\d+\]\.organization",
         r"experience\[\d+\]\.engagements\[\d+\]\.name",
         r"projects\[\d+\]\.primary",
@@ -100,6 +99,8 @@ def sourced(value: Any, path: str, nullable: bool = False) -> dict[str, str] | N
             raise ResumeError(f"{path}.url must be a non-empty string when present")
         if not re.match(r"^(https://|mailto:|tel:)", url.strip()):
             raise ResumeError(f"{path}.url must start with https://, mailto:, or tel:")
+        if re.fullmatch(r"summary\[\d+\]", path):
+            raise ResumeError(f"{path}.url is not allowed; summary prose must render without hyperlinks")
     if "link_text" in value:
         link_text = value["link_text"]
         if "url" not in value:
