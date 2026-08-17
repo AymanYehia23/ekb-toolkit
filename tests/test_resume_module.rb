@@ -200,6 +200,65 @@ class ResumeModuleTest < Minitest::Test
     end
   end
 
+  def test_outside_country_resume_requires_mobility_line
+    with_model do |model, path, _directory|
+      model["target"]["job_country"] = "Germany"
+      model["target"]["job_country_code"] = "DE"
+      model["target"]["location_scope"] = "outside-country"
+      _stdout, stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes stderr, "basics.mobility is required"
+    end
+  end
+
+  def test_master_resume_requires_mobility_line
+    with_model do |model, path, _directory|
+      model["target"]["mode"] = "master"
+      _stdout, stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes stderr, "basics.mobility is required"
+    end
+  end
+
+  def test_outside_country_resume_accepts_confirmed_relocation_line
+    with_model do |model, path, _directory|
+      model["target"]["job_country"] = "Germany"
+      model["target"]["job_country_code"] = "DE"
+      model["target"]["location_scope"] = "outside-country"
+      model["basics"]["mobility"] = {
+        "text" => "Open to relocation.",
+        "source_ref" => "profile-eligibility-003"
+      }
+      stdout, stderr, status = validate(model, path)
+      assert status.success?, stderr
+      assert JSON.parse(stdout)["valid"]
+    end
+  end
+
+  def test_mobility_line_rejects_non_relocation_eligibility_source
+    with_model do |model, path, _directory|
+      model["basics"]["mobility"] = {
+        "text" => "Authorized to work in Testland.",
+        "source_ref" => "profile-eligibility-002"
+      }
+      stdout, _stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "), "type relocation"
+    end
+  end
+
+  def test_location_scope_must_match_confirmed_countries
+    with_model do |model, path, _directory|
+      model["target"]["job_country"] = "Germany"
+      model["target"]["job_country_code"] = "DE"
+      model["target"]["location_scope"] = "same-country"
+      stdout, _stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "),
+                      "target.location_scope must be \"outside-country\""
+    end
+  end
+
   def test_requires_a_reason_when_a_supported_required_job_requirement_is_omitted
     with_model do |model, path, _directory|
       model["alignment"]["requirements"][0] = {
@@ -1003,6 +1062,10 @@ class ResumeModuleTest < Minitest::Test
   def test_master_warns_when_highest_ranked_eligible_project_is_not_used
     with_model do |model, path, _directory|
       model["target"]["mode"] = "master"
+      model["basics"]["mobility"] = {
+        "text" => "Open to relocation.",
+        "source_ref" => "profile-eligibility-003"
+      }
       model["projects"] = [
         {
           "primary" => {"text" => "Data Importer", "source_ref" => "fixture-001"},

@@ -40,6 +40,8 @@ contact:
     type: location
     value: City, Country
     label: City, Country
+    country: Country # confirmed current country; never derive it from citizenship
+    country_code: XX # confirmed ISO 3166-1 alpha-2 code
     kind: user-stated # no hyperlink
 
 # Profile links always render behind a short human-readable label. Use the
@@ -188,6 +190,10 @@ work_eligibility: []
 # - id: profile-eligibility-003
 #   type: relocation
 #   value: Open to relocation. Priority markets: ...
+#   phrasings:
+#     - Open to relocation.
+#   target_countries: [] # only explicitly confirmed destinations
+#   target_regions: [] # only explicitly confirmed regions
 #   kind: user-stated
 
 awards: []

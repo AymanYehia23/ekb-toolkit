@@ -35,8 +35,10 @@ A complete resume needs:
   belongs to.
 
 Location, links, education, certifications, languages, and summary preferences
-are optional. Do not ask for an optional section unless the user wants it or a
-current application would materially benefit.
+are optional. A confirmed current country and relocation intent become blocking
+only when generating a master resume or comparing the profile with a job in
+another country. Do not ask for another optional section unless the user wants
+it or a current application would materially benefit.
 
 Warn without blocking about a timeline gap over three months or two overlapping
 full-time roles. The user may have a good reason; the document should just not
@@ -84,6 +86,23 @@ as facts rather than as preferences:
 - `profile-eligibility-002` — existing work authorization, and which markets
   normally sponsor.
 - `profile-eligibility-003` — relocation intent and target markets.
+
+Record the current country explicitly as `country` and its ISO 3166-1 alpha-2
+`country_code` on the `contact` entry whose type is `location`. Never derive
+current country from citizenship, and never derive citizenship from location.
+The resume workflow uses these different facts for different decisions.
+
+For relocation, preserve the user's exact intent and add one or more concise
+confirmed `phrasings` suitable for a header, such as `Open to relocation.` or
+`Open to relocation within the EU.` Record target countries or regions only
+when the user explicitly confirms them. Never invent a destination, move date,
+self-funded move, visa status, or sponsorship position. If the user is not open
+to relocation, record that truth; do not substitute an affirmative phrase.
+
+A master resume and an application whose confirmed job country differs from the
+confirmed current country require a relocation header line. If no truthful,
+confirmed relocation phrasing exists, stop and request confirmation instead of
+generating the resume.
 
 The screening policy compares against these by ID. A check whose basis cannot
 be resolved reports that it could not run, which is why an absent fact is

@@ -11,6 +11,13 @@ contact:
     label: Email
     url: mailto:engineer@example.test
     kind: user-stated
+  - id: profile-contact-003
+    type: location
+    value: Test City, Testland
+    label: Test City, Testland
+    country: Testland
+    country_code: TL
+    kind: user-stated
 links:
   - id: profile-link-001
     type: portfolio
@@ -58,6 +65,17 @@ hobbies:
     value: Cycling
     kind: user-stated
 career_breaks: []
+work_eligibility:
+  - id: profile-eligibility-002
+    type: authorization
+    value: Authorized to work in Testland.
+    kind: user-stated
+  - id: profile-eligibility-003
+    type: relocation
+    value: Open to relocation.
+    phrasings:
+      - Open to relocation.
+    kind: user-stated
 preferences:
   standalone_projects:
     - lowest

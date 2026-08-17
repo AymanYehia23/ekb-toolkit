@@ -140,9 +140,10 @@ Writing should be concise and sound like an experienced engineer:
 
 **Summary.** Four to six complete sentences with a 90-word ceiling in every
 market. Cover the supported professional identity, relevant experience and
-expertise, career direction, and relocation or work-authorization context only
-when applicable and confirmed. Never pad a sentence or invent context to reach
-four. Set `layout.summary_word_limit` between 40 and 120 for a one-document
+expertise, career direction, and work-authorization context only when applicable
+and confirmed. Relocation belongs in the dedicated header line below, so do not
+repeat it in the summary. Never pad a sentence or invent context to reach four.
+Set `layout.summary_word_limit` between 40 and 120 for a one-document
 override without changing market or page size; the four-to-six-sentence rule
 still applies. What the summary should SAY is in `prompts/resume.md`.
 
@@ -151,10 +152,18 @@ for current or highly relevant roles, one or two for older roles, four as the
 hard maximum.
 
 **Header.** Keep the confirmed name, professional personal email, phone number,
-readable professional-profile address, and location together at the top. Add
-work authorization only when it is relevant to the target and explicitly
-recorded. Never substitute a previous employer's email address. Missing contact
-categories are validation warnings because the renderer cannot invent them.
+readable professional-profile address, and location together at the top. On its
+own centered line immediately below the contact row, render `basics.mobility`
+for every master resume and every job whose `target.location_scope` is
+`outside-country`. Use a concise phrasing from the profile relocation entry,
+such as `Open to relocation.` Prefer a confirmed destination-specific phrasing
+when available; never create one by copying the job country into the claim.
+This line is plain text, not a hyperlink, and is not repeated in the summary or
+continuation-page header. A missing confirmed relocation phrasing blocks these
+resumes rather than being invented. Add work authorization only when it is
+relevant to the target and explicitly recorded. Never substitute a previous
+employer's email address. Missing contact categories are validation warnings
+because the renderer cannot invent them.
 
 **Languages.** Prefer CEFR levels (A1-C2) for European applications when the
 profile records one. Never translate “fluent”, “professional working”, or

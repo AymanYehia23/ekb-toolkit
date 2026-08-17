@@ -285,6 +285,51 @@ def check_header_link_labels(visible_items, sources, errors)
   end
 end
 
+def current_country_entry(profile)
+  location = Array(profile["contact"]).find do |entry|
+    entry.is_a?(Hash) && entry["type"] == "location"
+  end
+  location
+end
+
+def check_mobility(model, profile, sources, errors)
+  mobility = model.dig("basics", "mobility")
+  if mobility.is_a?(Hash)
+    refs = mobility["source_ref"] ? [mobility["source_ref"]] : Array(mobility["source_refs"])
+    refs.each do |ref|
+      source = sources[ref]
+      next if source.nil?
+      unless source["origin"] == "profile" && source["profile_type"] == "relocation"
+        errors << "resume.basics.mobility must use a profile work_eligibility entry of type relocation; " \
+                  "#{ref} is #{source['profile_type'].inspect}"
+      end
+    end
+  end
+
+  job_country = model.dig("target", "job_country")
+  job_country_code = model.dig("target", "job_country_code")
+  scope = model.dig("target", "location_scope")
+  return if job_country.to_s.strip.empty?
+
+  home_location = current_country_entry(profile)
+  home_country = home_location && home_location["country"]
+  home_country_code = home_location && home_location["country_code"]
+  if home_country.to_s.strip.empty? || home_country_code.to_s.strip.empty?
+    errors << "target.job_country is set but the profile location has no confirmed country and ISO code; " \
+              "record contact[type: location].country and country_code before deciding cross-country status"
+    return
+  end
+
+  expected = job_country_code.to_s.upcase == home_country_code.to_s.upcase ?
+    "same-country" : "outside-country"
+  if scope != expected
+    errors << "target.location_scope must be #{expected.inspect} because job country " \
+              "#{job_country.inspect} (#{job_country_code}) and confirmed current country " \
+              "#{home_country.inspect} (#{home_country_code}) " \
+              "#{expected == 'same-country' ? 'match' : 'differ'}"
+  end
+end
+
 def organization_link_warnings(model, registry)
   warnings = []
   Array(model["experience"]).each do |entry|
@@ -1273,6 +1318,7 @@ end
 validate_bridge_presentation(model, evidence_index, sources, visible_items, errors)
 check_model_links(model, link_registry, errors)
 check_header_link_labels(visible_items, sources, errors)
+check_mobility(model, profile, sources, errors)
 check_summary_links(visible_items, errors)
 warnings.concat(organization_link_warnings(model, link_registry))
 

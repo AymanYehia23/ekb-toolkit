@@ -22,6 +22,8 @@ contact:
     type: location
     value: Lisbon, Portugal
     label: Lisbon, Portugal
+    country: Portugal
+    country_code: PT
     kind: user-stated
 
 links:
@@ -161,6 +163,8 @@ work_eligibility:
   - id: profile-eligibility-003
     type: relocation
     value: Open to relocation within the EU. Prefers remote or Lisbon-based roles.
+    phrasings:
+      - Open to relocation within the EU.
     kind: user-stated
 
 awards: []

@@ -14,7 +14,7 @@
 - Selection score: 95/100 (rubric v1; 8 scoreable required requirements, 1 excluded as genuine gaps)
   - required_coverage 100, critical_demonstrated 100, strongest_evidence_used 75, decisions_recorded 100
 - PDF pages: 1
-- Content fill by page: 71.2%
+- Content fill by page: 73.0%
 - DOCX tables: 0
 - DOCX images/shapes: 0
 - Extraction/order errors: 0
@@ -50,5 +50,5 @@ Keyword gap (2 terms, 0 fixable from existing evidence). A reviewer's missing-ke
 - Header has no phone number; add one only from confirmed profile data
 - Language entry 1 has no CEFR level (A1-C2); preserve the recorded proficiency unless the user confirms a CEFR mapping
 - Language entry 2 has no CEFR level (A1-C2); preserve the recorded proficiency unless the user confirms a CEFR mapping
-- Single-page resume is underfilled: content uses 71.2% of printable height, below the 84.0% minimum; add target-relevant Selected Projects evidence or another distinct project
+- Single-page resume is underfilled: content uses 73.0% of printable height, below the 84.0% minimum; add target-relevant Selected Projects evidence or another distinct project
 - 17 emphasized fragments across 8 bullets reads as heavily bolded; reduce the term set

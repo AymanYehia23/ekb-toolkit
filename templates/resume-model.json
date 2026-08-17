@@ -7,7 +7,11 @@
     "role": "Software Engineer",
     "summary_lead": "Software Engineer",
     "market": "europe",
-    "market_basis": "profile-default"
+    "market_basis": "profile-default",
+    "job_country": null,
+    "job_country_code": null,
+    "location_scope": "unspecified",
+    "location_basis": "unresolved"
   },
   "layout": {
     "page_target": 1,
@@ -26,7 +30,8 @@
         "url": "mailto:name@example.com"
       }
     ],
-    "links": []
+    "links": [],
+    "mobility": null
   },
   "summary": [
     {

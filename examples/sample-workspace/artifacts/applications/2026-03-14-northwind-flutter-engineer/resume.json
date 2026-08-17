@@ -7,7 +7,11 @@
     "role": "Flutter Engineer",
     "summary_lead": "Flutter Mobile Engineer",
     "market": "europe",
-    "market_basis": "job-location"
+    "market_basis": "job-location",
+    "job_country": null,
+    "job_country_code": null,
+    "location_scope": "location-independent",
+    "location_basis": "job-description"
   },
   "layout": {
     "page_target": 1,
@@ -35,7 +39,11 @@
         "source_ref": "profile-link-002",
         "url": "https://github.com/example-sam-rivera"
       }
-    ]
+    ],
+    "mobility": {
+      "text": "Open to relocation within the EU.",
+      "source_ref": "profile-eligibility-003"
+    }
   },
   "summary": [
     {
@@ -51,8 +59,8 @@
       "source_ref": "profile-responsibility-002"
     },
     {
-      "text": "Right to work across the EU. No sponsorship required in the EU. Open to relocation within the EU.",
-      "source_refs": ["profile-eligibility-002", "profile-eligibility-003"]
+      "text": "Right to work across the EU. No sponsorship required in the EU.",
+      "source_ref": "profile-eligibility-002"
     }
   ],
   "experience": [
