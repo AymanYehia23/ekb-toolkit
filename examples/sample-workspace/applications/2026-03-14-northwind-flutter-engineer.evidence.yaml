@@ -50,8 +50,9 @@ requirements:
     - best-evidence
     - shipped
     - tested
-    claim: Introduced widget and golden tests for the cart, covering empty state, quantity limits, and
-      the promotion path that had produced two regressions.
+    - curated-bullet
+    claim: Introduced widget and golden tests covering the cart's empty state, quantity limits, and the
+      promotion path that had produced two regressions, and wired them into the pull request pipeline.
     cautions:
     - Test coverage for one feature area. Do not present test counts as an achievement; describe the behaviors
       and failure paths covered instead.
@@ -76,8 +77,9 @@ requirements:
     signals:
     - best-evidence
     - shipped
-    claim: Worked on the checkout flow's payment integration, adding a server confirmation step so a completed
-      charge is only recognized after the backend has verified it with the provider.
+    - curated-bullet
+    claim: Contributed the checkout payment flow's server confirmation and network-drop recovery paths,
+      preventing completed charges from being recognized before backend verification.
     cautions:
     - Shared feature. Feature-level wording is supported; the provider SDK integration itself was another
       engineer's work and must not be implied.
@@ -103,9 +105,11 @@ requirements:
     - best-evidence
     - measured
     - shipped
+    - curated-bullet
     - interview-story
-    claim: Reduced the workout history screen's frame build time from a measured average of 31 ms to 9
-      ms by virtualizing the list and moving the weekly aggregation off the build path.
+    claim: Reduced workout history frame build time from a measured 31 ms to 9 ms by virtualizing the
+      list and moving weekly aggregation off the build path, measured on the same mid-range Android device
+      before and after.
     cautions:
     - Profile-mode measurement on one mid-range Android device. It is not a release-mode figure and not
       a cross-device claim, so the number must travel with its context or not at all.
@@ -116,9 +120,10 @@ requirements:
     - best-evidence
     - shipped
     - tested
+    - curated-bullet
     - interview-story
-    claim: Replaced three overlapping local-cache implementations with a single repository-backed store,
-      so a stale workout entry could no longer survive a failed sync and reappear on the history screen.
+    claim: Consolidated three overlapping local caches into a single repository-backed store, removing
+      the path by which a stale workout entry could survive a failed sync and reappear in history.
     cautions:
     - The stale read was reproduced in a test, not measured in production. No before and after timing
       exists, so comparative performance wording is not supported for this record.
@@ -127,10 +132,10 @@ requirements:
     strength: 3.0
     signals:
     - shipped
+    - curated-bullet
     - interview-story
-    claim: 'Built the offline workout logging path: entries are written locally first, queued, and replayed
-      on reconnect, with a last-write-wins resolution that keeps the device''s own edit when the server
-      copy is older.'
+    claim: Built offline workout logging with local-first writes, a persisted replay queue, and a last-write-wins
+      resolution rule chosen over a field-level merge because a workout entry is small and immutable.
     cautions:
     - Single-device sync only. There is no multi-device conflict resolution and no server-side reconciliation,
       so wording must not imply distributed consistency work.
@@ -183,8 +188,9 @@ requirements:
     signals:
     - best-evidence
     - shipped
-    claim: Worked on the checkout flow's payment integration, adding a server confirmation step so a completed
-      charge is only recognized after the backend has verified it with the provider.
+    - curated-bullet
+    claim: Contributed the checkout payment flow's server confirmation and network-drop recovery paths,
+      preventing completed charges from being recognized before backend verification.
     cautions:
     - Shared feature. Feature-level wording is supported; the provider SDK integration itself was another
       engineer's work and must not be implied.
@@ -209,8 +215,10 @@ requirements:
     signals:
     - shipped
     - tested
-    claim: Added right-to-left layout support across the app, which required replacing directional padding
-      and icon mirroring in fourteen widgets rather than only enabling the locale.
+    - curated-bullet
+    claim: Contributed to right-to-left support across the app, replacing directional padding and icon
+      mirroring in fourteen widgets and adding golden tests for both directions rather than only enabling
+      the locale.
     cautions:
     - Shared work. Feature-level wording is supported; sole authorship is not. Translation itself was
       handled by an external vendor.
@@ -235,8 +243,9 @@ requirements:
     signals:
     - led
     - shipped
+    - curated-bullet
     claim: Set up the release pipeline that builds, signs, and uploads both platforms from CI, moving
-      signing material out of developer machines and into the CI secret store.
+      signing material off developer machines into the CI secret store.
     cautions:
     - Ownership is confirmed for the pipeline itself. The store listings and release approvals stayed
       with the product owner.
@@ -276,9 +285,10 @@ requirements:
     - best-evidence
     - shipped
     - tested
+    - curated-bullet
     - interview-story
-    claim: Replaced three overlapping local-cache implementations with a single repository-backed store,
-      so a stale workout entry could no longer survive a failed sync and reappear on the history screen.
+    claim: Consolidated three overlapping local caches into a single repository-backed store, removing
+      the path by which a stale workout entry could survive a failed sync and reappear in history.
     cautions:
     - The stale read was reproduced in a test, not measured in production. No before and after timing
       exists, so comparative performance wording is not supported for this record.
@@ -288,8 +298,9 @@ requirements:
     signals:
     - best-evidence
     - shipped
-    claim: Worked on the checkout flow's payment integration, adding a server confirmation step so a completed
-      charge is only recognized after the backend has verified it with the provider.
+    - curated-bullet
+    claim: Contributed the checkout payment flow's server confirmation and network-drop recovery paths,
+      preventing completed charges from being recognized before backend verification.
     cautions:
     - Shared feature. Feature-level wording is supported; the provider SDK integration itself was another
       engineer's work and must not be implied.
@@ -358,8 +369,9 @@ requirements:
     - best-evidence
     - shipped
     - tested
-    claim: Introduced widget and golden tests for the cart, covering empty state, quantity limits, and
-      the promotion path that had produced two regressions.
+    - curated-bullet
+    claim: Introduced widget and golden tests covering the cart's empty state, quantity limits, and the
+      promotion path that had produced two regressions, and wired them into the pull request pipeline.
     cautions:
     - Test coverage for one feature area. Do not present test counts as an achievement; describe the behaviors
       and failure paths covered instead.

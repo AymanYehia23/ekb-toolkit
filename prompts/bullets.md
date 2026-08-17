@@ -40,6 +40,12 @@ only two survive the quality gate; never pad a project with a weak third bullet.
 Add a second variant only when it is a genuinely useful concise-versus-technical
 choice, not a routine duplicate.
 
+Write every publishable bullet as a top-level Markdown list item beginning with
+`- `. Continuation lines and the bullet's source or variant comments must stay
+inside that list-item block. The validator treats other prose as context, not as
+a publishable bullet, and rejects a bank that cites records but contains no
+parseable list items.
+
 Store an approved alternative as
 `<!-- variant concise: Complete alternative sentence. -->` inside the same
 bullet block after its source comments. The variant obeys every wording rule
@@ -118,8 +124,9 @@ Rules:
 
 - precise engineering language, natural sentence variation;
 - direct verbs when involvement supports them;
-- feature-level "worked on" or "contributed to" for meaningful shared
-  participation, without demanding component boundaries;
+- scoped contribution wording for meaningful shared participation; name the
+  contributed component when the evidence supports that boundary, and use
+  feature-level "contributed to" only when it does not;
 - neutral technical results are allowed without a metric: "introduced",
   "consolidated", "replaced", "enabled";
 - confirmed purpose wording such as "to support..." is allowed, but intent is

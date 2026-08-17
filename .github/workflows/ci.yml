@@ -25,6 +25,9 @@ jobs:
       - name: Python syntax
         run: python3 -m compileall -q scripts/
 
+      - name: Bullet quality tests
+        run: python3 -m unittest tests.test_bullet_quality
+
       - name: Ruby syntax
         run: ruby -c scripts/resume_source_check.rb
 

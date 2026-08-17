@@ -359,6 +359,11 @@ def main():
                 continue
 
             entries = parse_bullet_bank(artifact_text)
+            if cited and not entries:
+                fail(
+                    f"{path} cites records but has no parseable top-level Markdown bullets; "
+                    f"regenerate it (prompts/bullets.md with PROJECT={project})"
+                )
             if len(entries) > maximum_bullets:
                 fail(
                     f"{path} has {len(entries)} publishable bullets; "

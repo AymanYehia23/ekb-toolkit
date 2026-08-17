@@ -11,32 +11,33 @@ later as suggestions during resume drafting.
 Never hand-edit this file. Fix the record and regenerate.
 -->
 
-Reduced workout history frame build time from a measured 31 ms to 9 ms by
-virtualizing the list and moving weekly aggregation off the build path,
-measured on the same mid-range Android device before and after.
-<!-- src: fittrack-003 -->
+- Reduced workout history frame build time from a measured 31 ms to 9 ms by
+  virtualizing the list and moving weekly aggregation off the build path,
+  measured on the same mid-range Android device before and after.
+  <!-- src: fittrack-003 -->
 
-<!-- variant, concise: Cut workout history frame build time from 31 ms to 9 ms
-by virtualizing the list and moving aggregation off the build path. -->
+  <!-- variant concise: Cut workout history frame build time from 31 ms to 9 ms
+  by virtualizing the list and moving aggregation off the build path. -->
 
-Consolidated three overlapping local caches into a single repository-backed
-store, removing the path by which a stale workout entry could survive a failed
-sync and reappear in history.
-<!-- src: fittrack-001 -->
+- Consolidated three overlapping local caches into a single repository-backed
+  store, removing the path by which a stale workout entry could survive a failed
+  sync and reappear in history.
+  <!-- src: fittrack-001 -->
 
-Built offline workout logging with local-first writes, a persisted replay queue,
-and a last-write-wins resolution rule chosen over a field-level merge because a
-workout entry is small and immutable.
-<!-- src: fittrack-002 -->
+- Built offline workout logging with local-first writes, a persisted replay
+  queue, and a last-write-wins resolution rule chosen over a field-level merge
+  because a workout entry is small and immutable.
+  <!-- src: fittrack-002 -->
 
-Set up the release pipeline that builds, signs, and uploads both platforms from
-CI, moving signing material off developer machines into the CI secret store.
-<!-- src: fittrack-004 -->
+- Set up the release pipeline that builds, signs, and uploads both platforms
+  from CI, moving signing material off developer machines into the CI secret
+  store.
+  <!-- src: fittrack-004 -->
 
-Contributed to right-to-left support across the app, which meant replacing
-directional padding and icon mirroring in fourteen widgets and adding golden
-tests for both directions rather than only enabling the locale.
-<!-- src: fittrack-005 -->
+- Contributed to right-to-left support across the app, replacing directional
+  padding and icon mirroring in fourteen widgets and adding golden tests for
+  both directions rather than only enabling the locale.
+  <!-- src: fittrack-005 -->
 
 ---
 

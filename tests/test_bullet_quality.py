@@ -70,6 +70,8 @@ class BulletQualityTest(unittest.TestCase):
   <!-- src: example-003 -->
   <!-- variant concise: Added rollback-safe deployment checks for failed releases. -->
 
+---
+
 ## Not selected
 
 - Lower relevance: example-004
@@ -80,9 +82,27 @@ class BulletQualityTest(unittest.TestCase):
         self.assertEqual(["example-001"], entries[0]["sources"])
         self.assertEqual(["example-002", "example-003"], entries[1]["sources"])
         self.assertEqual(
+            "Added rollback-safe deployment checks.", entries[1]["text"]
+        )
+        self.assertEqual(
             ["Added rollback-safe deployment checks for failed releases."],
             entries[1]["variants"],
         )
+
+    def test_evidence_index_lifts_the_parsed_text_without_a_separator(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="ekb-bullet-quality-") as directory:
+            bank_dir = Path(directory) / "artifacts" / "bullets"
+            bank_dir.mkdir(parents=True)
+            (bank_dir / "example.md").write_text(
+                "# Example\n\n- Built a typed import pipeline with rollback checks.\n"
+                "  <!-- src: example-001 -->\n\n---\n\n## Not selected\n",
+                encoding="utf-8",
+            )
+            bullets = collect_curated_bullets(directory)
+            self.assertEqual(
+                "Built a typed import pipeline with rollback checks.",
+                bullets["example-001"]["bullet"],
+            )
 
     def test_evidence_index_refuses_an_invalid_bank(self) -> None:
         with tempfile.TemporaryDirectory(prefix="ekb-bullet-quality-") as directory:
@@ -93,6 +113,20 @@ class BulletQualityTest(unittest.TestCase):
                 encoding="utf-8",
             )
             with self.assertRaises(BulletQualityError):
+                collect_curated_bullets(directory)
+
+    def test_evidence_index_refuses_a_legacy_unparsed_bank(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="ekb-bullet-quality-") as directory:
+            bank_dir = Path(directory) / "artifacts" / "bullets"
+            bank_dir.mkdir(parents=True)
+            (bank_dir / "example.md").write_text(
+                "# Example\n\nBuilt a typed import pipeline.\n"
+                "<!-- src: example-001 -->\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                BulletQualityError, "no parseable top-level Markdown bullets"
+            ):
                 collect_curated_bullets(directory)
 
 

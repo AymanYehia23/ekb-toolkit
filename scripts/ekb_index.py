@@ -174,8 +174,6 @@ def normalize_punctuation(text: str) -> str:
 
 
 SRC_MARKER = re.compile(r"<!--\s*src:\s*([a-z0-9_\-]+-\d{3})\s*-->", re.I)
-VARIANT_MARKER = re.compile(r"<!--\s*variant[^:]*:\s*(.+?)-->", re.I | re.S)
-NOT_SELECTED_HEADING = re.compile(r"^#{2,6}\s*.*not\s+selected", re.I | re.M)
 
 
 class BulletQualityError(ValueError):
@@ -205,6 +203,10 @@ def collect_curated_bullets(root: str) -> dict:
         with open(path, encoding="utf-8") as handle:
             text = handle.read()
         entries = parse_bullet_bank(text)
+        if SRC_MARKER.search(text) and not entries:
+            raise BulletQualityError(
+                f"{path} cites records but has no parseable top-level Markdown bullets"
+            )
         if len(entries) > maximum_bullets:
             raise BulletQualityError(
                 f"{path} has {len(entries)} publishable bullets; maximum is {maximum_bullets}"
@@ -224,34 +226,19 @@ def collect_curated_bullets(root: str) -> dict:
                 raise BulletQualityError(
                     f"{location} cites {len(entry['sources'])} sources; maximum is {maximum_sources}"
                 )
-        # Everything below a "Not selected" heading is a rejection note, not a
-        # usable bullet.
-        cut = NOT_SELECTED_HEADING.search(text)
-        if cut:
-            text = text[: cut.start()]
-
-        # Split into top-level list items; a bullet runs until the next one.
-        blocks = re.split(r"\n(?=-\s)", text)
-        for block in blocks:
-            refs = SRC_MARKER.findall(block)
+        for parsed in entries:
+            refs = parsed["sources"]
             # A bullet citing two records cannot be used under the one-source
             # contract, so it is not offered as a phrasing for either.
             if len(set(refs)) != 1:
                 continue
             record_id = refs[0]
-            variant = VARIANT_MARKER.search(block)
-            body = SRC_MARKER.sub("", block)
-            body = VARIANT_MARKER.sub("", body)
-            body = re.sub(r"<!--.*?-->", "", body, flags=re.S)
-            body = body.strip()
-            if body.startswith("-"):
-                body = body[1:]
-            body = " ".join(body.split())
+            body = parsed["text"]
             if not body or len(body) < 40:
                 continue
             entry = {"bullet": normalize_punctuation(body)}
-            if variant:
-                short = " ".join(variant.group(1).split()).strip()
+            if parsed["variants"]:
+                short = parsed["variants"][0]
                 if short:
                     entry["bullet_short"] = normalize_punctuation(short)
             bullets[record_id] = entry

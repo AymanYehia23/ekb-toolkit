@@ -106,7 +106,7 @@ def parse_bullet_bank(text: str) -> list[dict[str, Any]]:
             finish()
             current = {"line": line_number, "block": [line]}
         elif current is not None:
-            if re.match(r"^#{1,6}\s+", line):
+            if re.match(r"^(?:#{1,6}\s+|---+\s*$)", line):
                 finish()
             else:
                 current["block"].append(line)

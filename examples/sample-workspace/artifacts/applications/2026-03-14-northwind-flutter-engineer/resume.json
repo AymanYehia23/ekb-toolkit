@@ -101,7 +101,7 @@
       "end": { "text": "May 2024", "source_ref": "profile-experience-002" },
       "bullets": [
         {
-          "text": "Worked on the checkout payment flow, adding a server confirmation step so a completed charge is only recognized after backend verification, along with the recovery path for a network drop between charge and confirmation.",
+          "text": "Contributed the checkout payment flow's server confirmation and network-drop recovery paths, preventing completed charges from being recognized before backend verification.",
           "source_ref": "mealmate-001"
         },
         {
