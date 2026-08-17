@@ -93,8 +93,8 @@
     ],
     "color_hex": "0563C1",
     "underline": true,
-    "text_export": "append-url",
-    "note": "Every live hyperlink is explicitly blue and underlined in DOCX and PDF so a reader can recognize it without hovering. Hyperlinks are annotations over unchanged visible text, so a text-only parser reads the same resume with or without them. TXT has no annotation layer: append-url prints the target in parentheses so the address is not silently lost, and none drops it."
+    "text_export": "none",
+    "note": "Every live hyperlink is explicitly blue and underlined in DOCX and PDF so a reader can recognize it without hovering. Contact and profile targets stay behind human-readable labels. TXT has no annotation layer, so it preserves the labels and omits the targets instead of exposing raw addresses."
   },
   "emphasis": {
     "default": "matched-requirements",

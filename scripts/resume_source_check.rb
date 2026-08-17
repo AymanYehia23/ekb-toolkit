@@ -124,6 +124,9 @@ def collect_profile_sources(value, sources, errors, path = "profile")
           "origin" => "profile",
           "kind" => value["kind"],
           "involvement" => nil,
+          "profile_type" => value["type"],
+          "profile_value" => value["value"],
+          "profile_label" => value["label"],
           "profile_values" => flatten_profile_values(value),
           "numeric_content" => JSON.generate(value.reject { |key, _child| %w[id kind].include?(key) })
         }
@@ -234,6 +237,51 @@ def check_model_links(value, registry, errors, path = "resume")
     value.each { |key, child| check_model_links(child, registry, errors, "#{path}.#{key}") }
   when Array
     value.each_with_index { |child, index| check_model_links(child, registry, errors, "#{path}[#{index}]") }
+  end
+end
+
+def address_like_label?(label)
+  text = label.to_s.strip
+  return false if text.empty?
+  return true if text.match?(%r{(?:https?://|mailto:|tel:|www\.)}i)
+  return true if text.include?("@")
+  return true if text.match?(/\A\+?[\d\s().-]{7,}\z/)
+  text.match?(/\A(?:[a-z0-9-]+\.)+[a-z]{2,}(?:[\/?#]|\z)/i)
+end
+
+def check_header_link_labels(visible_items, sources, errors)
+  visible_items.each do |item|
+    next unless item["path"].match?(/\Aresume\.basics\.(?:contact|links)\[\d+\]\z/)
+
+    source = sources[item["source_ref"]]
+    if source && source["origin"] == "profile" && source["profile_type"] == "phone"
+      value = source["profile_value"].to_s.strip
+      unless item["url"].to_s.strip.empty?
+        errors << "#{item['path']} is a phone contact and must not carry a hyperlink"
+      end
+      unless item["text"] == value
+        errors << "#{item['path']}.text must show the literal phone value #{value.inspect}"
+      end
+      next
+    end
+
+    next if item["url"].to_s.strip.empty?
+
+    if address_like_label?(item["text"])
+      errors << "#{item['path']}.text exposes an address; use the profile's human-readable label"
+    end
+
+    next unless source && source["origin"] == "profile"
+
+    label = source["profile_label"].to_s.strip
+    if label.empty?
+      errors << "#{item['path']} links a profile item without a human-readable label in profile.yaml"
+    elsif address_like_label?(label)
+      errors << "profile source #{item['source_ref']} has an address-like label; use a word such as " \
+                "Email, LinkedIn, GitHub, or Portfolio"
+    elsif item["text"] != label
+      errors << "#{item['path']}.text must use profile label #{label.inspect}"
+    end
   end
 end
 
@@ -1177,6 +1225,7 @@ end
 
 validate_bridge_presentation(model, evidence_index, sources, visible_items, errors)
 check_model_links(model, link_registry, errors)
+check_header_link_labels(visible_items, sources, errors)
 check_summary_links(visible_items, errors)
 warnings.concat(organization_link_warnings(model, link_registry))
 

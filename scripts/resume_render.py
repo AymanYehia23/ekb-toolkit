@@ -968,8 +968,6 @@ def resume_lines(model: dict[str, Any]) -> list[str]:
 def text_export_lines(model: dict[str, Any], policy: dict[str, Any]) -> list[str]:
     """Plain-text export. TXT has no annotation layer, so a hyperlink either
     becomes a visible address or is lost; `policy.links.text_export` decides.
-
-    Addresses that are already the visible text are never repeated.
     """
     if policy.get("links", {}).get("text_export") != "append-url" or not links_enabled(model):
         return resume_lines(model)
@@ -983,9 +981,9 @@ def text_export_lines(model: dict[str, Any], policy: dict[str, Any]) -> list[str
             if "text" in value and ("source_ref" in value or "source_refs" in value):
                 url = url_of(value)
                 label = link_text_of(value) or text_of(value)
-                # Skip anything whose visible text already IS the address: the
-                # profile deliberately prints full addresses for contact and
-                # profile links, and an employer's name can equal its domain.
+                # Skip anything whose visible text already is the address. This
+                # remains useful for custom policies even though the shipped
+                # policy keeps profile addresses behind labels.
                 if url and bare(url) != bare(label):
                     targets.append((label, url))
                 return

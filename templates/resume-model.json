@@ -21,7 +21,7 @@
     },
     "contact": [
       {
-        "text": "name@example.com",
+        "text": "Email",
         "source_ref": "profile-contact-001",
         "url": "mailto:name@example.com"
       }

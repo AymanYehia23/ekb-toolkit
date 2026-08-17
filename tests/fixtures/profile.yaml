@@ -8,12 +8,14 @@ contact:
   - id: profile-contact-001
     type: email
     value: engineer@example.test
+    label: Email
+    url: mailto:engineer@example.test
     kind: user-stated
 links:
   - id: profile-link-001
     type: portfolio
     value: example.test/casey
-    label: example.test/casey
+    label: Portfolio
     url: https://example.test/casey
     kind: user-stated
 organization_links:

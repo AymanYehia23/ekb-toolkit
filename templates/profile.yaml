@@ -20,20 +20,20 @@ identity:
   kind: user-stated
 
 # `label` is the visible text in a generated document. `url` is the hyperlink
-# attached to it. Contact details keep the literal address as the label so a
-# text-only parser still reads it.
+# attached to it. Every hyperlinked contact uses a short human-readable label;
+# the literal address stays in `value` and `url`, never in the visible label.
 contact:
   - id: profile-contact-001
     type: email
     value: you@example.com
-    label: you@example.com
+    label: Email
     url: mailto:you@example.com
     kind: user-stated
   - id: profile-contact-002
     type: phone
     value: "+00 000 000 0000"
     label: "+00 000 000 0000"
-    # Optional: put a messaging link behind the readable number.
+    # Phone always renders as this literal value and is never hyperlinked.
     url: null
     kind: user-stated
   - id: profile-contact-003
@@ -42,20 +42,20 @@ contact:
     label: City, Country
     kind: user-stated # no hyperlink
 
-# Hyperlinked, but never hidden behind a word. The visible label is the full
-# readable address AND it carries a live URL, so an ATS reads the address while
-# a human can click it. Do not shorten these to "LinkedIn" or "GitHub".
+# Profile links always render behind a short human-readable label. Use the
+# conventional service name where one exists, and a concise descriptive label
+# for `other`; never put the raw address in `label`.
 links:
   - id: profile-link-001
     type: linkedin # linkedin | github | portfolio | application | other
     value: linkedin.com/in/yourhandle
-    label: linkedin.com/in/yourhandle
+    label: LinkedIn
     url: https://linkedin.com/in/yourhandle
     kind: user-stated
   - id: profile-link-002
     type: github
     value: github.com/yourhandle
-    label: github.com/yourhandle
+    label: GitHub
     url: https://github.com/yourhandle
     kind: user-stated
 
@@ -211,8 +211,8 @@ preferences:
   standalone_projects: []
   academic_projects: []
   link_style:
-    contact: literal-text-with-link
-    profile_links: full-address-with-link
+    contact: label-with-link
+    profile_links: label-with-link
     project_links: hyperlink-behind-name
     organization_links: hyperlink-behind-name
     certification_links: hyperlink-behind-name

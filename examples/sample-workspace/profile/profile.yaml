@@ -15,7 +15,7 @@ contact:
   - id: profile-contact-001
     type: email
     value: sam.rivera@example.com
-    label: sam.rivera@example.com
+    label: Email
     url: mailto:sam.rivera@example.com
     kind: user-stated
   - id: profile-contact-002
@@ -28,13 +28,13 @@ links:
   - id: profile-link-001
     type: linkedin
     value: linkedin.com/in/example-sam-rivera
-    label: linkedin.com/in/example-sam-rivera
+    label: LinkedIn
     url: https://linkedin.com/in/example-sam-rivera
     kind: user-stated
   - id: profile-link-002
     type: github
     value: github.com/example-sam-rivera
-    label: github.com/example-sam-rivera
+    label: GitHub
     url: https://github.com/example-sam-rivera
     kind: user-stated
 
@@ -175,8 +175,8 @@ preferences:
   standalone_projects: []
   academic_projects: []
   link_style:
-    contact: literal-text-with-link
-    profile_links: full-address-with-link
+    contact: label-with-link
+    profile_links: label-with-link
     project_links: hyperlink-behind-name
     organization_links: hyperlink-behind-name
     certification_links: hyperlink-behind-name

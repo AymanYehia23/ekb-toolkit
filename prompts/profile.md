@@ -51,6 +51,17 @@ When the user names an employer, client, shipped app, repository, documentation
 site, or portfolio page, ask once for its public address and record it under
 `organization_links` or `project_links` with `link_status: confirmed`.
 
+For every email or profile entry that carries a `url`, keep the literal address
+in `value` and `url`, and set `label` to the short text a document will show.
+Use `Email`, `LinkedIn`, `GitHub`, `Portfolio`, or the equivalent service name.
+A custom `other` link needs a concise descriptive label. Never put an email
+address, domain, or URL in a hyperlinked `label`.
+
+Phone is the exception: it always renders as its literal `value`, its `label`
+must match that value, and it never carries a `url`. When loading an older
+profile whose other hyperlinked labels expose addresses, include their label
+migration in the compact confirmation.
+
 - `unconfirmed` — the user is unsure which project an address belongs to.
 - `uncurated` — the app is real but has no curated project behind it.
 

@@ -52,15 +52,17 @@ certification, so a missing address surfaces instead of being forgotten.
 **Never guess a URL, never construct one from a company name, and never carry a
 link over from an old document.**
 
-Follow `preferences.link_style`. The governing rule: important contact
-information is always hyperlinked but never hidden behind a word, so no address
-depends on a parser reading the annotation layer.
+Follow `preferences.link_style`. The governing rule: every hyperlinked contact
+or profile address is hidden behind the human-readable `label` recorded in the
+profile. The address remains available as the hyperlink target without adding
+visual noise to the header.
 
-- `contact` — the literal email address and phone number are the visible text,
-  with `mailto:` or a messaging URL attached.
-- `profile_links` — the full readable address is the visible text, with the URL
-  attached. Never shorten a professional network or code-host link to a bare
-  word; the address must stay readable with the hyperlink layered on top.
+- `contact` — a linked email uses the recorded `Email` label. A phone number is
+  never linked and always renders as its literal value. Other non-hyperlinked
+  values such as location may also remain literal text.
+- `profile_links` — use the recorded service or purpose label, such as
+  `LinkedIn`, `GitHub`, or `Portfolio`. Never expose the raw address as visible
+  text.
 - `project_links`, `organization_links`, `certification_links` — a hyperlink
   behind the name is correct. The name carries the meaning on its own, so
   nothing is lost if the annotation is dropped. Never link an entry that is
@@ -72,6 +74,9 @@ rely on an application's default hyperlink style, because viewers differ.
 
 Set `layout.hyperlinks` to `off`, or render with `--ats-plain`, only when the
 user asks for an export with no annotations at all.
+
+Plain-text exports keep these same labels and omit hyperlink targets because
+TXT has no annotation layer. Use DOCX or PDF when the links must remain live.
 
 ## 2. Keyword highlighting
 

@@ -335,7 +335,7 @@ class ResumeModuleTest < Minitest::Test
       refute report.dig("document_validation", "pdf_password_protected")
       assert_includes report.dig("document_validation", "warnings").join(" "),
                       "no phone number"
-      assert_includes report.dig("document_validation", "warnings").join(" "),
+      refute_includes report.dig("document_validation", "warnings").join(" "),
                       "no confirmed professional profile link"
       assert_includes report.dig("document_validation", "warnings").join(" "),
                       "no CEFR level"
@@ -585,7 +585,7 @@ class ResumeModuleTest < Minitest::Test
       assert status.success?, stderr
       report = JSON.parse(File.read(File.join(output, "validation.json")))
       assert_equal 2, report.dig("document_validation", "pdf_pages")
-      assert_equal ["Casey Engineer | engineer@example.test"], report.dig("document_validation", "docx_structure", "header_footer_text")
+      assert_equal ["Casey Engineer | Email | Portfolio"], report.dig("document_validation", "docx_structure", "header_footer_text")
     end
   end
 
@@ -616,6 +616,83 @@ class ResumeModuleTest < Minitest::Test
       stdout, stderr, status = validate(model, path)
       assert status.success?, stderr
       assert JSON.parse(stdout)["valid"]
+    end
+  end
+
+  def test_rejects_a_raw_address_as_visible_profile_link_text
+    with_model do |model, path, _directory|
+      model["basics"]["links"][0]["text"] = "example.test/casey"
+      stdout, _stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "), "exposes an address"
+    end
+  end
+
+  def test_rejects_an_address_like_label_in_the_profile_source
+    with_model do |model, path, directory|
+      profile = YAML.safe_load(File.read(PROFILE), permitted_classes: [Date])
+      profile["links"][0]["label"] = "example.test/casey"
+      profile_path = File.join(directory, "profile.yaml")
+      File.write(profile_path, YAML.dump(profile))
+      write_model(path, model)
+      stdout, _stderr, status = run_tool(
+        "validate", "--model", path, "--profile", profile_path, "--projects", PROJECTS
+      )
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "),
+                      "profile source profile-link-001 has an address-like label"
+    end
+  end
+
+  def test_rejects_a_profile_link_that_ignores_its_recorded_label
+    with_model do |model, path, _directory|
+      model["basics"]["links"][0]["text"] = "Website"
+      stdout, _stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "), 'must use profile label "Portfolio"'
+    end
+  end
+
+  def test_accepts_a_literal_unlinked_phone_value
+    with_model do |model, path, directory|
+      profile = YAML.safe_load(File.read(PROFILE), permitted_classes: [Date])
+      profile["contact"] << {
+        "id" => "profile-contact-002", "type" => "phone", "value" => "+00 000 000 0000",
+        "label" => "+00 000 000 0000", "url" => nil, "kind" => "user-stated"
+      }
+      model["basics"]["contact"] << {
+        "text" => "+00 000 000 0000", "source_ref" => "profile-contact-002"
+      }
+      profile_path = File.join(directory, "profile.yaml")
+      File.write(profile_path, YAML.dump(profile))
+      write_model(path, model)
+      stdout, stderr, status = run_tool(
+        "validate", "--model", path, "--profile", profile_path, "--projects", PROJECTS
+      )
+      assert status.success?, stderr
+      assert JSON.parse(stdout)["valid"]
+    end
+  end
+
+  def test_rejects_a_hyperlinked_phone_word
+    with_model do |model, path, directory|
+      profile = YAML.safe_load(File.read(PROFILE), permitted_classes: [Date])
+      profile["contact"] << {
+        "id" => "profile-contact-002", "type" => "phone", "value" => "+00 000 000 0000",
+        "label" => "Phone", "url" => "tel:+000000000000", "kind" => "user-stated"
+      }
+      model["basics"]["contact"] << {
+        "text" => "Phone", "source_ref" => "profile-contact-002", "url" => "tel:+000000000000"
+      }
+      profile_path = File.join(directory, "profile.yaml")
+      File.write(profile_path, YAML.dump(profile))
+      write_model(path, model)
+      stdout, _stderr, status = run_tool(
+        "validate", "--model", path, "--profile", profile_path, "--projects", PROJECTS
+      )
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "),
+                      "phone contact and must not carry a hyperlink"
     end
   end
 
@@ -722,13 +799,15 @@ class ResumeModuleTest < Minitest::Test
     end
   end
 
-  def test_text_export_prints_addresses_that_are_not_already_visible
+  def test_text_export_keeps_labels_without_exposing_addresses
     with_model do |model, _path, directory|
       output, _stdout, stderr, status = render_model(model, directory, "--include-text")
       assert status.success?, stderr
       text = File.read(File.join(output, "resume.txt"))
-      assert_includes text, "Data Importer (https://play.example.test/fixture)"
-      refute_includes text, "engineer@example.test (mailto:"
+      assert_includes text, "Email | Portfolio"
+      refute_includes text, "mailto:engineer@example.test"
+      refute_includes text, "https://example.test/casey"
+      refute_includes text, "https://play.example.test/fixture"
     end
   end
 
