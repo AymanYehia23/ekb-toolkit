@@ -426,6 +426,21 @@ domain breadth, the client-facing work that leaves no Git trace, the
 specialization the whole document supports. Do not repeat a fact a selected
 bullet already carries.
 
+Before selecting the final wording, compare three private directions: a
+technical/engineering summary, a technical-plus-product summary, and a broad
+professional-brand summary. Judge each by what it communicates in the first few
+seconds, the strength of its evidence, and what it hides or dilutes. Store only
+the selected summary in the resume model unless the user asked to see the
+alternatives.
+
+The first two sentences must communicate a technical thesis rather than a
+technology inventory. If confirmed client activity is included, translate it
+into its supported engineering meaning: understanding operational context,
+refining requirements or feature decisions, translating needs into technical
+work, and carrying the result through delivery. Do not preserve a weak list of
+meetings and demos, and do not invent a commercial result or formal product
+title.
+
 Write four to six complete sentences within the presentation policy's 90-word
 ceiling. Use separate sourced items when sentences rely on different records so
 the provenance remains auditable. A useful order is: supported target-facing

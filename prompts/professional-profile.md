@@ -70,7 +70,41 @@ Tier is about evidentiary weight, not enthusiasm.
 **Do not invent a strength to round out a picture.** A portfolio with two
 signature strengths and nothing else is an accurate portfolio.
 
-## 3. Derive the career map
+## 3. Derive the professional brand and summary strategy
+
+Determine what kind of engineer the complete evidence actually shows. This is
+selection, not a compressed inventory of every project.
+
+Write `resume_summary_strategy` with:
+
+- `master_brand` — the supported professional identity, primary technical
+  specialization, and the few differentiators that recur strongly enough to
+  survive a short recruiter scan;
+- `master_resume` — what a general summary should lead with, which scale or
+  delivery proof is worth the space, and which true details belong lower in the
+  document;
+- `targeted_resume` — how targeting may narrow or reorder that identity without
+  inflating a small exposure;
+- `venue_carryover` — what must remain consistent across resume, profile,
+  portfolio, cover-letter, and interview-introduction variants.
+
+Start from confirmed role nouns, timeline, skills, and responsibilities in
+`profile.yaml`, then weigh recurring project evidence. Never infer a seniority
+label from technical depth or project volume. Express technical strength as a
+coherent thesis, such as architecture plus a distinctive integration context,
+not as a package inventory.
+
+Look for the professional meaning behind activities. Confirmed requirements
+meetings, feature discussions, and demos may show the ability to understand an
+operating problem, translate it into product and technical decisions, and carry
+the result through delivery. They do not create a product title, commercial
+outcome, or leadership claim.
+
+Store the strategy, not a polished reusable paragraph. Exact prose is generated
+for each venue, and every public clause still needs citable profile facts or
+eligible curated records.
+
+## 4. Derive the career map
 
 Place every curated project under exactly one context: an employer, independent
 work, or academic work. This is what stops a personal project drifting into
@@ -79,7 +113,7 @@ employment history in a generated resume.
 Every project must appear exactly once, and the map must agree with
 `profile.yaml` `experience[].projects`. `scripts/ekb check` enforces both.
 
-## 4. Derive standing constraints
+## 5. Derive standing constraints
 
 This is the most valuable section and the one most likely to be skipped.
 
@@ -102,7 +136,7 @@ visible across projects:
 Every constraint states its reason. A constraint with no reason gets removed by
 someone six months from now who cannot tell whether it still applies.
 
-## 5. Character
+## 6. Character
 
 Recurring working traits, each with the record IDs that show them. Traits are
 the hardest thing here to keep honest, because every adjective sounds true.
@@ -111,12 +145,15 @@ The test: **name the records where the trait is visible, and name the projects
 where it is not.** A trait that cannot fail this test is a compliment, not an
 observation.
 
-## 6. Scoped mode
+## 7. Scoped mode
 
 With `SCOPE=project:<name>`, weigh only that project into the existing profile:
 
 - update `current_coverage` and note what the project added, or that it added
   nothing;
+- amend `resume_summary_strategy` only when the project materially changes the
+  durable professional identity or its evidence weighting; otherwise record
+  that the strategy was tested and stayed unchanged;
 - amend only the strengths, constraints, and career map entries it touches;
 - leave `validation_basis` recording the last FULL derivation, and do not
   rewrite it.
@@ -124,7 +161,7 @@ With `SCOPE=project:<name>`, weigh only that project into the existing profile:
 A project that adds no new capability is a normal outcome. Record that it was
 weighed and what it did not change, so the next pass does not re-litigate it.
 
-## 7. Verify and log
+## 8. Verify and log
 
 Check mechanically that every record ID cited here exists in a curated file,
 that no superseded record is still cited, that every curated project appears in

@@ -43,6 +43,23 @@ validation_basis:
     of this file. Never candidate files, never generated artifacts, never a
     target repository.
 
+# --- Summary positioning ----------------------------------------------------
+#
+# Stable selection strategy shared by resume summaries, profile headlines,
+# portfolio introductions, cover letters, and interview openers. This stores
+# the professional brand and weighting rules, never a paragraph to paste and
+# never a citable fact. Every generated clause still cites profile.yaml or a
+# curated project record.
+resume_summary_strategy:
+  master_brand: null
+  master_resume: null
+  targeted_resume: >-
+    Begin with the target's supported discipline and strongest required
+    capabilities. Narrow unrelated fields without inflating thin evidence.
+  venue_carryover: >-
+    Preserve the same professional identity across venues while regenerating
+    wording, length, and emphasis for each one.
+
 # --- Strengths --------------------------------------------------------------
 #
 # A capability that RECURS across projects and that the evidence supports at a

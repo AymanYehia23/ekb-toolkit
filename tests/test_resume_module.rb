@@ -141,6 +141,18 @@ class ResumeModuleTest < Minitest::Test
     end
   end
 
+  def test_rejects_forbidden_ai_style_summary_phrase
+    with_model do |model, path, _directory|
+      model["summary"][0]["text"] = model["summary"][0]["text"].sub(
+        "contributing to", "highly skilled in"
+      )
+      _stdout, stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes stderr, "forbidden AI-style wording"
+      assert_includes stderr, "highly skilled"
+    end
+  end
+
   def test_rejects_an_overlong_achievement_bullet
     with_model do |model, path, _directory|
       model["experience"][0]["bullets"][0]["text"] =
