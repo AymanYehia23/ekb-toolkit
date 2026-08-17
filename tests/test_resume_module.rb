@@ -51,17 +51,22 @@ class ResumeModuleTest < Minitest::Test
   end
 
   def summary_text(word_count, sentences: 4)
-    raise ArgumentError, "summary needs at least two words per sentence" if word_count < sentences * 2
+    lead = %w[Software Engineer with 3+ years of experience.]
+    tail_count = sentences - 1
+    raise ArgumentError, "summary needs a lead and at least two words per remaining sentence" \
+      if tail_count < 1 || word_count < lead.length + tail_count * 2
 
-    words = ["Software", "Engineer"] + Array.new(word_count - 3, "Ruby") + ["PostgreSQL"]
-    base, remainder = word_count.divmod(sentences)
+    remaining = word_count - lead.length
+    words = Array.new(remaining - 1, "Ruby") + ["PostgreSQL"]
+    base, remainder = remaining.divmod(tail_count)
     cursor = 0
-    Array.new(sentences) do |index|
+    tail = Array.new(tail_count) do |index|
       size = base + (index < remainder ? 1 : 0)
       sentence = words.slice(cursor, size).join(" ") + "."
       cursor += size
       sentence
-    end.join(" ")
+    end
+    ([lead.join(" ")] + tail).join(" ")
   end
 
   # Office Open XML is UTF-8. Reading it with the shell's default external
@@ -417,6 +422,27 @@ class ResumeModuleTest < Minitest::Test
     end
   end
 
+  def test_summary_requires_years_of_experience
+    with_model do |model, path, _directory|
+      model["summary"][0]["text"] = model["summary"][0]["text"].sub(
+        " with 3+ years of experience", ""
+      )
+      _stdout, stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes stderr, "exactly one N+ years of experience figure"
+    end
+  end
+
+  def test_summary_rejects_years_that_exceed_the_confirmed_timeline
+    with_model do |model, path, _directory|
+      model["summary"][0]["text"] = model["summary"][0]["text"].sub("3+ years", "4+ years")
+      stdout, _stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "),
+                      "confirmed non-overlapping profile timeline supports 3+"
+    end
+  end
+
   def test_summary_rejects_more_than_ninety_words
     with_model do |model, path, _directory|
       model["summary"][0]["text"] = summary_text(91)
@@ -536,6 +562,7 @@ class ResumeModuleTest < Minitest::Test
         "title" => "Developer", "start" => "2020-01", "end" => "2021-01",
         "employment_type" => "full-time", "projects" => [], "kind" => "user-stated"
       }
+      model["summary"][0]["text"] = model["summary"][0]["text"].sub("3+ years", "4+ years")
       profile_path = File.join(directory, "profile.yaml")
       File.write(profile_path, YAML.dump(profile))
       write_model(path, model)
@@ -553,6 +580,7 @@ class ResumeModuleTest < Minitest::Test
         "title" => "Developer", "start" => "2020-01", "end" => "2021-01",
         "employment_type" => "full-time", "projects" => [], "kind" => "user-stated"
       }
+      model["summary"][0]["text"] = model["summary"][0]["text"].sub("3+ years", "4+ years")
       profile["career_breaks"] = [{
         "id" => "profile-career-break-001", "label" => "Career break",
         "start" => "2021-02", "end" => "2021-12", "details" => [], "kind" => "user-stated"
@@ -563,6 +591,25 @@ class ResumeModuleTest < Minitest::Test
       stdout, stderr, status = run_tool("validate", "--model", path, "--profile", profile_path, "--projects", PROJECTS)
       assert status.success?, stderr
       refute_includes JSON.parse(stdout)["warnings"].join(" "), "unexplained gap"
+    end
+  end
+
+  def test_experience_years_count_overlapping_roles_once
+    with_model do |model, path, directory|
+      profile = YAML.safe_load(File.read(PROFILE), permitted_classes: [Date])
+      profile["experience"] << {
+        "id" => "profile-experience-002", "organization" => "Overlapping Systems",
+        "title" => "Consultant", "start" => "2023-01", "end" => "2024-12",
+        "employment_type" => "part-time", "projects" => [], "kind" => "user-stated"
+      }
+      profile_path = File.join(directory, "profile.yaml")
+      File.write(profile_path, YAML.dump(profile))
+      write_model(path, model)
+      stdout, stderr, status = run_tool(
+        "validate", "--model", path, "--profile", profile_path, "--projects", PROJECTS
+      )
+      assert status.success?, "#{stderr}\n#{stdout}"
+      assert JSON.parse(stdout)["valid"]
     end
   end
 
@@ -770,7 +817,7 @@ class ResumeModuleTest < Minitest::Test
     with_model do |model, path, _directory|
       model["summary"] = [{
         "text" => summary_text(40),
-        "source_ref" => "stronger-001"
+        "source_refs" => ["stronger-001", "profile-experience-001"]
       }]
       stdout, stderr, status = validate(model, path)
       assert status.success?, stderr
@@ -996,7 +1043,7 @@ class ResumeModuleTest < Minitest::Test
       }]
       model["summary"] = [{
         "text" => summary_text(40),
-        "source_ref" => "stronger-001"
+        "source_refs" => ["stronger-001", "profile-experience-001"]
       }]
       model["skills"] = [{"name" => "Technologies", "items" => [
         {"text" => "Ruby", "source_ref" => "stronger-001"}

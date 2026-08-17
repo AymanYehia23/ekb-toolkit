@@ -349,6 +349,9 @@ def sourced_list(value: Any, path: str, minimum: int = 0) -> list[dict[str, str]
 SUMMARY_DEFAULT_WORDS = 90
 SUMMARY_MINIMUM_SENTENCES = 4
 SUMMARY_MAXIMUM_SENTENCES = 6
+SUMMARY_EXPERIENCE_PATTERN = re.compile(
+    r"\b(\d+)\+\s+years?\s+of\s+experience\b", flags=re.IGNORECASE
+)
 
 
 def summary_limit(model: dict[str, Any], policy: dict[str, Any] | None = None) -> int:
@@ -585,6 +588,26 @@ def validate_model(model: dict[str, Any], policy: dict[str, Any] | None = None) 
                 "summary must contain "
                 f"{minimum_sentences} to {maximum_sentences} complete sentences; "
                 f"found {sentence_count}"
+            )
+        claims: list[tuple[dict[str, Any], re.Match[str]]] = []
+        for item in summary:
+            claims.extend((item, match) for match in SUMMARY_EXPERIENCE_PATTERN.finditer(text_of(item)))
+        if len(claims) != 1:
+            raise ResumeError(
+                "summary must contain exactly one N+ years of experience figure"
+            )
+        claim_item, claim_match = claims[0]
+        first_sentence_end = re.search(r"[.!?]", summary_text)
+        if first_sentence_end and claim_match.group(0) not in summary_text[: first_sentence_end.end()]:
+            raise ResumeError("the years-of-experience figure must appear in the first summary sentence")
+        refs = (
+            [claim_item.get("source_ref")]
+            if claim_item.get("source_ref")
+            else list(claim_item.get("source_refs") or [])
+        )
+        if not any(str(ref).startswith("profile-experience-") for ref in refs):
+            raise ResumeError(
+                "the years-of-experience figure must cite at least one profile-experience source"
             )
     if target["mode"] == "job-targeted":
         lead = target.get("summary_lead")

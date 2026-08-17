@@ -408,8 +408,14 @@ relocation or work authorization only when applicable and explicitly recorded.
 When the evidence cannot support one of those topics, use another supported
 technical dimension instead. Never invent a sentence merely to fill the shape.
 
-Do not state a years-of-experience figure. The Experience dates already do that
-work, and a stated figure only invites the reader to check the arithmetic.
+The first sentence must include `N+ years of experience`, cited to at least one
+`profile-experience-*` source. Calculate `N` from the complete confirmed profile
+timeline as of the application date: merge overlapping employment intervals,
+exclude gaps, count a recorded end month before the application month as worked,
+exclude the still-partial application month, and round the total down to
+completed years. Never estimate, round up, or calculate from only the roles
+selected for the page. The source checker repeats this calculation and rejects
+drift.
 
 ### Named engagements inside a role
 

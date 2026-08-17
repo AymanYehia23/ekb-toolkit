@@ -160,7 +160,7 @@
     },
     "summary": {
       "type": "array",
-      "description": "Four to six complete sentences in total for a job-targeted resume. Split sentences into separate sourced items when they rely on different evidence.",
+      "description": "Four to six complete sentences in total for a job-targeted resume. The first sentence must include N+ years of experience derived from confirmed employment dates and cite at least one profile-experience source. Split sentences into separate sourced items when they rely on different evidence.",
       "items": {
         "allOf": [
           {

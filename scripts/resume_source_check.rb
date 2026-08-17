@@ -698,7 +698,7 @@ end
 def numeric_tokens(value)
   # Treat a quantifier as one semantic unit. This avoids accepting "4" merely
   # because the source contains "40", while allowing common CV formats.
-  value.to_s.scan(/(?<![A-Za-z0-9])(?:[$€£]\s*)?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:\s?[KMBkmb]\+?(?![A-Za-z]))?(?:\s?%|\s+(?:hours?|days?|weeks?|months?|years?|users?|customers?|people|files?|modules?|screens?|projects?|devices?|formats?|team\s+members?))?/)
+  value.to_s.scan(/(?<![A-Za-z0-9])(?:[$€£]\s*)?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:\s?[KMBkmb]\+?(?![A-Za-z]))?\+?(?:\s?%|\s+(?:hours?|days?|weeks?|months?|years?|users?|customers?|people|files?|modules?|screens?|projects?|devices?|formats?|team\s+members?))?/)
     .map { |token| token.strip }
     .reject(&:empty?)
 end
@@ -979,6 +979,41 @@ def month_index(value)
   match[1].to_i * 12 + (match[2] || "1").to_i - 1
 end
 
+def confirmed_experience_years(profile, model)
+  application = model["application_id"].to_s.match(/\A(\d{4})-(\d{2})-/)
+  return nil unless application
+  month = application[2].to_i
+  return nil unless month.between?(1, 12)
+  as_of = application[1].to_i * 12 + month - 1
+
+  intervals = Array(profile["experience"]).filter_map do |entry|
+    next unless entry.is_a?(Hash)
+    start_month = month_index(entry["start"])
+    next unless start_month && start_month < as_of
+    finish = if entry["end"].to_s == "present"
+               as_of
+             else
+               recorded_end = month_index(entry["end"])
+               recorded_end && recorded_end + 1
+             end
+    next unless finish
+    finish = [finish, as_of].min
+    next unless finish > start_month
+    [start_month, finish]
+  end.sort_by(&:first)
+  return 0 if intervals.empty?
+
+  merged = []
+  intervals.each do |start_month, finish|
+    if merged.empty? || start_month > merged[-1][1]
+      merged << [start_month, finish]
+    else
+      merged[-1][1] = [merged[-1][1], finish].max
+    end
+  end
+  merged.sum { |start_month, finish| finish - start_month } / 12
+end
+
 def timeline_warnings(profile)
   roles = Array(profile["experience"]).filter_map do |entry|
     next unless entry.is_a?(Hash)
@@ -1125,6 +1160,8 @@ collect_visible_items(model, visible_items, errors)
 errors << "resume model contains no sourced visible items" if visible_items.empty?
 
 internal_label = /\b(repo-verified|user-stated|inferred|source_ref|provisional inference)\b/i
+expected_experience_years = confirmed_experience_years(profile, model)
+experience_years_pattern = /\b(\d+)\+\s+years?\s+of\s+experience\b/i
 
 composed_items = 0
 
@@ -1168,6 +1205,13 @@ visible_items.each do |item|
     errors << "#{item['path']} overstates contributed source #{contributed.join(', ')}"
   end
 
+  experience_match = item["path"].match?(/\Aresume\.summary\[\d+\]\z/) &&
+                     text.match(experience_years_pattern)
+  if experience_match && expected_experience_years && experience_match[1].to_i != expected_experience_years
+    errors << "#{item['path']} states #{experience_match[1]}+ years of experience, but the " \
+              "confirmed non-overlapping profile timeline supports #{expected_experience_years}+"
+  end
+
   # Profile-backed text must be supported by the union of the cited entries, so
   # a composed line may draw wording from several confirmed facts at once.
   profile_sources = resolved.select { |(_ref, source)| source["origin"] == "profile" }
@@ -1183,6 +1227,9 @@ visible_items.each do |item|
   # figure that none of its sources states.
   supported_numbers = resolved.flat_map do |(_ref, source)|
     numeric_tokens(source["numeric_content"]).map { |token| canonical_numeric_token(token) }
+  end
+  if experience_match && expected_experience_years
+    supported_numbers << canonical_numeric_token("#{expected_experience_years}+ years")
   end
   numeric_tokens(text).uniq.each do |number|
     canonical = canonical_numeric_token(number)

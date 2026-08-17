@@ -8,7 +8,7 @@
     "contact": [{"text": "Email", "source_ref": "profile-contact-001", "url": "mailto:engineer@example.test"}],
     "links": [{"text": "Portfolio", "source_ref": "profile-link-001", "url": "https://example.test/casey"}]
   },
-  "summary": [{"text": "Software Engineer contributing to data import systems with Ruby. The pipeline handles multiple data formats. Ruby and PostgreSQL underpin the implementation. Contribution covers the import paths and persistence layer.", "source_ref": "fixture-001"}],
+  "summary": [{"text": "Software Engineer with 3+ years of experience contributing to data import systems with Ruby. The pipeline handles multiple data formats. Ruby and PostgreSQL underpin the implementation. Contribution covers the import paths and persistence layer.", "source_refs": ["fixture-001", "profile-experience-001"]}],
   "experience": [{
     "organization": {"text": "Example Systems", "source_ref": "profile-experience-001"},
     "title": {"text": "Software Engineer", "source_ref": "profile-experience-001"},

@@ -54,12 +54,13 @@
     "maximum_override": 120,
     "minimum_sentences": 4,
     "maximum_sentences": 6,
-    "note": "Use four to six complete sentences with a 90-word ceiling. Cover the supported professional identity, relevant experience and expertise, career direction, and relocation or work-authorization context only when applicable and confirmed. The summary is the only place a cross-project fact can live, because a bullet describes one project. Do not pad a sentence or invent context to reach the minimum."
+    "experience_years": "required",
+    "note": "Use four to six complete sentences with a 90-word ceiling. The first sentence states N+ years of experience from the confirmed, non-overlapping employment timeline as of the application date. Cover the supported professional identity, relevant experience and expertise, career direction, and relocation or work-authorization context only when applicable and confirmed. The summary is the only place a cross-project fact can live, because a bullet describes one project. Do not pad a sentence or invent context to reach the minimum."
   },
   "page_length": {
     "one_page_through_years": 5,
     "page_maximum": 2,
-    "note": "Prefer one page for a confirmed career span of up to five years. A second page is available for longer careers when relevant evidence needs it; it is not a target and the renderer never invents or recalculates a years-of-experience claim."
+    "note": "Prefer one page for a confirmed career span of up to five years. A second page is available for longer careers when relevant evidence needs it; it is not a target. Years-of-experience wording is recalculated from the confirmed profile timeline and validated separately."
   },
   "contact_hygiene": {
     "require_email": true,
