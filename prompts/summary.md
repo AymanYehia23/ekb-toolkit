@@ -59,6 +59,35 @@ Never read candidate files, generated artifacts, or target repositories.
 Do not repeat a fact a selected bullet already carries. Cite it once, in the
 place a reader reads first.
 
+## Compare before selecting
+
+Do not publish the first defensible draft. Test three distinct private
+directions before choosing the venue output:
+
+1. **Technical / engineering** — identity, architecture, performance,
+   integration, reliability, and production delivery.
+2. **Technical + product** — the technical core plus supported requirements,
+   client, product, or end-to-end delivery responsibility.
+3. **Broad professional brand** — the strongest general identity and meaningful
+   breadth, while keeping the primary specialization unmistakable.
+
+Compare what each communicates in the first few seconds, its strongest signal,
+and what it hides or dilutes. Select by information value and evidence weight,
+not by adjective strength. Output the alternatives only when the user asks for
+them; otherwise store only the selected venue artifact.
+
+The first two sentences should establish a technical thesis, not a keyword
+inventory. Name a technology when it changes the reader's understanding of the
+engineer's specialization. Group the rest as architecture, integration,
+performance, delivery, or another supported engineering capability.
+
+When client-facing evidence is confirmed, state what it demonstrates. Replace
+an activity list such as meetings, requirements, and demos with the supported
+engineering interpretation: understanding operational context, refining product
+or feature decisions, translating needs into technical work, or carrying the
+result through delivery. Never attach a deal, adoption, revenue, satisfaction,
+or formal product title that the sources do not support.
+
 Every summary opens with `N+ years of experience`, using the same conservative
 timeline calculation as `prompts/resume.md`: merge overlapping confirmed roles,
 exclude gaps, count through the venue's as-of date, and round down to completed
@@ -95,6 +124,21 @@ Beyond the mechanical rules:
 - vary sentence length. Three sentences of identical shape read as generated;
 - do not describe the reader's problem back to them;
 - do not claim enthusiasm. Nobody has ever been hired for asserting passion.
+
+Before delivery, read the result as a recruiter with no prior context:
+
+- Is the professional identity and strongest technical specialization clear in
+  five to ten seconds?
+- Does one specific, defensible signal distinguish this person from a generic
+  engineer in the same framework or discipline?
+- Does client or business context, when included, communicate engineering
+  judgment rather than a list of meetings?
+- Could any sentence describe thousands of candidates unchanged?
+- Is every clause sourced, every number worth its space, and every word free of
+  generic or recognizable AI-resume phrasing?
+
+Revise whenever the answer exposes a generic sentence, hidden specialization,
+unsupported claim, or unnecessary detail.
 
 ## Deliver
 
