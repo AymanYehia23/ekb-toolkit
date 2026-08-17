@@ -136,6 +136,27 @@ class ResumeModuleTest < Minitest::Test
     end
   end
 
+  def test_rejects_an_overlong_achievement_bullet
+    with_model do |model, path, _directory|
+      model["experience"][0]["bullets"][0]["text"] =
+        ((["word"] * 37).join(" ") + ".")
+      _stdout, stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes stderr, "contains 37 words; maximum is 36"
+    end
+  end
+
+  def test_rejects_a_vague_duty_opening
+    with_model do |model, path, _directory|
+      model["experience"][0]["bullets"][0]["text"] =
+        "Worked on a data import pipeline with Ruby and PostgreSQL."
+      _stdout, stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes stderr, "starts with vague duty wording"
+      assert_includes stderr, "worked on"
+    end
+  end
+
   def test_rejects_gameable_test_case_and_file_counts
     with_model do |model, path, _directory|
       model["experience"][0]["bullets"][0]["text"] =
@@ -243,7 +264,7 @@ class ResumeModuleTest < Minitest::Test
   def test_rejects_team_context_as_personal_claim
     with_model do |model, path, _directory|
       model["experience"][0]["bullets"][0] = {
-        "text" => "Worked on the product billing subsystem.",
+        "text" => "Contributed to the product billing subsystem.",
         "source_ref" => "fixture-team-001"
       }
       stdout, _stderr, status = validate(model, path)

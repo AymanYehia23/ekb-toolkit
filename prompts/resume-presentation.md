@@ -143,7 +143,11 @@ still applies. What the summary should SAY is in `prompts/resume.md`.
 
 **Bullets.** Roles stay reverse chronological. For a flat role: three bullets
 for current or highly relevant roles, one or two for older roles, four as the
-hard maximum.
+hard maximum. Each achievement bullet is one sentence, ends with terminal
+punctuation, and stays within `config/resume-policy.json`
+`bullet_quality.maximum_words`. Do not preserve an overlong sentence by
+shrinking the font or margins; select one idea and rewrite it at the right
+altitude.
 
 **Header.** Keep the confirmed name, professional personal email, phone number,
 readable professional-profile address, and location together at the top. Add

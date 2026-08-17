@@ -31,6 +31,7 @@ OptionParser.new do |parser|
   parser.on("--index FILE") { |value| options[:index] = value }
   parser.on("--shortlist FILE") { |value| options[:shortlist] = value }
   parser.on("--rubric FILE") { |value| options[:rubric] = value }
+  parser.on("--policy FILE") { |value| options[:policy] = value }
 end.parse!
 
 missing = %i[model profile projects].reject { |key| options[key] }
@@ -700,7 +701,17 @@ end
 
 # A composed claim past this many sources stops being auditable by a reader who
 # wants to check it, which is the property that makes composition safe at all.
-MAX_COMPOSED_SOURCES = 4
+# Read the shared policy so bank validation and final-resume validation cannot
+# drift when a workspace intentionally overrides the default.
+MAX_COMPOSED_SOURCES = begin
+  policy = options[:policy] && File.file?(options[:policy]) ? JSON.parse(read_utf8(options[:policy])) : {}
+  maximum = Integer(policy.dig("bullet_quality", "maximum_sources") || 4)
+  raise ArgumentError, "bullet_quality.maximum_sources must be positive" if maximum < 1
+  maximum
+rescue JSON::ParserError, ArgumentError => e
+  warn "cannot read bullet source policy: #{e.message}"
+  exit 2
+end
 
 PROSE_SECTIONS = %w[resume.summary resume.experience resume.projects].freeze
 

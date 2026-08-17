@@ -21,8 +21,8 @@ Verifies the invariants that no single procedure owns, because they span files:
      link_status.
  12. professional-profile.yaml states its current coverage, and that coverage
      matches the number of curated projects.
- 13. Generated banks the evidence index quotes still cite live records, and every
-     curated project has one.
+ 13. Generated banks the evidence index quotes still cite live, eligible
+     records, satisfy the public bullet policy, and exist for every project.
 
 Exit 0 = clean, 1 = problems found. Nothing is written or modified.
 Run:  ekb check
@@ -36,7 +36,8 @@ import sys
 import yaml
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from ekb_paths import workspace_root  # noqa: E402
+from bullet_quality import bullet_text_findings, parse_bullet_bank  # noqa: E402
+from ekb_paths import load_config, workspace_root  # noqa: E402
 
 FAIL = []
 WARN = []
@@ -63,6 +64,7 @@ def main():
 
     # ---- load curated knowledge -------------------------------------------
     curated = {}      # project name -> set of record ids
+    record_meta = {}  # record id -> provenance and participation
     superseded = {}   # record id -> superseding id
     for path in sorted(glob.glob("projects/*.yaml")):
         if path.endswith(".candidates.yaml"):
@@ -75,6 +77,12 @@ def main():
         # legitimately cite one, so they belong in the known-id set.
         context_entries = data.get("project_context") or []
         curated[name] = {r["id"] for r in records} | {c["id"] for c in context_entries if c.get("id")}
+        for record in [*records, *context_entries]:
+            if record.get("id"):
+                record_meta[record["id"]] = {
+                    "kind": record.get("kind"),
+                    "involvement": record.get("involvement"),
+                }
         for r in records:
             if r.get("supersedes"):
                 superseded[r["supersedes"]] = r["id"]
@@ -288,11 +296,19 @@ def main():
     # and story titles out of artifacts/interview/, so those files are no longer
     # purely disposable: a stale one feeds stale prose into selection.
     #
-    # The dangerous cases are already contained. A phrasing carrying a number the
-    # record no longer supports, or involvement wording stronger than the record
-    # allows, is rejected by the resume source checker, and a phrasing for a
-    # deleted record is simply dropped when the index is rebuilt. What remains is
-    # friction and lost coverage, so these are warnings.
+    # A final resume has its own source checker, but weak generated wording should
+    # not enter the retrieval index in the first place. Apply the same objective
+    # bullet policy here for every development stack; the prompt remains
+    # responsible for the semantic Outcome > Impact > Scope > Activity judgement.
+    resume_policy = load_config("resume-policy.json")
+    bullet_policy = resume_policy.get("bullet_quality") or {}
+    maximum_bullets = int(bullet_policy.get("maximum_selected_per_project", 5))
+    maximum_sources = int(bullet_policy.get("maximum_sources", 4))
+    if maximum_bullets < 1:
+        fail("resume-policy bullet_quality.maximum_selected_per_project must be positive")
+    if maximum_sources < 1:
+        fail("resume-policy bullet_quality.maximum_sources must be positive")
+
     for kind in ("bullets", "interview"):
         for path in sorted(glob.glob(f"artifacts/{kind}/*.md")):
             project = os.path.basename(path)[: -len(".md")]
@@ -300,7 +316,8 @@ def main():
                 warn(f"artifacts/{kind}/{project}.md has no curated projects/{project}.yaml")
                 continue
             with open(path, encoding="utf-8") as fh:
-                cited = set(re.findall(r"<!--\s*src:\s*([a-z0-9_\-]+-\d{3})\s*-->", fh.read(), re.I))
+                artifact_text = fh.read()
+            cited = set(re.findall(r"<!--\s*src:\s*([a-z0-9_\-]+-\d{3})\s*-->", artifact_text, re.I))
             gone = sorted(cited - curated[project])
             if gone:
                 warn(
@@ -308,6 +325,47 @@ def main():
                     f"exist ({', '.join(gone[:3])}{', ...' if len(gone) > 3 else ''}); "
                     f"regenerate it (prompts/{kind}.md with PROJECT={project})"
                 )
+            if kind != "bullets":
+                continue
+
+            entries = parse_bullet_bank(artifact_text)
+            if len(entries) > maximum_bullets:
+                fail(
+                    f"{path} has {len(entries)} publishable bullets; "
+                    f"maximum is {maximum_bullets}"
+                )
+            for entry in entries:
+                location = f"{path}:{entry['line']}"
+                for finding in bullet_text_findings(entry["text"], resume_policy):
+                    fail(f"{location} {finding}")
+                for variant in entry["variants"]:
+                    for finding in bullet_text_findings(variant, resume_policy):
+                        fail(f"{location} variant {finding}")
+                sources = entry["sources"]
+                if not sources:
+                    fail(f"{location} has no source comment")
+                    continue
+                if len(sources) > maximum_sources:
+                    fail(
+                        f"{location} cites {len(sources)} sources; "
+                        f"maximum is {maximum_sources}"
+                    )
+                if len(set(sources)) != len(sources):
+                    fail(f"{location} repeats a source comment")
+                for source in sources:
+                    meta = record_meta.get(source)
+                    if meta is None:
+                        continue
+                    if meta.get("kind") not in {"repo-verified", "user-stated"}:
+                        fail(
+                            f"{location} cites ineligible kind {meta.get('kind')!r} "
+                            f"from {source}"
+                        )
+                    if meta.get("involvement") not in {"led", "implemented", "contributed"}:
+                        fail(
+                            f"{location} cites ineligible involvement "
+                            f"{meta.get('involvement')!r} from {source}"
+                        )
         missing = [p for p in sorted(curated) if not os.path.isfile(f"artifacts/{kind}/{p}.md")]
         if missing:
             warn(
