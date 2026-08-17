@@ -22,7 +22,7 @@ basis:
   projects: 2
   records: 8
   eligible_records: 8
-  records_with_curated_bullets: 0
+  records_with_curated_bullets: 7
   records_with_interview_stories: 3
   capabilities: 12
   profile_sources: 6
@@ -134,6 +134,7 @@ records:
   - best-evidence
   - measured
   - shipped
+  - curated-bullet
   - interview-story
   tags:
   - offline
@@ -144,6 +145,11 @@ records:
   cautions:
   - Profile-mode measurement on one mid-range Android device. It is not a release-mode figure and not
     a cross-device claim, so the number must travel with its context or not at all.
+  bullet: Reduced workout history frame build time from a measured 31 ms to 9 ms by virtualizing the list
+    and moving weekly aggregation off the build path, measured on the same mid-range Android device before
+    and after.
+  bullet_short: Cut workout history frame build time from 31 ms to 9 ms by virtualizing the list and moving
+    aggregation off the build path.
   story: Measuring before claiming
 - id: fittrack-001
   project: fittrack
@@ -157,6 +163,7 @@ records:
   - best-evidence
   - shipped
   - tested
+  - curated-bullet
   - interview-story
   tags:
   - architecture
@@ -168,6 +175,8 @@ records:
   cautions:
   - The stale read was reproduced in a test, not measured in production. No before and after timing exists,
     so comparative performance wording is not supported for this record.
+  bullet: Consolidated three overlapping local caches into a single repository-backed store, removing
+    the path by which a stale workout entry could survive a failed sync and reappear in history.
   story: The stale workout that came back
 - id: mealmate-002
   project: mealmate
@@ -181,6 +190,7 @@ records:
   - best-evidence
   - shipped
   - tested
+  - curated-bullet
   tags:
   - testing
   - ui-implementation
@@ -189,6 +199,8 @@ records:
   cautions:
   - Test coverage for one feature area. Do not present test counts as an achievement; describe the behaviors
     and failure paths covered instead.
+  bullet: Introduced widget and golden tests covering the cart's empty state, quantity limits, and the
+    promotion path that had produced two regressions, and wired them into the pull request pipeline.
 - id: mealmate-001
   project: mealmate
   project_rank: 2
@@ -200,6 +212,7 @@ records:
   signals:
   - best-evidence
   - shipped
+  - curated-bullet
   tags:
   - architecture
   - networking
@@ -209,6 +222,8 @@ records:
   cautions:
   - Shared feature. Feature-level wording is supported; the provider SDK integration itself was another
     engineer's work and must not be implied.
+  bullet: Contributed the checkout payment flow's server confirmation and network-drop recovery paths,
+    preventing completed charges from being recognized before backend verification.
 - id: fittrack-004
   project: fittrack
   project_rank: 1
@@ -220,6 +235,7 @@ records:
   signals:
   - led
   - shipped
+  - curated-bullet
   tags:
   - release-engineering
   - security
@@ -228,6 +244,8 @@ records:
   cautions:
   - Ownership is confirmed for the pipeline itself. The store listings and release approvals stayed with
     the product owner.
+  bullet: Set up the release pipeline that builds, signs, and uploads both platforms from CI, moving signing
+    material off developer machines into the CI secret store.
 - id: fittrack-002
   project: fittrack
   project_rank: 1
@@ -238,6 +256,7 @@ records:
   strength: 3.0
   signals:
   - shipped
+  - curated-bullet
   - interview-story
   tags:
   - architecture
@@ -248,6 +267,8 @@ records:
   cautions:
   - Single-device sync only. There is no multi-device conflict resolution and no server-side reconciliation,
     so wording must not imply distributed consistency work.
+  bullet: Built offline workout logging with local-first writes, a persisted replay queue, and a last-write-wins
+    resolution rule chosen over a field-level merge because a workout entry is small and immutable.
   story: Choosing last-write-wins on purpose
 - id: fittrack-005
   project: fittrack
@@ -260,6 +281,7 @@ records:
   signals:
   - shipped
   - tested
+  - curated-bullet
   tags:
   - localization
   - testing
@@ -269,6 +291,9 @@ records:
   cautions:
   - Shared work. Feature-level wording is supported; sole authorship is not. Translation itself was handled
     by an external vendor.
+  bullet: Contributed to right-to-left support across the app, replacing directional padding and icon
+    mirroring in fourteen widgets and adding golden tests for both directions rather than only enabling
+    the locale.
 - id: mealmate-003
   project: mealmate
   project_rank: 2

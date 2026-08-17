@@ -29,6 +29,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import KeepTogether, ListFlowable, ListItem, PageBreak, Paragraph, SimpleDocTemplate
 
+from bullet_quality import bullet_text_findings
 from ekb_paths import config_path
 
 
@@ -497,6 +498,28 @@ def validate_quantifier_quality(model: dict[str, Any], policy: dict[str, Any] | 
             )
 
 
+BULLET_TEXT_PATH = re.compile(
+    r"^(?:"
+    r"experience\[\d+\]\.bullets\[\d+\]|"
+    r"experience\[\d+\]\.engagements\[\d+\]\.bullets\[\d+\]|"
+    r"projects\[\d+\]\.details\[\d+\]"
+    r")\.text$"
+)
+
+
+def validate_bullet_quality(model: dict[str, Any], policy: dict[str, Any] | None) -> None:
+    """Enforce objective wording boundaries on achievement bullets only."""
+    if not policy:
+        return
+    bullet_policy = {"bullet_quality": policy.get("bullet_quality") or {}}
+    for path, text in public_resume_text(model):
+        if not BULLET_TEXT_PATH.fullmatch(path):
+            continue
+        findings = bullet_text_findings(text, bullet_policy)
+        if findings:
+            raise ResumeError(f"{path} {findings[0]}")
+
+
 def validate_model(model: dict[str, Any], policy: dict[str, Any] | None = None) -> None:
     required = {
         "schema_version", "application_id", "target", "layout", "basics", "experience",
@@ -814,6 +837,7 @@ def validate_model(model: dict[str, Any], policy: dict[str, Any] | None = None) 
             raise ResumeError(f"quantifier_review.{key} must be an array of non-empty strings")
     validate_writing_style(model, policy)
     validate_quantifier_quality(model, policy)
+    validate_bullet_quality(model, policy)
 
 
 def run_source_check(
@@ -822,6 +846,7 @@ def run_source_check(
     projects: Path,
     ranking: Path | None = None,
     index: Path | None = None,
+    policy: Path | None = None,
 ) -> dict[str, Any]:
     checker = Path(__file__).with_name("resume_source_check.rb")
     command = ["ruby", str(checker), "--model", str(model), "--profile", str(profile), "--projects", str(projects)]
@@ -836,6 +861,10 @@ def run_source_check(
     rubric = Path(config_path("review-rubric.json"))
     if rubric.is_file():
         command += ["--rubric", str(rubric)]
+    if policy is None:
+        policy = Path(config_path("resume-policy.json"))
+    if policy.is_file():
+        command += ["--policy", str(policy)]
     process = subprocess.run(
         command,
         text=True,
@@ -2077,7 +2106,9 @@ def render(args: argparse.Namespace) -> int:
         raise ResumeError(f"policy version must be {expected_policy} for this resume model")
     if len(set(policy.get("sizes_pt", {}).values())) > 2:
         raise ResumeError("ATS policy must use no more than two font sizes")
-    source_report = run_source_check(model_path, profile_path, projects_path, ranking_path)
+    source_report = run_source_check(
+        model_path, profile_path, projects_path, ranking_path, policy=policy_path
+    )
     if not source_report.get("valid"):
         raise ResumeError("source validation failed:\n- " + "\n- ".join(source_report.get("errors", [])))
 
@@ -2235,7 +2266,13 @@ def validate(args: argparse.Namespace) -> int:
     policy = load_json(policy_path)
     validate_model(model, policy)
     ranking_path = Path(args.ranking).resolve() if args.ranking else profile_path.with_name("project-ranking.yaml")
-    report = run_source_check(model_path, profile_path, Path(args.projects).resolve(), ranking_path)
+    report = run_source_check(
+        model_path,
+        profile_path,
+        Path(args.projects).resolve(),
+        ranking_path,
+        policy=policy_path,
+    )
     print(json.dumps(report, indent=2))
     return 0 if report.get("valid") else 1
 

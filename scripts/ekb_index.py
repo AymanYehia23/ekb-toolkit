@@ -35,6 +35,7 @@ except ImportError:  # pragma: no cover
     sys.exit("PyYAML is required: pip install pyyaml")
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from bullet_quality import bullet_text_findings, parse_bullet_bank  # noqa: E402
 from ekb_paths import workspace_root, load_config  # noqa: E402
 
 ROOT = workspace_root()
@@ -173,8 +174,10 @@ def normalize_punctuation(text: str) -> str:
 
 
 SRC_MARKER = re.compile(r"<!--\s*src:\s*([a-z0-9_\-]+-\d{3})\s*-->", re.I)
-VARIANT_MARKER = re.compile(r"<!--\s*variant[^:]*:\s*(.+?)-->", re.I | re.S)
-NOT_SELECTED_HEADING = re.compile(r"^#{2,6}\s*.*not\s+selected", re.I | re.M)
+
+
+class BulletQualityError(ValueError):
+    """A public bullet bank is unsafe to lift into the retrieval index."""
 
 
 def collect_curated_bullets(root: str) -> dict:
@@ -192,37 +195,50 @@ def collect_curated_bullets(root: str) -> dict:
     record ever disagree, the record wins and the bank should be regenerated.
     """
     bullets: dict[str, dict] = {}
+    policy = load_config("resume-policy.json")
+    quality = policy.get("bullet_quality") or {}
+    maximum_bullets = int(quality.get("maximum_selected_per_project", 5))
+    maximum_sources = int(quality.get("maximum_sources", 4))
     for path in sorted(glob.glob(os.path.join(root, "artifacts", "bullets", "*.md"))):
         with open(path, encoding="utf-8") as handle:
             text = handle.read()
-        # Everything below a "Not selected" heading is a rejection note, not a
-        # usable bullet.
-        cut = NOT_SELECTED_HEADING.search(text)
-        if cut:
-            text = text[: cut.start()]
-
-        # Split into top-level list items; a bullet runs until the next one.
-        blocks = re.split(r"\n(?=-\s)", text)
-        for block in blocks:
-            refs = SRC_MARKER.findall(block)
+        entries = parse_bullet_bank(text)
+        if SRC_MARKER.search(text) and not entries:
+            raise BulletQualityError(
+                f"{path} cites records but has no parseable top-level Markdown bullets"
+            )
+        if len(entries) > maximum_bullets:
+            raise BulletQualityError(
+                f"{path} has {len(entries)} publishable bullets; maximum is {maximum_bullets}"
+            )
+        for entry in entries:
+            location = f"{path}:{entry['line']}"
+            findings = bullet_text_findings(entry["text"], policy)
+            if findings:
+                raise BulletQualityError(f"{location} {findings[0]}")
+            for variant in entry["variants"]:
+                findings = bullet_text_findings(variant, policy)
+                if findings:
+                    raise BulletQualityError(f"{location} variant {findings[0]}")
+            if not entry["sources"]:
+                raise BulletQualityError(f"{location} has no source comment")
+            if len(entry["sources"]) > maximum_sources:
+                raise BulletQualityError(
+                    f"{location} cites {len(entry['sources'])} sources; maximum is {maximum_sources}"
+                )
+        for parsed in entries:
+            refs = parsed["sources"]
             # A bullet citing two records cannot be used under the one-source
             # contract, so it is not offered as a phrasing for either.
             if len(set(refs)) != 1:
                 continue
             record_id = refs[0]
-            variant = VARIANT_MARKER.search(block)
-            body = SRC_MARKER.sub("", block)
-            body = VARIANT_MARKER.sub("", body)
-            body = re.sub(r"<!--.*?-->", "", body, flags=re.S)
-            body = body.strip()
-            if body.startswith("-"):
-                body = body[1:]
-            body = " ".join(body.split())
+            body = parsed["text"]
             if not body or len(body) < 40:
                 continue
             entry = {"bullet": normalize_punctuation(body)}
-            if variant:
-                short = " ".join(variant.group(1).split()).strip()
+            if parsed["variants"]:
+                short = parsed["variants"][0]
                 if short:
                     entry["bullet_short"] = normalize_punctuation(short)
             bullets[record_id] = entry
@@ -639,7 +655,11 @@ def main() -> int:
     parser.add_argument("--stdout", action="store_true", help="print instead of writing")
     args = parser.parse_args()
 
-    index = build(args.root)
+    try:
+        index = build(args.root)
+    except (BulletQualityError, TypeError, ValueError) as exc:
+        print(f"cannot build evidence index: {exc}", file=sys.stderr)
+        return 1
     rendered = dump(index)
     out_dir = os.path.join(args.root, "index")
     out_path = os.path.join(out_dir, "evidence-index.yaml")

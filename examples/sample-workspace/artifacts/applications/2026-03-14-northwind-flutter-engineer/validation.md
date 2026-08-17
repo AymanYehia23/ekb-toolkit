@@ -7,14 +7,14 @@
 - Recommended attachment: `Sam_Rivera_Flutter_Engineer_CV.pdf`
 - Selected sources: fittrack-001, fittrack-002, fittrack-003, fittrack-004, fittrack-005, mealmate-001, mealmate-002, profile-contact-001, profile-contact-002, profile-education-001, profile-eligibility-002, profile-eligibility-003, profile-experience-001, profile-experience-002, profile-identity-001, profile-language-001, profile-language-002, profile-link-001, profile-link-002, profile-responsibility-001, profile-responsibility-002, profile-skill-001, profile-skill-002, profile-skill-003, profile-skill-004
 - Hyperlinks: auto (7 linked items; #0563C1, underlined)
-- Emphasis: matched-requirements (21 terms, 19 applied)
+- Emphasis: matched-requirements (21 terms, 18 applied)
 - Project evidence used anywhere: fittrack, mealmate (ranks 1, 2)
 - Named in Selected Projects: fittrack, mealmate (ranks 1, 2)
 - Requirement coverage: 8 demonstrated, 1 stated, 2 unsupported
 - Selection score: 95/100 (rubric v1; 8 scoreable required requirements, 1 excluded as genuine gaps)
   - required_coverage 100, critical_demonstrated 100, strongest_evidence_used 75, decisions_recorded 100
 - PDF pages: 1
-- Content fill by page: 73.0%
+- Content fill by page: 71.5%
 - DOCX tables: 0
 - DOCX images/shapes: 0
 - Extraction/order errors: 0
@@ -50,5 +50,5 @@ Keyword gap (2 terms, 0 fixable from existing evidence). A reviewer's missing-ke
 - Header has no phone number; add one only from confirmed profile data
 - Language entry 1 has no CEFR level (A1-C2); preserve the recorded proficiency unless the user confirms a CEFR mapping
 - Language entry 2 has no CEFR level (A1-C2); preserve the recorded proficiency unless the user confirms a CEFR mapping
-- Single-page resume is underfilled: content uses 73.0% of printable height, below the 84.0% minimum; add target-relevant Selected Projects evidence or another distinct project
-- 17 emphasized fragments across 8 bullets reads as heavily bolded; reduce the term set
+- Single-page resume is underfilled: content uses 71.5% of printable height, below the 84.0% minimum; add target-relevant Selected Projects evidence or another distinct project
+- 16 emphasized fragments across 8 bullets reads as heavily bolded; reduce the term set

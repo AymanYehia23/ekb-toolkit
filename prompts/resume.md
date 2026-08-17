@@ -506,6 +506,36 @@ failure model. Two payment integrations are not redundant merely because both
 are payments. Cut repeated skill labels before removing distinct implementation
 evidence.
 
+### The bullet quality gate
+
+Apply `config/resume-policy.json` `bullet_quality` to every Experience and
+Selected Projects bullet, whether it came from a curated bank or was drafted for
+this application. This standard is identical across mobile, web, backend, data,
+desktop, infrastructure, embedded, and developer-tooling work.
+
+Select evidence in **Outcome > Impact > Scope > Activity** order:
+
+- outcome means a supported measured or observed change;
+- impact means a supported consequence for a user, product, operation,
+  reliability boundary, delivery process, or organization;
+- scope means a materially broad workflow, system boundary, integration,
+  migration, or reusable capability;
+- activity is implementation with no demonstrated consequence or meaningful
+  scope and loses first when space is limited.
+
+Write one achievement per sentence. Lead with the delivered or changed
+capability, then its verified consequence or meaningful scope, and keep only the
+technical proof that distinguishes the work. Do not lead with a framework, turn
+a record into a comma-separated inventory, or force unsupported impact wording.
+A neutral structural result is preferable to a vague claim that something was
+"better" or "faster."
+
+Every bullet must be independently understandable, end with terminal
+punctuation, fit the configured word limit, avoid vague duty openings, and cite
+no more than the configured maximum number of independently eligible sources.
+If a bullet cannot answer what capability, constraint, or result would be
+missing without the work, replace it with stronger evidence or cut it.
+
 ### The quantifier gate
 
 Scan selected evidence for verified counts, time, workload, users, money, and
@@ -530,7 +560,9 @@ covered. The same applies to counts of files, commits, and lines. A
 Before rendering, do one recruiter-style pass. Replace vague duty descriptions
 with supported engineering specifics, remove buzzwords and unsupported
 adjectives, vary repeated openings, normalize grammar and terminal punctuation,
-and use any stronger verified detail that was missed.
+and use any stronger verified detail that was missed. Re-run the bullet quality
+gate after any length-driven rewrite; shortening must not turn an achievement
+back into an activity list or drop the wording that carries its consequence.
 
 This pass may improve wording and selection. **It may not create evidence.**
 
