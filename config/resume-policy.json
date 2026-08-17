@@ -66,7 +66,7 @@
     "require_email": true,
     "recommend_phone": true,
     "recommend_profile_link": true,
-    "note": "The validation report flags missing contact categories but does not invent them. Use a professional personal email address; do not use a previous employer address. Location and work authorization belong in the header only when relevant and confirmed in profile.yaml."
+    "note": "The confirmed professional title renders between the name and contact row. The validation report flags missing contact categories but does not invent them. Use a professional personal email address; do not use a previous employer address. Location and work authorization belong in the header only when relevant and confirmed in profile.yaml."
   },
   "mobility": {
     "placement": "header-below-contact",

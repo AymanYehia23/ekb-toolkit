@@ -19,6 +19,14 @@ identity:
   value: Your Name
   kind: user-stated
 
+# The stable professional title shown directly below your name in every resume.
+# Keep this independent of a job posting: targeting may change the summary lead,
+# but it must not silently rewrite your confirmed header identity.
+professional_title:
+  id: profile-title-001
+  value: Software Engineer
+  kind: user-stated
+
 # `label` is the visible text in a generated document. `url` is the hyperlink
 # attached to it. Every hyperlinked contact uses a short human-readable label;
 # the literal address stays in `value` and `url`, never in the visible label.

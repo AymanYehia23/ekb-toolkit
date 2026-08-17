@@ -167,6 +167,7 @@
       "additionalProperties": false,
       "required": [
         "name",
+        "title",
         "contact",
         "links",
         "mobility"
@@ -174,6 +175,10 @@
       "properties": {
         "name": {
           "$ref": "#/$defs/sourcedText"
+        },
+        "title": {
+          "$ref": "#/$defs/sourcedText",
+          "description": "Confirmed stable professional title rendered on its own line immediately below the name. Must cite profile.professional_title."
         },
         "contact": {
           "type": "array",

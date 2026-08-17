@@ -155,9 +155,11 @@ punctuation, and stays within `config/resume-policy.json`
 shrinking the font or margins; select one idea and rewrite it at the right
 altitude.
 
-**Header.** Keep the confirmed name, professional personal email, phone number,
-readable professional-profile address, and location together at the top. On its
-own centered line immediately below the contact row, render `basics.mobility`
+**Header.** Render the confirmed `basics.title` on its own centered line
+immediately below the confirmed name. Keep the professional personal email,
+phone number, readable professional-profile address, and location together in
+the contact row below the title. On its own centered line immediately below the
+contact row, render `basics.mobility`
 for every master resume and every job whose `target.location_scope` is
 `outside-country`. Use a concise phrasing from the profile relocation entry,
 such as `Open to relocation.` Prefer a confirmed destination-specific phrasing

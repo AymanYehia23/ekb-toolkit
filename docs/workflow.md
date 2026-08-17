@@ -21,7 +21,7 @@ Then, in your agent:
 Follow prompts/profile.md
 ```
 
-Twenty minutes. You will be asked for a name, one contact method, your
+Twenty minutes. You will be asked for a name, professional title, one contact method, your
 employment timeline, and which projects belong to which employer. Everything
 else is optional.
 

@@ -113,6 +113,10 @@ class ResumeCoverageTest < Minitest::Test
       id: profile-identity-001
       value: Test Person
       kind: user-stated
+    professional_title:
+      id: profile-title-001
+      value: Mobile Engineer
+      kind: user-stated
     contact:
       - id: profile-contact-001
         type: email
@@ -179,6 +183,7 @@ class ResumeCoverageTest < Minitest::Test
       "target" => {"mode" => "job-targeted", "summary_lead" => "Mobile Engineer"},
       "basics" => {
         "name" => {"text" => "Test Person", "source_ref" => "profile-identity-001"},
+        "title" => {"text" => "Mobile Engineer", "source_ref" => "profile-title-001"},
         "contact" => [{"text" => "test@example.com", "source_ref" => "profile-contact-001"}]
       },
       "summary" => [],

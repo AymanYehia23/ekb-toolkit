@@ -608,9 +608,10 @@ def validate_model(model: dict[str, Any], policy: dict[str, Any] | None = None) 
         raise ResumeError("layout.page_break_before is only valid when page_target is 2")
 
     basics = model["basics"]
-    if not isinstance(basics, dict) or set(basics) != {"name", "contact", "links", "mobility"}:
-        raise ResumeError("basics must contain exactly name, contact, links, and mobility")
+    if not isinstance(basics, dict) or set(basics) != {"name", "title", "contact", "links", "mobility"}:
+        raise ResumeError("basics must contain exactly name, title, contact, links, and mobility")
     sourced(basics["name"], "basics.name")
+    sourced(basics["title"], "basics.title")
     sourced_list(basics["contact"], "basics.contact", 1)
     sourced_list(basics["links"], "basics.links")
     sourced(basics["mobility"], "basics.mobility", nullable=True)
@@ -996,7 +997,7 @@ def text_of(value: dict[str, str] | None) -> str:
 
 def resume_lines(model: dict[str, Any]) -> list[str]:
     basics = model["basics"]
-    lines = [text_of(basics["name"])]
+    lines = [text_of(basics["name"]), text_of(basics["title"])]
     contact = [text_of(item) for item in basics["contact"] + basics["links"]]
     if contact:
         lines.append(" | ".join(contact))
@@ -1298,6 +1299,15 @@ def render_docx(model: dict[str, Any], policy: dict[str, Any], output: Path) -> 
     name.paragraph_format.space_after = Pt(1)
     set_run_font(name.add_run(text_of(model["basics"]["name"])), policy["fonts"]["primary"], policy["sizes_pt"]["name"], bold=True)
 
+    title = document.add_paragraph()
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    title.paragraph_format.space_after = Pt(2)
+    set_run_font(
+        title.add_run(text_of(model["basics"]["title"])),
+        policy["fonts"]["primary"],
+        policy["sizes_pt"]["body"],
+    )
+
     contact_items = model["basics"]["contact"] + model["basics"]["links"]
     if contact_items:
         paragraph = document.add_paragraph()
@@ -1555,6 +1565,7 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
     bullet_tokens = bullet_layout(policy)
     styles = {
         "name": ParagraphStyle("EKBName", parent=sample["Normal"], fontName=f"{font}-Bold", fontSize=policy["sizes_pt"]["name"], leading=policy["sizes_pt"]["name"] + 2, alignment=TA_CENTER, spaceAfter=1),
+        "title": ParagraphStyle("EKBTitle", parent=sample["Normal"], fontName=font, fontSize=body_size, leading=body_size + 1.5, alignment=TA_CENTER, spaceAfter=2),
         "contact": ParagraphStyle("EKBContact", parent=sample["Normal"], fontName=font, fontSize=policy["sizes_pt"]["small"], leading=policy["sizes_pt"]["small"] + 1.5, alignment=TA_CENTER, spaceAfter=2),
         "mobility": ParagraphStyle("EKBMobility", parent=sample["Normal"], fontName=font, fontSize=policy["sizes_pt"]["small"], leading=policy["sizes_pt"]["small"] + 1.5, alignment=TA_CENTER, spaceAfter=5),
         "section": ParagraphStyle("EKBSection", parent=sample["Normal"], fontName=f"{font}-Bold", fontSize=policy["sizes_pt"]["section"], leading=policy["sizes_pt"]["section"] + 1, spaceBefore=policy["spacing_pt"]["section_before"], spaceAfter=policy["spacing_pt"]["section_after"], borderWidth=0, borderPadding=0, keepWithNext=True),
@@ -1569,7 +1580,10 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
     def section(label: str) -> list[Any]:
         return [paragraph(label.upper(), "section")]
 
-    story: list[Any] = [paragraph(text_of(model["basics"]["name"]), "name")]
+    story: list[Any] = [
+        paragraph(text_of(model["basics"]["name"]), "name"),
+        paragraph(text_of(model["basics"]["title"]), "title"),
+    ]
 
     def anchor(body: str, target: str) -> str:
         if hyperlink_underline:

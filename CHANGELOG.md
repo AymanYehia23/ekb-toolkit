@@ -8,6 +8,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Stable professional title in resume headers.** Profiles now record a
+  confirmed professional title, and every TXT, DOCX, and PDF resume renders it
+  on a centered line directly below the name.
 - **Optional cover-letter generation.** Every completed job-targeted resume now
   ends with an opt-in question. The new procedure reuses the screened
   application and selected evidence, follows a three-paragraph framework, and

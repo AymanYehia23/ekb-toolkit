@@ -5,6 +5,7 @@
   "layout": {"page_target": 1},
   "basics": {
     "name": {"text": "Casey Engineer", "source_ref": "profile-identity-001"},
+    "title": {"text": "Software Engineer", "source_ref": "profile-title-001"},
     "contact": [{"text": "Email", "source_ref": "profile-contact-001", "url": "mailto:engineer@example.test"}],
     "links": [{"text": "Portfolio", "source_ref": "profile-link-001", "url": "https://example.test/casey"}],
     "mobility": null

@@ -28,6 +28,7 @@ generated artifact or a third-party page is not confirmed profile truth.
 A complete resume needs:
 
 - a display name;
+- a stable professional title for the line directly below the name;
 - at least one contact method;
 - employment entries with organization, title, start date, and end date or
   `present`;
@@ -118,9 +119,9 @@ the wrong employer or make the document unusable.
 Assign stable IDs that survive rewording:
 
 ```text
-profile-identity-001      profile-experience-NNN     profile-language-NNN
-profile-contact-NNN       profile-education-NNN      profile-award-NNN
-profile-link-NNN          profile-certification-NNN  profile-eligibility-NNN
+profile-identity-001      profile-title-001           profile-experience-NNN
+profile-contact-NNN       profile-education-NNN       profile-award-NNN
+profile-link-NNN          profile-certification-NNN   profile-eligibility-NNN
 profile-skill-NNN         profile-responsibility-NNN
 ```
 

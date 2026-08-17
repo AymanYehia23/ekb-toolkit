@@ -23,6 +23,10 @@
       "text": "Example Name",
       "source_ref": "profile-identity-001"
     },
+    "title": {
+      "text": "Software Engineer",
+      "source_ref": "profile-title-001"
+    },
     "contact": [
       {
         "text": "Email",

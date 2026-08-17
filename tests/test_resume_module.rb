@@ -93,6 +93,26 @@ class ResumeModuleTest < Minitest::Test
     end
   end
 
+  def test_requires_confirmed_professional_title
+    with_model do |model, path, _directory|
+      model["basics"].delete("title")
+      _stdout, stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes stderr, "name, title, contact, links, and mobility"
+    end
+
+    with_model do |model, path, _directory|
+      model["basics"]["title"] = {
+        "text" => "Software Engineer",
+        "source_ref" => "profile-experience-001"
+      }
+      stdout, _stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "),
+                      "must cite profile.professional_title profile-title-001"
+    end
+  end
+
   def test_requires_two_selected_project_entries
     with_model do |model, path, _directory|
       model["projects"] = model["projects"].first(1)
@@ -414,6 +434,9 @@ class ResumeModuleTest < Minitest::Test
         assert File.file?(path), "missing #{name}"
         assert_operator File.size(path), :>, 100
       end
+      document = docx_runs(File.join(output, "resume.docx"))
+      assert_operator document.index("Casey Engineer"), :<, document.index("Software Engineer")
+      assert_operator document.index("Software Engineer"), :<, document.index("Email")
       refute File.exist?(File.join(output, "resume.txt"))
       report = JSON.parse(File.read(File.join(output, "validation.json")))
       assert report["valid"]

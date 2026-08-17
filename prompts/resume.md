@@ -367,6 +367,10 @@ project `url` only when it also sets `link_text` to the exact project name shown
 inside the prose. Otherwise omit the URL. Entity-name fields and the
 contact/profile fields remain whole-item links. Summary items never carry URLs.
 
+Set `basics.title` to the exact confirmed `profile.professional_title` value and
+cite its `profile-title-*` ID. This is the stable title rendered directly below
+the name; do not replace it with the target role or `target.summary_lead`.
+
 Set `basics.mobility` to a concise sourced phrasing from a
 `profile-eligibility-*` entry whose type is `relocation` when the resume mode is
 `master` or the location scope is `outside-country`. It renders below the

@@ -4,6 +4,10 @@ identity:
   id: profile-identity-001
   value: Casey Engineer
   kind: user-stated
+professional_title:
+  id: profile-title-001
+  value: Software Engineer
+  kind: user-stated
 contact:
   - id: profile-contact-001
     type: email

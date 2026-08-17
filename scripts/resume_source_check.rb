@@ -331,6 +331,28 @@ def check_mobility(model, profile, sources, errors)
   end
 end
 
+def check_professional_title(model, profile, errors)
+  title = model.dig("basics", "title")
+  confirmed = profile["professional_title"]
+  unless confirmed.is_a?(Hash) && confirmed["id"].is_a?(String) &&
+         confirmed["value"].is_a?(String) && !confirmed["value"].strip.empty?
+    errors << "profile.professional_title must contain a confirmed id and value"
+    return
+  end
+  unless title.is_a?(Hash)
+    errors << "resume.basics.title is required"
+    return
+  end
+
+  refs = title["source_ref"] ? [title["source_ref"]] : Array(title["source_refs"])
+  unless refs == [confirmed["id"]]
+    errors << "resume.basics.title must cite profile.professional_title #{confirmed['id']}"
+  end
+  unless title["text"].to_s.strip == confirmed["value"].strip
+    errors << "resume.basics.title must exactly match profile.professional_title"
+  end
+end
+
 def organization_link_warnings(model, registry)
   warnings = []
   Array(model["experience"]).each do |entry|
@@ -1330,6 +1352,7 @@ validate_bridge_presentation(model, evidence_index, sources, visible_items, erro
 check_model_links(model, link_registry, errors)
 check_header_link_labels(visible_items, sources, errors)
 check_mobility(model, profile, sources, errors)
+check_professional_title(model, profile, errors)
 check_summary_links(visible_items, errors)
 warnings.concat(organization_link_warnings(model, link_registry))
 

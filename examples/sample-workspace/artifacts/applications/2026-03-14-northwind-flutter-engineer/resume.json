@@ -20,6 +20,7 @@
   },
   "basics": {
     "name": { "text": "Sam Rivera", "source_ref": "profile-identity-001" },
+    "title": { "text": "Flutter Mobile Engineer", "source_ref": "profile-title-001" },
     "contact": [
       {
         "text": "Email",
