@@ -35,8 +35,10 @@ A complete resume needs:
   belongs to.
 
 Location, links, education, certifications, languages, and summary preferences
-are optional. Do not ask for an optional section unless the user wants it or a
-current application would materially benefit.
+are optional. A confirmed current country and relocation intent become blocking
+only when generating a master resume or comparing the profile with a job in
+another country. Do not ask for another optional section unless the user wants
+it or a current application would materially benefit.
 
 Warn without blocking about a timeline gap over three months or two overlapping
 full-time roles. The user may have a good reason; the document should just not
@@ -50,6 +52,17 @@ collecting links belongs here rather than in every application.
 When the user names an employer, client, shipped app, repository, documentation
 site, or portfolio page, ask once for its public address and record it under
 `organization_links` or `project_links` with `link_status: confirmed`.
+
+For every email or profile entry that carries a `url`, keep the literal address
+in `value` and `url`, and set `label` to the short text a document will show.
+Use `Email`, `LinkedIn`, `GitHub`, `Portfolio`, or the equivalent service name.
+A custom `other` link needs a concise descriptive label. Never put an email
+address, domain, or URL in a hyperlinked `label`.
+
+Phone is the exception: it always renders as its literal `value`, its `label`
+must match that value, and it never carries a `url`. When loading an older
+profile whose other hyperlinked labels expose addresses, include their label
+migration in the compact confirmation.
 
 - `unconfirmed` — the user is unsure which project an address belongs to.
 - `uncurated` — the app is real but has no curated project behind it.
@@ -73,6 +86,23 @@ as facts rather than as preferences:
 - `profile-eligibility-002` — existing work authorization, and which markets
   normally sponsor.
 - `profile-eligibility-003` — relocation intent and target markets.
+
+Record the current country explicitly as `country` and its ISO 3166-1 alpha-2
+`country_code` on the `contact` entry whose type is `location`. Never derive
+current country from citizenship, and never derive citizenship from location.
+The resume workflow uses these different facts for different decisions.
+
+For relocation, preserve the user's exact intent and add one or more concise
+confirmed `phrasings` suitable for a header, such as `Open to relocation.` or
+`Open to relocation within the EU.` Record target countries or regions only
+when the user explicitly confirms them. Never invent a destination, move date,
+self-funded move, visa status, or sponsorship position. If the user is not open
+to relocation, record that truth; do not substitute an affirmative phrase.
+
+A master resume and an application whose confirmed job country differs from the
+confirmed current country require a relocation header line. If no truthful,
+confirmed relocation phrasing exists, stop and request confirmation instead of
+generating the resume.
 
 The screening policy compares against these by ID. A check whose basis cannot
 be resolved reports that it could not run, which is why an absent fact is

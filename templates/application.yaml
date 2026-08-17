@@ -13,6 +13,10 @@ targeting:
   resume_mode_basis: job-description # user-request | job-description | job-url
   market: europe # europe | north-america
   market_basis: profile-default # job-location | profile-default | user-override
+  job_country: null # exact country from the posting/user; never infer from market
+  job_country_code: null # ISO 3166-1 alpha-2 code paired with job_country
+  location_scope: unspecified # same-country | outside-country | location-independent | unspecified
+  location_basis: unresolved # job-description | job-url | user-request | unresolved
   summary_lead: null # supported target-facing identity for the first summary words
   inferred_role_level: null
   priorities: []

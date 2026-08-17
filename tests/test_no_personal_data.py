@@ -89,6 +89,7 @@ ALLOWED_SUBSTRINGS = (
     "/absolute/path/to",
     "/Users/sam/dev/",          # the fictional example workspace
     "+00 000 000 0000",         # the placeholder in templates/profile.yaml
+    "tel:+000000000000",         # the same fictional phone in URI form
     "$HOME",
     "${HOME}",
     "~/ekb",

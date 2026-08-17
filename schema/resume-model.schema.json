@@ -34,7 +34,11 @@
         "company",
         "role",
         "market",
-        "market_basis"
+        "market_basis",
+        "job_country",
+        "job_country_code",
+        "location_scope",
+        "location_basis"
       ],
       "properties": {
         "mode": {
@@ -68,6 +72,33 @@
             "job-location",
             "profile-default",
             "user-override"
+          ]
+        },
+        "job_country": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "description": "Exact job country from the posting or user. Null for master resumes, multi-country remote roles, or unresolved locations. Never infer this from market."
+        },
+        "job_country_code": {
+          "type": ["string", "null"],
+          "pattern": "^[A-Z]{2}$",
+          "description": "ISO 3166-1 alpha-2 code for job_country. Used for deterministic comparison with the confirmed current-country code."
+        },
+        "location_scope": {
+          "enum": [
+            "same-country",
+            "outside-country",
+            "location-independent",
+            "unspecified"
+          ],
+          "description": "Comparison of job_country with the confirmed profile location country. outside-country triggers a required relocation line."
+        },
+        "location_basis": {
+          "enum": [
+            "job-description",
+            "job-url",
+            "user-request",
+            "unresolved"
           ]
         }
       },
@@ -137,7 +168,8 @@
       "required": [
         "name",
         "contact",
-        "links"
+        "links",
+        "mobility"
       ],
       "properties": {
         "name": {
@@ -155,12 +187,16 @@
           "items": {
             "$ref": "#/$defs/sourcedText"
           }
+        },
+        "mobility": {
+          "$ref": "#/$defs/nullableSourcedText",
+          "description": "Concise, confirmed relocation statement rendered on its own line below contact details. Required for master resumes and outside-country jobs; must cite a profile relocation entry."
         }
       }
     },
     "summary": {
       "type": "array",
-      "description": "Four to six complete sentences in total for a job-targeted resume. Split sentences into separate sourced items when they rely on different evidence.",
+      "description": "Four to six complete sentences in total for a job-targeted resume. The first sentence must include N+ years of experience derived from confirmed employment dates and cite at least one profile-experience source. Split sentences into separate sourced items when they rely on different evidence.",
       "items": {
         "allOf": [
           {
@@ -274,6 +310,29 @@
       }
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "target": {
+            "anyOf": [
+              {"properties": {"mode": {"const": "master"}}},
+              {"properties": {"location_scope": {"const": "outside-country"}}}
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "basics": {
+            "properties": {
+              "mobility": {"$ref": "#/$defs/sourcedText"}
+            }
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
     "stringList": {
       "type": "array",

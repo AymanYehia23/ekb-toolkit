@@ -56,6 +56,17 @@ def load(path):
         return yaml.safe_load(fh)
 
 
+def address_like_label(label):
+    text = str(label or "").strip()
+    if not text:
+        return False
+    if re.search(r"(?:https?://|mailto:|tel:|www\.)", text, re.IGNORECASE):
+        return True
+    if "@" in text or re.fullmatch(r"\+?[\d\s().-]{7,}", text):
+        return True
+    return bool(re.match(r"^(?:[a-z0-9-]+\.)+[a-z]{2,}(?:[/?#]|$)", text, re.IGNORECASE))
+
+
 def main():
     os.chdir(workspace_root())
     if not os.path.isdir("projects"):
@@ -250,6 +261,25 @@ def main():
 
     # ---- 11: link registry -------------------------------------------------
     known_status = {"confirmed", "unconfirmed", "uncurated"}
+    for section in ("contact", "links"):
+        for entry in profile.get(section) or []:
+            if section == "contact" and entry.get("type") == "phone":
+                value = str(entry.get("value") or "").strip()
+                label = str(entry.get("label") or "").strip()
+                owner = entry.get("id") or "phone contact"
+                if entry.get("url"):
+                    fail(f"{owner} is a phone contact and must not carry a url")
+                if label != value:
+                    fail(f"{owner} phone label must match its literal value")
+                continue
+            if not entry.get("url"):
+                continue
+            label = str(entry.get("label") or "").strip()
+            owner = entry.get("id") or f"{section} entry"
+            if not label:
+                fail(f"{owner} has a url but no human-readable label")
+            elif address_like_label(label):
+                fail(f"{owner} label exposes an address; use a word such as Email, LinkedIn, GitHub, or Portfolio")
     employers = {e.get("organization") for e in (profile.get("experience") or [])}
     for entry in profile.get("organization_links") or []:
         name = entry.get("organization")

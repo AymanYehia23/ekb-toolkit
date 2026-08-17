@@ -93,6 +93,23 @@ Determine the market in this order: explicit user override, explicit job
 location, then `profile.preferences.default_market`. Record the basis. This says
 nothing about where the candidate lives.
 
+Freeze location separately from market. Set `targeting.job_country` only from an
+explicit country in the supplied posting or from the user; never infer a country
+from `market`. Pair it with its ISO 3166-1 alpha-2 `job_country_code`, then
+compare that code with the confirmed `country_code` on the profile's current
+location contact:
+
+- equal countries: `same-country`;
+- different countries: `outside-country`;
+- explicitly remote across multiple countries, with no single destination:
+  `location-independent` and both country fields null;
+- missing or ambiguous location: `unspecified`.
+
+Record `location_basis` as `job-description`, `job-url`, `user-request`, or
+`unresolved`. If a job country is known but the profile's current country is
+not, follow `prompts/profile.md` before drafting. Citizenship is not a proxy for
+current location.
+
 ## 3. Select the evidence
 
 Read `profile/profile.yaml`, `profile/professional-profile.yaml`,
@@ -337,7 +354,8 @@ metrics, impact, leadership, employment facts, or experience.
 Write `artifacts/applications/<id>/resume.json` against
 `schema/resume-model.schema.json` and `templates/resume-model.json`. Copy the
 frozen `targeting.resume_mode` to `target.mode`; the validator rejects a missing
-or unknown mode.
+or unknown mode. Copy `job_country`, `job_country_code`, `location_scope`, and
+`location_basis` without recomputing them from the market.
 
 Every visible fact-bearing item carries its provenance privately: one
 `source_ref` to a stable curated record ID or profile fact ID. **References stay
@@ -348,6 +366,14 @@ the recorded preference during layout iteration. A narrative item may carry a
 project `url` only when it also sets `link_text` to the exact project name shown
 inside the prose. Otherwise omit the URL. Entity-name fields and the
 contact/profile fields remain whole-item links. Summary items never carry URLs.
+
+Set `basics.mobility` to a concise sourced phrasing from a
+`profile-eligibility-*` entry whose type is `relocation` when the resume mode is
+`master` or the location scope is `outside-country`. It renders below the
+contact row. For other modes it may be null, or may carry the same confirmed
+line when useful. Never source it from citizenship or authorization, never turn
+the target location into candidate intent, and never write `Open to relocation`
+unless the profile confirms that exact meaning.
 
 ### Composed claims
 
@@ -403,13 +429,20 @@ bullet already carries.
 Write four to six complete sentences within the presentation policy's 90-word
 ceiling. Use separate sourced items when sentences rely on different records so
 the provenance remains auditable. A useful order is: supported target-facing
-identity; relevant experience; strongest expertise; career direction; then
-relocation or work authorization only when applicable and explicitly recorded.
+identity; relevant experience; strongest expertise; career direction; then work
+authorization only when applicable and explicitly recorded. Relocation is
+already visible in `basics.mobility`, so do not repeat it here.
 When the evidence cannot support one of those topics, use another supported
 technical dimension instead. Never invent a sentence merely to fill the shape.
 
-Do not state a years-of-experience figure. The Experience dates already do that
-work, and a stated figure only invites the reader to check the arithmetic.
+The first sentence must include `N+ years of experience`, cited to at least one
+`profile-experience-*` source. Calculate `N` from the complete confirmed profile
+timeline as of the application date: merge overlapping employment intervals,
+exclude gaps, count a recorded end month before the application month as worked,
+exclude the still-partial application month, and round the total down to
+completed years. Never estimate, round up, or calculate from only the roles
+selected for the page. The source checker repeats this calculation and rejects
+drift.
 
 ### Named engagements inside a role
 

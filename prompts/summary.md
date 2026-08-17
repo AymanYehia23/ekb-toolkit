@@ -59,8 +59,12 @@ Never read candidate files, generated artifacts, or target repositories.
 Do not repeat a fact a selected bullet already carries. Cite it once, in the
 place a reader reads first.
 
-**Do not state a years-of-experience figure.** A timeline states it better, and
-a stated figure invites arithmetic.
+Every summary opens with `N+ years of experience`, using the same conservative
+timeline calculation as `prompts/resume.md`: merge overlapping confirmed roles,
+exclude gaps, count through the venue's as-of date, and round down to completed
+years. For a resume, cite at least one `profile-experience-*` source and let the
+source checker verify the arithmetic. Keep the figure in constrained venues too;
+for example, a headline may use `Flutter Engineer | 3+ Years of Experience`.
 
 ## Targeting
 

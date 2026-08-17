@@ -350,6 +350,9 @@ def sourced_list(value: Any, path: str, minimum: int = 0) -> list[dict[str, str]
 SUMMARY_DEFAULT_WORDS = 90
 SUMMARY_MINIMUM_SENTENCES = 4
 SUMMARY_MAXIMUM_SENTENCES = 6
+SUMMARY_EXPERIENCE_PATTERN = re.compile(
+    r"\b(\d+)\+\s+years?\s+of\s+experience\b", flags=re.IGNORECASE
+)
 
 
 def summary_limit(model: dict[str, Any], policy: dict[str, Any] | None = None) -> int:
@@ -532,7 +535,10 @@ def validate_model(model: dict[str, Any], policy: dict[str, Any] | None = None) 
     if not isinstance(app_id, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}-[a-z0-9]+(?:-[a-z0-9]+)*", app_id):
         raise ResumeError("application_id is not safe or date-prefixed")
     target = model["target"]
-    target_required = {"mode", "company", "role", "market", "market_basis"}
+    target_required = {
+        "mode", "company", "role", "market", "market_basis", "job_country", "job_country_code",
+        "location_scope", "location_basis",
+    }
     target_optional = {"summary_lead"}
     if (
         not isinstance(target, dict)
@@ -540,17 +546,38 @@ def validate_model(model: dict[str, Any], policy: dict[str, Any] | None = None) 
         or set(target) - target_required - target_optional
     ):
         raise ResumeError(
-            "target must contain mode, company, role, market, and market_basis, "
+            "target must contain mode, company, role, market, market_basis, job_country, job_country_code, "
+            "location_scope, and location_basis, "
             "and may contain summary_lead"
         )
-    if not all(isinstance(target[key], str) and target[key].strip() for key in target):
-        raise ResumeError("target values must be non-empty strings")
+    for key in target_required - {"job_country", "job_country_code"}:
+        if not isinstance(target[key], str) or not target[key].strip():
+            raise ResumeError(f"target.{key} must be a non-empty string")
+    if target["job_country"] is not None and (
+        not isinstance(target["job_country"], str) or not target["job_country"].strip()
+    ):
+        raise ResumeError("target.job_country must be null or a non-empty string")
+    if target["job_country_code"] is not None and (
+        not isinstance(target["job_country_code"], str)
+        or not re.fullmatch(r"[A-Z]{2}", target["job_country_code"])
+    ):
+        raise ResumeError("target.job_country_code must be null or an ISO 3166-1 alpha-2 code")
+    if (target["job_country"] is None) != (target["job_country_code"] is None):
+        raise ResumeError("target.job_country and target.job_country_code must both be set or both be null")
     if target["mode"] not in {"master", "job-targeted"}:
         raise ResumeError("target.mode must be master or job-targeted")
     if target["market"] not in {"europe", "north-america"}:
         raise ResumeError("target.market must be europe or north-america")
     if target["market_basis"] not in {"job-location", "profile-default", "user-override"}:
         raise ResumeError("target.market_basis is invalid")
+    if target["location_scope"] not in {
+        "same-country", "outside-country", "location-independent", "unspecified"
+    }:
+        raise ResumeError("target.location_scope is invalid")
+    if target["location_basis"] not in {
+        "job-description", "job-url", "user-request", "unresolved"
+    }:
+        raise ResumeError("target.location_basis is invalid")
     layout = model["layout"]
     layout_keys = {"page_target", "summary_word_limit", "page_break_before", "hyperlinks", "emphasis"}
     if (
@@ -581,11 +608,29 @@ def validate_model(model: dict[str, Any], policy: dict[str, Any] | None = None) 
         raise ResumeError("layout.page_break_before is only valid when page_target is 2")
 
     basics = model["basics"]
-    if not isinstance(basics, dict) or set(basics) != {"name", "contact", "links"}:
-        raise ResumeError("basics must contain exactly name, contact, and links")
+    if not isinstance(basics, dict) or set(basics) != {"name", "contact", "links", "mobility"}:
+        raise ResumeError("basics must contain exactly name, contact, links, and mobility")
     sourced(basics["name"], "basics.name")
     sourced_list(basics["contact"], "basics.contact", 1)
     sourced_list(basics["links"], "basics.links")
+    sourced(basics["mobility"], "basics.mobility", nullable=True)
+    mobility_required = (
+        target["mode"] == "master" or target["location_scope"] == "outside-country"
+    )
+    if mobility_required and basics["mobility"] is None:
+        raise ResumeError(
+            "basics.mobility is required for master resumes and outside-country jobs"
+        )
+    if basics["mobility"] is not None:
+        mobility_refs = (
+            [basics["mobility"].get("source_ref")]
+            if basics["mobility"].get("source_ref")
+            else list(basics["mobility"].get("source_refs") or [])
+        )
+        if not any(str(ref).startswith("profile-eligibility-") for ref in mobility_refs):
+            raise ResumeError(
+                "basics.mobility must cite a profile-eligibility relocation source"
+            )
     summary = sourced_list(model.get("summary", []), "summary")
     summary_text = " ".join(text_of(item) for item in summary)
     limit = summary_limit(model, policy)
@@ -608,6 +653,26 @@ def validate_model(model: dict[str, Any], policy: dict[str, Any] | None = None) 
                 "summary must contain "
                 f"{minimum_sentences} to {maximum_sentences} complete sentences; "
                 f"found {sentence_count}"
+            )
+        claims: list[tuple[dict[str, Any], re.Match[str]]] = []
+        for item in summary:
+            claims.extend((item, match) for match in SUMMARY_EXPERIENCE_PATTERN.finditer(text_of(item)))
+        if len(claims) != 1:
+            raise ResumeError(
+                "summary must contain exactly one N+ years of experience figure"
+            )
+        claim_item, claim_match = claims[0]
+        first_sentence_end = re.search(r"[.!?]", summary_text)
+        if first_sentence_end and claim_match.group(0) not in summary_text[: first_sentence_end.end()]:
+            raise ResumeError("the years-of-experience figure must appear in the first summary sentence")
+        refs = (
+            [claim_item.get("source_ref")]
+            if claim_item.get("source_ref")
+            else list(claim_item.get("source_refs") or [])
+        )
+        if not any(str(ref).startswith("profile-experience-") for ref in refs):
+            raise ResumeError(
+                "the years-of-experience figure must cite at least one profile-experience source"
             )
     if target["mode"] == "job-targeted":
         lead = target.get("summary_lead")
@@ -935,6 +1000,8 @@ def resume_lines(model: dict[str, Any]) -> list[str]:
     contact = [text_of(item) for item in basics["contact"] + basics["links"]]
     if contact:
         lines.append(" | ".join(contact))
+    if basics["mobility"] is not None:
+        lines.append(text_of(basics["mobility"]))
     summary = model.get("summary", [])
     if summary:
         lines.append("SUMMARY")
@@ -997,8 +1064,6 @@ def resume_lines(model: dict[str, Any]) -> list[str]:
 def text_export_lines(model: dict[str, Any], policy: dict[str, Any]) -> list[str]:
     """Plain-text export. TXT has no annotation layer, so a hyperlink either
     becomes a visible address or is lost; `policy.links.text_export` decides.
-
-    Addresses that are already the visible text are never repeated.
     """
     if policy.get("links", {}).get("text_export") != "append-url" or not links_enabled(model):
         return resume_lines(model)
@@ -1012,9 +1077,9 @@ def text_export_lines(model: dict[str, Any], policy: dict[str, Any]) -> list[str
             if "text" in value and ("source_ref" in value or "source_refs" in value):
                 url = url_of(value)
                 label = link_text_of(value) or text_of(value)
-                # Skip anything whose visible text already IS the address: the
-                # profile deliberately prints full addresses for contact and
-                # profile links, and an employer's name can equal its domain.
+                # Skip anything whose visible text already is the address. This
+                # remains useful for custom policies even though the shipped
+                # policy keeps profile addresses behind labels.
                 if url and bare(url) != bare(label):
                     targets.append((label, url))
                 return
@@ -1256,6 +1321,17 @@ def render_docx(model: dict[str, Any], policy: dict[str, Any], output: Path) -> 
             else:
                 set_run_font(paragraph.add_run(text_of(item)), font, size)
 
+    mobility = model["basics"]["mobility"]
+    if mobility is not None:
+        paragraph = document.add_paragraph()
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        paragraph.paragraph_format.space_after = Pt(4)
+        set_run_font(
+            paragraph.add_run(text_of(mobility)),
+            policy["fonts"]["primary"],
+            policy["sizes_pt"]["small"],
+        )
+
     summary = model.get("summary", [])
     if summary:
         emphasizer.enter("Summary")
@@ -1479,7 +1555,8 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
     bullet_tokens = bullet_layout(policy)
     styles = {
         "name": ParagraphStyle("EKBName", parent=sample["Normal"], fontName=f"{font}-Bold", fontSize=policy["sizes_pt"]["name"], leading=policy["sizes_pt"]["name"] + 2, alignment=TA_CENTER, spaceAfter=1),
-        "contact": ParagraphStyle("EKBContact", parent=sample["Normal"], fontName=font, fontSize=policy["sizes_pt"]["small"], leading=policy["sizes_pt"]["small"] + 1.5, alignment=TA_CENTER, spaceAfter=5),
+        "contact": ParagraphStyle("EKBContact", parent=sample["Normal"], fontName=font, fontSize=policy["sizes_pt"]["small"], leading=policy["sizes_pt"]["small"] + 1.5, alignment=TA_CENTER, spaceAfter=2),
+        "mobility": ParagraphStyle("EKBMobility", parent=sample["Normal"], fontName=font, fontSize=policy["sizes_pt"]["small"], leading=policy["sizes_pt"]["small"] + 1.5, alignment=TA_CENTER, spaceAfter=5),
         "section": ParagraphStyle("EKBSection", parent=sample["Normal"], fontName=f"{font}-Bold", fontSize=policy["sizes_pt"]["section"], leading=policy["sizes_pt"]["section"] + 1, spaceBefore=policy["spacing_pt"]["section_before"], spaceAfter=policy["spacing_pt"]["section_after"], borderWidth=0, borderPadding=0, keepWithNext=True),
         "entry": ParagraphStyle("EKBEntry", parent=sample["Normal"], fontName=font, fontSize=body_size, leading=body_size + 1.4, spaceAfter=0, keepWithNext=True),
         "body": ParagraphStyle("EKBBody", parent=sample["Normal"], fontName=font, fontSize=body_size, leading=body_size + 1.4, spaceAfter=policy["spacing_pt"]["paragraph_after"]),
@@ -1526,6 +1603,9 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
     contact_items = model["basics"]["contact"] + model["basics"]["links"]
     if contact_items:
         story.append(Paragraph(" | ".join(linked(item) for item in contact_items), styles["contact"]))
+    mobility = model["basics"]["mobility"]
+    if mobility is not None:
+        story.append(paragraph(text_of(mobility), "mobility"))
 
     summary = model.get("summary", [])
     if summary:

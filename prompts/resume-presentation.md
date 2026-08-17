@@ -52,15 +52,17 @@ certification, so a missing address surfaces instead of being forgotten.
 **Never guess a URL, never construct one from a company name, and never carry a
 link over from an old document.**
 
-Follow `preferences.link_style`. The governing rule: important contact
-information is always hyperlinked but never hidden behind a word, so no address
-depends on a parser reading the annotation layer.
+Follow `preferences.link_style`. The governing rule: every hyperlinked contact
+or profile address is hidden behind the human-readable `label` recorded in the
+profile. The address remains available as the hyperlink target without adding
+visual noise to the header.
 
-- `contact` — the literal email address and phone number are the visible text,
-  with `mailto:` or a messaging URL attached.
-- `profile_links` — the full readable address is the visible text, with the URL
-  attached. Never shorten a professional network or code-host link to a bare
-  word; the address must stay readable with the hyperlink layered on top.
+- `contact` — a linked email uses the recorded `Email` label. A phone number is
+  never linked and always renders as its literal value. Other non-hyperlinked
+  values such as location may also remain literal text.
+- `profile_links` — use the recorded service or purpose label, such as
+  `LinkedIn`, `GitHub`, or `Portfolio`. Never expose the raw address as visible
+  text.
 - `project_links`, `organization_links`, `certification_links` — a hyperlink
   behind the name is correct. The name carries the meaning on its own, so
   nothing is lost if the annotation is dropped. Never link an entry that is
@@ -72,6 +74,9 @@ rely on an application's default hyperlink style, because viewers differ.
 
 Set `layout.hyperlinks` to `off`, or render with `--ats-plain`, only when the
 user asks for an export with no annotations at all.
+
+Plain-text exports keep these same labels and omit hyperlink targets because
+TXT has no annotation layer. Use DOCX or PDF when the links must remain live.
 
 ## 2. Keyword highlighting
 
@@ -135,9 +140,10 @@ Writing should be concise and sound like an experienced engineer:
 
 **Summary.** Four to six complete sentences with a 90-word ceiling in every
 market. Cover the supported professional identity, relevant experience and
-expertise, career direction, and relocation or work-authorization context only
-when applicable and confirmed. Never pad a sentence or invent context to reach
-four. Set `layout.summary_word_limit` between 40 and 120 for a one-document
+expertise, career direction, and work-authorization context only when applicable
+and confirmed. Relocation belongs in the dedicated header line below, so do not
+repeat it in the summary. Never pad a sentence or invent context to reach four.
+Set `layout.summary_word_limit` between 40 and 120 for a one-document
 override without changing market or page size; the four-to-six-sentence rule
 still applies. What the summary should SAY is in `prompts/resume.md`.
 
@@ -150,10 +156,18 @@ shrinking the font or margins; select one idea and rewrite it at the right
 altitude.
 
 **Header.** Keep the confirmed name, professional personal email, phone number,
-readable professional-profile address, and location together at the top. Add
-work authorization only when it is relevant to the target and explicitly
-recorded. Never substitute a previous employer's email address. Missing contact
-categories are validation warnings because the renderer cannot invent them.
+readable professional-profile address, and location together at the top. On its
+own centered line immediately below the contact row, render `basics.mobility`
+for every master resume and every job whose `target.location_scope` is
+`outside-country`. Use a concise phrasing from the profile relocation entry,
+such as `Open to relocation.` Prefer a confirmed destination-specific phrasing
+when available; never create one by copying the job country into the claim.
+This line is plain text, not a hyperlink, and is not repeated in the summary or
+continuation-page header. A missing confirmed relocation phrasing blocks these
+resumes rather than being invented. Add work authorization only when it is
+relevant to the target and explicitly recorded. Never substitute a previous
+employer's email address. Missing contact categories are validation warnings
+because the renderer cannot invent them.
 
 **Languages.** Prefer CEFR levels (A1-C2) for European applications when the
 profile records one. Never translate “fluent”, “professional working”, or

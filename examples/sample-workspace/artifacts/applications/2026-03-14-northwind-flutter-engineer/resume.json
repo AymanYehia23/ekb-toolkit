@@ -7,7 +7,11 @@
     "role": "Flutter Engineer",
     "summary_lead": "Flutter Mobile Engineer",
     "market": "europe",
-    "market_basis": "job-location"
+    "market_basis": "job-location",
+    "job_country": null,
+    "job_country_code": null,
+    "location_scope": "location-independent",
+    "location_basis": "job-description"
   },
   "layout": {
     "page_target": 1,
@@ -18,7 +22,7 @@
     "name": { "text": "Sam Rivera", "source_ref": "profile-identity-001" },
     "contact": [
       {
-        "text": "sam.rivera@example.com",
+        "text": "Email",
         "source_ref": "profile-contact-001",
         "url": "mailto:sam.rivera@example.com"
       },
@@ -26,21 +30,25 @@
     ],
     "links": [
       {
-        "text": "linkedin.com/in/example-sam-rivera",
+        "text": "LinkedIn",
         "source_ref": "profile-link-001",
         "url": "https://linkedin.com/in/example-sam-rivera"
       },
       {
-        "text": "github.com/example-sam-rivera",
+        "text": "GitHub",
         "source_ref": "profile-link-002",
         "url": "https://github.com/example-sam-rivera"
       }
-    ]
+    ],
+    "mobility": {
+      "text": "Open to relocation within the EU.",
+      "source_ref": "profile-eligibility-003"
+    }
   },
   "summary": [
     {
-      "text": "Flutter Mobile Engineer with experience in offline tracking and checkout payment flows.",
-      "source_refs": ["fittrack-002", "mealmate-001"]
+      "text": "Flutter Mobile Engineer with 3+ years of experience in offline tracking and checkout payment flows.",
+      "source_refs": ["fittrack-002", "mealmate-001", "profile-experience-001", "profile-experience-002"]
     },
     {
       "text": "Worked directly with product stakeholders to turn feature requests into technical scope before implementation.",
@@ -51,8 +59,8 @@
       "source_ref": "profile-responsibility-002"
     },
     {
-      "text": "Right to work across the EU. No sponsorship required in the EU. Open to relocation within the EU.",
-      "source_refs": ["profile-eligibility-002", "profile-eligibility-003"]
+      "text": "Right to work across the EU. No sponsorship required in the EU.",
+      "source_ref": "profile-eligibility-002"
     }
   ],
   "experience": [

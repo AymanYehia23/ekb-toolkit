@@ -48,6 +48,10 @@ targeting:
   resume_mode_basis: job-description
   market: europe
   market_basis: job-location
+  job_country: null
+  job_country_code: null
+  location_scope: location-independent
+  location_basis: job-description
   summary_lead: Flutter Mobile Engineer
   inferred_role_level: mid
   priorities:

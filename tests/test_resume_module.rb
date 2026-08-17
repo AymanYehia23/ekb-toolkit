@@ -51,17 +51,22 @@ class ResumeModuleTest < Minitest::Test
   end
 
   def summary_text(word_count, sentences: 4)
-    raise ArgumentError, "summary needs at least two words per sentence" if word_count < sentences * 2
+    lead = %w[Software Engineer with 3+ years of experience.]
+    tail_count = sentences - 1
+    raise ArgumentError, "summary needs a lead and at least two words per remaining sentence" \
+      if tail_count < 1 || word_count < lead.length + tail_count * 2
 
-    words = ["Software", "Engineer"] + Array.new(word_count - 3, "Ruby") + ["PostgreSQL"]
-    base, remainder = word_count.divmod(sentences)
+    remaining = word_count - lead.length
+    words = Array.new(remaining - 1, "Ruby") + ["PostgreSQL"]
+    base, remainder = remaining.divmod(tail_count)
     cursor = 0
-    Array.new(sentences) do |index|
+    tail = Array.new(tail_count) do |index|
       size = base + (index < remainder ? 1 : 0)
       sentence = words.slice(cursor, size).join(" ") + "."
       cursor += size
       sentence
-    end.join(" ")
+    end
+    ([lead.join(" ")] + tail).join(" ")
   end
 
   # Office Open XML is UTF-8. Reading it with the shell's default external
@@ -216,6 +221,65 @@ class ResumeModuleTest < Minitest::Test
     end
   end
 
+  def test_outside_country_resume_requires_mobility_line
+    with_model do |model, path, _directory|
+      model["target"]["job_country"] = "Germany"
+      model["target"]["job_country_code"] = "DE"
+      model["target"]["location_scope"] = "outside-country"
+      _stdout, stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes stderr, "basics.mobility is required"
+    end
+  end
+
+  def test_master_resume_requires_mobility_line
+    with_model do |model, path, _directory|
+      model["target"]["mode"] = "master"
+      _stdout, stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes stderr, "basics.mobility is required"
+    end
+  end
+
+  def test_outside_country_resume_accepts_confirmed_relocation_line
+    with_model do |model, path, _directory|
+      model["target"]["job_country"] = "Germany"
+      model["target"]["job_country_code"] = "DE"
+      model["target"]["location_scope"] = "outside-country"
+      model["basics"]["mobility"] = {
+        "text" => "Open to relocation.",
+        "source_ref" => "profile-eligibility-003"
+      }
+      stdout, stderr, status = validate(model, path)
+      assert status.success?, stderr
+      assert JSON.parse(stdout)["valid"]
+    end
+  end
+
+  def test_mobility_line_rejects_non_relocation_eligibility_source
+    with_model do |model, path, _directory|
+      model["basics"]["mobility"] = {
+        "text" => "Authorized to work in Testland.",
+        "source_ref" => "profile-eligibility-002"
+      }
+      stdout, _stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "), "type relocation"
+    end
+  end
+
+  def test_location_scope_must_match_confirmed_countries
+    with_model do |model, path, _directory|
+      model["target"]["job_country"] = "Germany"
+      model["target"]["job_country_code"] = "DE"
+      model["target"]["location_scope"] = "same-country"
+      stdout, _stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "),
+                      "target.location_scope must be \"outside-country\""
+    end
+  end
+
   def test_requires_a_reason_when_a_supported_required_job_requirement_is_omitted
     with_model do |model, path, _directory|
       model["alignment"]["requirements"][0] = {
@@ -356,7 +420,7 @@ class ResumeModuleTest < Minitest::Test
       refute report.dig("document_validation", "pdf_password_protected")
       assert_includes report.dig("document_validation", "warnings").join(" "),
                       "no phone number"
-      assert_includes report.dig("document_validation", "warnings").join(" "),
+      refute_includes report.dig("document_validation", "warnings").join(" "),
                       "no confirmed professional profile link"
       assert_includes report.dig("document_validation", "warnings").join(" "),
                       "no CEFR level"
@@ -435,6 +499,27 @@ class ResumeModuleTest < Minitest::Test
       model["summary"][0]["text"] = summary_text(90)
       _stdout, stderr, status = validate(model, path)
       assert status.success?, stderr
+    end
+  end
+
+  def test_summary_requires_years_of_experience
+    with_model do |model, path, _directory|
+      model["summary"][0]["text"] = model["summary"][0]["text"].sub(
+        " with 3+ years of experience", ""
+      )
+      _stdout, stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes stderr, "exactly one N+ years of experience figure"
+    end
+  end
+
+  def test_summary_rejects_years_that_exceed_the_confirmed_timeline
+    with_model do |model, path, _directory|
+      model["summary"][0]["text"] = model["summary"][0]["text"].sub("3+ years", "4+ years")
+      stdout, _stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "),
+                      "confirmed non-overlapping profile timeline supports 3+"
     end
   end
 
@@ -557,6 +642,7 @@ class ResumeModuleTest < Minitest::Test
         "title" => "Developer", "start" => "2020-01", "end" => "2021-01",
         "employment_type" => "full-time", "projects" => [], "kind" => "user-stated"
       }
+      model["summary"][0]["text"] = model["summary"][0]["text"].sub("3+ years", "4+ years")
       profile_path = File.join(directory, "profile.yaml")
       File.write(profile_path, YAML.dump(profile))
       write_model(path, model)
@@ -574,6 +660,7 @@ class ResumeModuleTest < Minitest::Test
         "title" => "Developer", "start" => "2020-01", "end" => "2021-01",
         "employment_type" => "full-time", "projects" => [], "kind" => "user-stated"
       }
+      model["summary"][0]["text"] = model["summary"][0]["text"].sub("3+ years", "4+ years")
       profile["career_breaks"] = [{
         "id" => "profile-career-break-001", "label" => "Career break",
         "start" => "2021-02", "end" => "2021-12", "details" => [], "kind" => "user-stated"
@@ -584,6 +671,25 @@ class ResumeModuleTest < Minitest::Test
       stdout, stderr, status = run_tool("validate", "--model", path, "--profile", profile_path, "--projects", PROJECTS)
       assert status.success?, stderr
       refute_includes JSON.parse(stdout)["warnings"].join(" "), "unexplained gap"
+    end
+  end
+
+  def test_experience_years_count_overlapping_roles_once
+    with_model do |model, path, directory|
+      profile = YAML.safe_load(File.read(PROFILE), permitted_classes: [Date])
+      profile["experience"] << {
+        "id" => "profile-experience-002", "organization" => "Overlapping Systems",
+        "title" => "Consultant", "start" => "2023-01", "end" => "2024-12",
+        "employment_type" => "part-time", "projects" => [], "kind" => "user-stated"
+      }
+      profile_path = File.join(directory, "profile.yaml")
+      File.write(profile_path, YAML.dump(profile))
+      write_model(path, model)
+      stdout, stderr, status = run_tool(
+        "validate", "--model", path, "--profile", profile_path, "--projects", PROJECTS
+      )
+      assert status.success?, "#{stderr}\n#{stdout}"
+      assert JSON.parse(stdout)["valid"]
     end
   end
 
@@ -606,7 +712,7 @@ class ResumeModuleTest < Minitest::Test
       assert status.success?, stderr
       report = JSON.parse(File.read(File.join(output, "validation.json")))
       assert_equal 2, report.dig("document_validation", "pdf_pages")
-      assert_equal ["Casey Engineer | engineer@example.test"], report.dig("document_validation", "docx_structure", "header_footer_text")
+      assert_equal ["Casey Engineer | Email | Portfolio"], report.dig("document_validation", "docx_structure", "header_footer_text")
     end
   end
 
@@ -637,6 +743,83 @@ class ResumeModuleTest < Minitest::Test
       stdout, stderr, status = validate(model, path)
       assert status.success?, stderr
       assert JSON.parse(stdout)["valid"]
+    end
+  end
+
+  def test_rejects_a_raw_address_as_visible_profile_link_text
+    with_model do |model, path, _directory|
+      model["basics"]["links"][0]["text"] = "example.test/casey"
+      stdout, _stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "), "exposes an address"
+    end
+  end
+
+  def test_rejects_an_address_like_label_in_the_profile_source
+    with_model do |model, path, directory|
+      profile = YAML.safe_load(File.read(PROFILE), permitted_classes: [Date])
+      profile["links"][0]["label"] = "example.test/casey"
+      profile_path = File.join(directory, "profile.yaml")
+      File.write(profile_path, YAML.dump(profile))
+      write_model(path, model)
+      stdout, _stderr, status = run_tool(
+        "validate", "--model", path, "--profile", profile_path, "--projects", PROJECTS
+      )
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "),
+                      "profile source profile-link-001 has an address-like label"
+    end
+  end
+
+  def test_rejects_a_profile_link_that_ignores_its_recorded_label
+    with_model do |model, path, _directory|
+      model["basics"]["links"][0]["text"] = "Website"
+      stdout, _stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "), 'must use profile label "Portfolio"'
+    end
+  end
+
+  def test_accepts_a_literal_unlinked_phone_value
+    with_model do |model, path, directory|
+      profile = YAML.safe_load(File.read(PROFILE), permitted_classes: [Date])
+      profile["contact"] << {
+        "id" => "profile-contact-002", "type" => "phone", "value" => "+00 000 000 0000",
+        "label" => "+00 000 000 0000", "url" => nil, "kind" => "user-stated"
+      }
+      model["basics"]["contact"] << {
+        "text" => "+00 000 000 0000", "source_ref" => "profile-contact-002"
+      }
+      profile_path = File.join(directory, "profile.yaml")
+      File.write(profile_path, YAML.dump(profile))
+      write_model(path, model)
+      stdout, stderr, status = run_tool(
+        "validate", "--model", path, "--profile", profile_path, "--projects", PROJECTS
+      )
+      assert status.success?, stderr
+      assert JSON.parse(stdout)["valid"]
+    end
+  end
+
+  def test_rejects_a_hyperlinked_phone_word
+    with_model do |model, path, directory|
+      profile = YAML.safe_load(File.read(PROFILE), permitted_classes: [Date])
+      profile["contact"] << {
+        "id" => "profile-contact-002", "type" => "phone", "value" => "+00 000 000 0000",
+        "label" => "Phone", "url" => "tel:+000000000000", "kind" => "user-stated"
+      }
+      model["basics"]["contact"] << {
+        "text" => "Phone", "source_ref" => "profile-contact-002", "url" => "tel:+000000000000"
+      }
+      profile_path = File.join(directory, "profile.yaml")
+      File.write(profile_path, YAML.dump(profile))
+      write_model(path, model)
+      stdout, _stderr, status = run_tool(
+        "validate", "--model", path, "--profile", profile_path, "--projects", PROJECTS
+      )
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "),
+                      "phone contact and must not carry a hyperlink"
     end
   end
 
@@ -714,7 +897,7 @@ class ResumeModuleTest < Minitest::Test
     with_model do |model, path, _directory|
       model["summary"] = [{
         "text" => summary_text(40),
-        "source_ref" => "stronger-001"
+        "source_refs" => ["stronger-001", "profile-experience-001"]
       }]
       stdout, stderr, status = validate(model, path)
       assert status.success?, stderr
@@ -743,13 +926,15 @@ class ResumeModuleTest < Minitest::Test
     end
   end
 
-  def test_text_export_prints_addresses_that_are_not_already_visible
+  def test_text_export_keeps_labels_without_exposing_addresses
     with_model do |model, _path, directory|
       output, _stdout, stderr, status = render_model(model, directory, "--include-text")
       assert status.success?, stderr
       text = File.read(File.join(output, "resume.txt"))
-      assert_includes text, "Data Importer (https://play.example.test/fixture)"
-      refute_includes text, "engineer@example.test (mailto:"
+      assert_includes text, "Email | Portfolio"
+      refute_includes text, "mailto:engineer@example.test"
+      refute_includes text, "https://example.test/casey"
+      refute_includes text, "https://play.example.test/fixture"
     end
   end
 
@@ -898,6 +1083,10 @@ class ResumeModuleTest < Minitest::Test
   def test_master_warns_when_highest_ranked_eligible_project_is_not_used
     with_model do |model, path, _directory|
       model["target"]["mode"] = "master"
+      model["basics"]["mobility"] = {
+        "text" => "Open to relocation.",
+        "source_ref" => "profile-eligibility-003"
+      }
       model["projects"] = [
         {
           "primary" => {"text" => "Data Importer", "source_ref" => "fixture-001"},
@@ -938,7 +1127,7 @@ class ResumeModuleTest < Minitest::Test
       }]
       model["summary"] = [{
         "text" => summary_text(40),
-        "source_ref" => "stronger-001"
+        "source_refs" => ["stronger-001", "profile-experience-001"]
       }]
       model["skills"] = [{"name" => "Technologies", "items" => [
         {"text" => "Ruby", "source_ref" => "stronger-001"}

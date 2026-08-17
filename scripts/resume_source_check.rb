@@ -125,6 +125,9 @@ def collect_profile_sources(value, sources, errors, path = "profile")
           "origin" => "profile",
           "kind" => value["kind"],
           "involvement" => nil,
+          "profile_type" => value["type"],
+          "profile_value" => value["value"],
+          "profile_label" => value["label"],
           "profile_values" => flatten_profile_values(value),
           "numeric_content" => JSON.generate(value.reject { |key, _child| %w[id kind].include?(key) })
         }
@@ -235,6 +238,96 @@ def check_model_links(value, registry, errors, path = "resume")
     value.each { |key, child| check_model_links(child, registry, errors, "#{path}.#{key}") }
   when Array
     value.each_with_index { |child, index| check_model_links(child, registry, errors, "#{path}[#{index}]") }
+  end
+end
+
+def address_like_label?(label)
+  text = label.to_s.strip
+  return false if text.empty?
+  return true if text.match?(%r{(?:https?://|mailto:|tel:|www\.)}i)
+  return true if text.include?("@")
+  return true if text.match?(/\A\+?[\d\s().-]{7,}\z/)
+  text.match?(/\A(?:[a-z0-9-]+\.)+[a-z]{2,}(?:[\/?#]|\z)/i)
+end
+
+def check_header_link_labels(visible_items, sources, errors)
+  visible_items.each do |item|
+    next unless item["path"].match?(/\Aresume\.basics\.(?:contact|links)\[\d+\]\z/)
+
+    source = sources[item["source_ref"]]
+    if source && source["origin"] == "profile" && source["profile_type"] == "phone"
+      value = source["profile_value"].to_s.strip
+      unless item["url"].to_s.strip.empty?
+        errors << "#{item['path']} is a phone contact and must not carry a hyperlink"
+      end
+      unless item["text"] == value
+        errors << "#{item['path']}.text must show the literal phone value #{value.inspect}"
+      end
+      next
+    end
+
+    next if item["url"].to_s.strip.empty?
+
+    if address_like_label?(item["text"])
+      errors << "#{item['path']}.text exposes an address; use the profile's human-readable label"
+    end
+
+    next unless source && source["origin"] == "profile"
+
+    label = source["profile_label"].to_s.strip
+    if label.empty?
+      errors << "#{item['path']} links a profile item without a human-readable label in profile.yaml"
+    elsif address_like_label?(label)
+      errors << "profile source #{item['source_ref']} has an address-like label; use a word such as " \
+                "Email, LinkedIn, GitHub, or Portfolio"
+    elsif item["text"] != label
+      errors << "#{item['path']}.text must use profile label #{label.inspect}"
+    end
+  end
+end
+
+def current_country_entry(profile)
+  location = Array(profile["contact"]).find do |entry|
+    entry.is_a?(Hash) && entry["type"] == "location"
+  end
+  location
+end
+
+def check_mobility(model, profile, sources, errors)
+  mobility = model.dig("basics", "mobility")
+  if mobility.is_a?(Hash)
+    refs = mobility["source_ref"] ? [mobility["source_ref"]] : Array(mobility["source_refs"])
+    refs.each do |ref|
+      source = sources[ref]
+      next if source.nil?
+      unless source["origin"] == "profile" && source["profile_type"] == "relocation"
+        errors << "resume.basics.mobility must use a profile work_eligibility entry of type relocation; " \
+                  "#{ref} is #{source['profile_type'].inspect}"
+      end
+    end
+  end
+
+  job_country = model.dig("target", "job_country")
+  job_country_code = model.dig("target", "job_country_code")
+  scope = model.dig("target", "location_scope")
+  return if job_country.to_s.strip.empty?
+
+  home_location = current_country_entry(profile)
+  home_country = home_location && home_location["country"]
+  home_country_code = home_location && home_location["country_code"]
+  if home_country.to_s.strip.empty? || home_country_code.to_s.strip.empty?
+    errors << "target.job_country is set but the profile location has no confirmed country and ISO code; " \
+              "record contact[type: location].country and country_code before deciding cross-country status"
+    return
+  end
+
+  expected = job_country_code.to_s.upcase == home_country_code.to_s.upcase ?
+    "same-country" : "outside-country"
+  if scope != expected
+    errors << "target.location_scope must be #{expected.inspect} because job country " \
+              "#{job_country.inspect} (#{job_country_code}) and confirmed current country " \
+              "#{home_country.inspect} (#{home_country_code}) " \
+              "#{expected == 'same-country' ? 'match' : 'differ'}"
   end
 end
 
@@ -651,7 +744,7 @@ end
 def numeric_tokens(value)
   # Treat a quantifier as one semantic unit. This avoids accepting "4" merely
   # because the source contains "40", while allowing common CV formats.
-  value.to_s.scan(/(?<![A-Za-z0-9])(?:[$€£]\s*)?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:\s?[KMBkmb]\+?(?![A-Za-z]))?(?:\s?%|\s+(?:hours?|days?|weeks?|months?|years?|users?|customers?|people|files?|modules?|screens?|projects?|devices?|formats?|team\s+members?))?/)
+  value.to_s.scan(/(?<![A-Za-z0-9])(?:[$€£]\s*)?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:\s?[KMBkmb]\+?(?![A-Za-z]))?\+?(?:\s?%|\s+(?:hours?|days?|weeks?|months?|years?|users?|customers?|people|files?|modules?|screens?|projects?|devices?|formats?|team\s+members?))?/)
     .map { |token| token.strip }
     .reject(&:empty?)
 end
@@ -942,6 +1035,41 @@ def month_index(value)
   match[1].to_i * 12 + (match[2] || "1").to_i - 1
 end
 
+def confirmed_experience_years(profile, model)
+  application = model["application_id"].to_s.match(/\A(\d{4})-(\d{2})-/)
+  return nil unless application
+  month = application[2].to_i
+  return nil unless month.between?(1, 12)
+  as_of = application[1].to_i * 12 + month - 1
+
+  intervals = Array(profile["experience"]).filter_map do |entry|
+    next unless entry.is_a?(Hash)
+    start_month = month_index(entry["start"])
+    next unless start_month && start_month < as_of
+    finish = if entry["end"].to_s == "present"
+               as_of
+             else
+               recorded_end = month_index(entry["end"])
+               recorded_end && recorded_end + 1
+             end
+    next unless finish
+    finish = [finish, as_of].min
+    next unless finish > start_month
+    [start_month, finish]
+  end.sort_by(&:first)
+  return 0 if intervals.empty?
+
+  merged = []
+  intervals.each do |start_month, finish|
+    if merged.empty? || start_month > merged[-1][1]
+      merged << [start_month, finish]
+    else
+      merged[-1][1] = [merged[-1][1], finish].max
+    end
+  end
+  merged.sum { |start_month, finish| finish - start_month } / 12
+end
+
 def timeline_warnings(profile)
   roles = Array(profile["experience"]).filter_map do |entry|
     next unless entry.is_a?(Hash)
@@ -1088,6 +1216,8 @@ collect_visible_items(model, visible_items, errors)
 errors << "resume model contains no sourced visible items" if visible_items.empty?
 
 internal_label = /\b(repo-verified|user-stated|inferred|source_ref|provisional inference)\b/i
+expected_experience_years = confirmed_experience_years(profile, model)
+experience_years_pattern = /\b(\d+)\+\s+years?\s+of\s+experience\b/i
 
 composed_items = 0
 
@@ -1131,6 +1261,13 @@ visible_items.each do |item|
     errors << "#{item['path']} overstates contributed source #{contributed.join(', ')}"
   end
 
+  experience_match = item["path"].match?(/\Aresume\.summary\[\d+\]\z/) &&
+                     text.match(experience_years_pattern)
+  if experience_match && expected_experience_years && experience_match[1].to_i != expected_experience_years
+    errors << "#{item['path']} states #{experience_match[1]}+ years of experience, but the " \
+              "confirmed non-overlapping profile timeline supports #{expected_experience_years}+"
+  end
+
   # Profile-backed text must be supported by the union of the cited entries, so
   # a composed line may draw wording from several confirmed facts at once.
   profile_sources = resolved.select { |(_ref, source)| source["origin"] == "profile" }
@@ -1146,6 +1283,9 @@ visible_items.each do |item|
   # figure that none of its sources states.
   supported_numbers = resolved.flat_map do |(_ref, source)|
     numeric_tokens(source["numeric_content"]).map { |token| canonical_numeric_token(token) }
+  end
+  if experience_match && expected_experience_years
+    supported_numbers << canonical_numeric_token("#{expected_experience_years}+ years")
   end
   numeric_tokens(text).uniq.each do |number|
     canonical = canonical_numeric_token(number)
@@ -1188,6 +1328,8 @@ end
 
 validate_bridge_presentation(model, evidence_index, sources, visible_items, errors)
 check_model_links(model, link_registry, errors)
+check_header_link_labels(visible_items, sources, errors)
+check_mobility(model, profile, sources, errors)
 check_summary_links(visible_items, errors)
 warnings.concat(organization_link_warnings(model, link_registry))
 

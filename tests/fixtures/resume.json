@@ -1,14 +1,15 @@
 {
   "schema_version": 1,
   "application_id": "2026-07-21-target-company-software-engineer",
-  "target": {"mode": "job-targeted", "company": "Target Company", "role": "Software Engineer", "summary_lead": "Software Engineer", "market": "europe", "market_basis": "profile-default"},
+  "target": {"mode": "job-targeted", "company": "Target Company", "role": "Software Engineer", "summary_lead": "Software Engineer", "market": "europe", "market_basis": "profile-default", "job_country": "Testland", "job_country_code": "TL", "location_scope": "same-country", "location_basis": "job-description"},
   "layout": {"page_target": 1},
   "basics": {
     "name": {"text": "Casey Engineer", "source_ref": "profile-identity-001"},
-    "contact": [{"text": "engineer@example.test", "source_ref": "profile-contact-001"}],
-    "links": []
+    "contact": [{"text": "Email", "source_ref": "profile-contact-001", "url": "mailto:engineer@example.test"}],
+    "links": [{"text": "Portfolio", "source_ref": "profile-link-001", "url": "https://example.test/casey"}],
+    "mobility": null
   },
-  "summary": [{"text": "Software Engineer contributing to data import systems with Ruby. The pipeline handles multiple data formats. Ruby and PostgreSQL underpin the implementation. Contribution covers the import paths and persistence layer.", "source_ref": "fixture-001"}],
+  "summary": [{"text": "Software Engineer with 3+ years of experience contributing to data import systems with Ruby. The pipeline handles multiple data formats. Ruby and PostgreSQL underpin the implementation. Contribution covers the import paths and persistence layer.", "source_refs": ["fixture-001", "profile-experience-001"]}],
   "experience": [{
     "organization": {"text": "Example Systems", "source_ref": "profile-experience-001"},
     "title": {"text": "Software Engineer", "source_ref": "profile-experience-001"},
