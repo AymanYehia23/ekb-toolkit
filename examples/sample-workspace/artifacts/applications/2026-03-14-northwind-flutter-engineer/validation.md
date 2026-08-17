@@ -12,13 +12,13 @@
 - Named in Selected Projects: fittrack, mealmate (ranks 1, 2)
 - Requirement coverage: 8 demonstrated, 1 stated, 2 unsupported
 - Selection score: 95/100 (rubric v1; 8 scoreable required requirements, 1 excluded as genuine gaps)
-  - required_demonstrated 100, critical_demonstrated 100, strongest_evidence_used 75, decisions_recorded 100
+  - required_coverage 100, critical_demonstrated 100, strongest_evidence_used 75, decisions_recorded 100
 - PDF pages: 1
-- Content fill by page: 72.7%
+- Content fill by page: 71.2%
 - DOCX tables: 0
 - DOCX images/shapes: 0
 - Extraction/order errors: 0
-- Editorial/layout warnings: 6
+- Editorial/layout warnings: 5
 
 ## Requirement coverage
 
@@ -38,11 +38,10 @@
 
 ## Likely external review findings
 
-Keyword gap (3 terms, 0 fixable from existing evidence). A reviewer's missing-keyword list will draw from these:
+Keyword gap (2 terms, 0 fixable from existing evidence). A reviewer's missing-keyword list will draw from these:
 
 | Term | Coverage | Priority | Fixable here |
 | --- | --- | --- | --- |
-| requirements work with product | stated | required | no, real gap |
 | code reviews | unsupported | preferred | no, real gap |
 | design system across apps | unsupported | preferred | no, real gap |
 
@@ -51,6 +50,5 @@ Keyword gap (3 terms, 0 fixable from existing evidence). A reviewer's missing-ke
 - Header has no phone number; add one only from confirmed profile data
 - Language entry 1 has no CEFR level (A1-C2); preserve the recorded proficiency unless the user confirms a CEFR mapping
 - Language entry 2 has no CEFR level (A1-C2); preserve the recorded proficiency unless the user confirms a CEFR mapping
-- Single-page resume is underfilled: content uses 72.7% of printable height, below the 84.0% minimum; add target-relevant Selected Projects evidence or another distinct project
+- Single-page resume is underfilled: content uses 71.2% of printable height, below the 84.0% minimum; add target-relevant Selected Projects evidence or another distinct project
 - 17 emphasized fragments across 8 bullets reads as heavily bolded; reduce the term set
-- required requirements carried by a claim rather than an achievement: requirements work with product

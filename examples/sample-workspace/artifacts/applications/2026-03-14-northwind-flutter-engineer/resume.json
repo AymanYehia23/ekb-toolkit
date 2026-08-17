@@ -18,7 +18,7 @@
     "name": { "text": "Sam Rivera", "source_ref": "profile-identity-001" },
     "contact": [
       {
-        "text": "sam.rivera@example.com",
+        "text": "Email",
         "source_ref": "profile-contact-001",
         "url": "mailto:sam.rivera@example.com"
       },
@@ -26,12 +26,12 @@
     ],
     "links": [
       {
-        "text": "linkedin.com/in/example-sam-rivera",
+        "text": "LinkedIn",
         "source_ref": "profile-link-001",
         "url": "https://linkedin.com/in/example-sam-rivera"
       },
       {
-        "text": "github.com/example-sam-rivera",
+        "text": "GitHub",
         "source_ref": "profile-link-002",
         "url": "https://github.com/example-sam-rivera"
       }

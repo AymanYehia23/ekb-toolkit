@@ -9,6 +9,13 @@
 #   `reason` why that beats the runner-up. When the winner is NOT the strongest
 #   candidate listed, the reason must say what outranked strength: a page-limit
 #   cut, a counting rule, non-redundant coverage that matters more.
+#   A keyword match is retrieval, not an instruction to publish the record. For
+#   non-critical commodity tools such as Git, prefer a supported profile source
+#   unless the project candidate is independently worth resume space. Never add
+#   an internal recovery or maintenance anecdote solely to raise coverage from
+#   `stated` to `demonstrated`.
+#   Read every candidate's `cautions` before selecting it. They are copied from
+#   the curated record's limitations and bind both the decision and the wording.
 #
 # WHAT IT IS NOT
 #   Not evidence. `strength` and `claim` are derived from the curated record and
@@ -19,7 +26,7 @@
 schema_version: 1
 kind: evidence-shortlist
 application: 2026-03-14-northwind-flutter-engineer
-generated_at: '2026-08-02'
+generated_at: '2026-08-17'
 generator: scripts/ekb_shortlist.py
 basis:
   requirements: 15
@@ -45,6 +52,9 @@ requirements:
     - tested
     claim: Introduced widget and golden tests for the cart, covering empty state, quantity limits, and
       the promotion path that had produced two regressions.
+    cautions:
+    - Test coverage for one feature area. Do not present test counts as an achievement; describe the behaviors
+      and failure paths covered instead.
   profile_candidates: []
   selected:
   - fittrack-003
@@ -68,6 +78,9 @@ requirements:
     - shipped
     claim: Worked on the checkout flow's payment integration, adding a server confirmation step so a completed
       charge is only recognized after the backend has verified it with the provider.
+    cautions:
+    - Shared feature. Feature-level wording is supported; the provider SDK integration itself was another
+      engineer's work and must not be implied.
   profile_candidates: []
   selected:
   - mealmate-001
@@ -93,6 +106,9 @@ requirements:
     - interview-story
     claim: Reduced the workout history screen's frame build time from a measured average of 31 ms to 9
       ms by virtualizing the list and moving the weekly aggregation off the build path.
+    cautions:
+    - Profile-mode measurement on one mid-range Android device. It is not a release-mode figure and not
+      a cross-device claim, so the number must travel with its context or not at all.
   - ref: fittrack-001
     project: fittrack
     strength: 6.0
@@ -103,6 +119,9 @@ requirements:
     - interview-story
     claim: Replaced three overlapping local-cache implementations with a single repository-backed store,
       so a stale workout entry could no longer survive a failed sync and reappear on the history screen.
+    cautions:
+    - The stale read was reproduced in a test, not measured in production. No before and after timing
+      exists, so comparative performance wording is not supported for this record.
   - ref: fittrack-002
     project: fittrack
     strength: 3.0
@@ -112,6 +131,9 @@ requirements:
     claim: 'Built the offline workout logging path: entries are written locally first, queued, and replayed
       on reconnect, with a last-write-wins resolution that keeps the device''s own edit when the server
       copy is older.'
+    cautions:
+    - Single-device sync only. There is no multi-device conflict resolution and no server-side reconciliation,
+      so wording must not imply distributed consistency work.
   profile_candidates: []
   selected:
   - fittrack-002
@@ -163,6 +185,9 @@ requirements:
     - shipped
     claim: Worked on the checkout flow's payment integration, adding a server confirmation step so a completed
       charge is only recognized after the backend has verified it with the provider.
+    cautions:
+    - Shared feature. Feature-level wording is supported; the provider SDK integration itself was another
+      engineer's work and must not be implied.
   profile_candidates: []
   selected:
   - mealmate-001
@@ -186,6 +211,9 @@ requirements:
     - tested
     claim: Added right-to-left layout support across the app, which required replacing directional padding
       and icon mirroring in fourteen widgets rather than only enabling the locale.
+    cautions:
+    - Shared work. Feature-level wording is supported; sole authorship is not. Translation itself was
+      handled by an external vendor.
   profile_candidates: []
   selected:
   - fittrack-005
@@ -209,6 +237,9 @@ requirements:
     - shipped
     claim: Set up the release pipeline that builds, signs, and uploads both platforms from CI, moving
       signing material out of developer machines and into the CI secret store.
+    cautions:
+    - Ownership is confirmed for the pipeline itself. The store listings and release approvals stayed
+      with the product owner.
   profile_candidates: []
   selected:
   - fittrack-004
@@ -248,6 +279,9 @@ requirements:
     - interview-story
     claim: Replaced three overlapping local-cache implementations with a single repository-backed store,
       so a stale workout entry could no longer survive a failed sync and reappear on the history screen.
+    cautions:
+    - The stale read was reproduced in a test, not measured in production. No before and after timing
+      exists, so comparative performance wording is not supported for this record.
   - ref: mealmate-001
     project: mealmate
     strength: 5.0
@@ -256,6 +290,9 @@ requirements:
     - shipped
     claim: Worked on the checkout flow's payment integration, adding a server confirmation step so a completed
       charge is only recognized after the backend has verified it with the provider.
+    cautions:
+    - Shared feature. Feature-level wording is supported; the provider SDK integration itself was another
+      engineer's work and must not be implied.
   profile_candidates: []
   selected:
   - fittrack-001
@@ -323,6 +360,9 @@ requirements:
     - tested
     claim: Introduced widget and golden tests for the cart, covering empty state, quantity limits, and
       the promotion path that had produced two regressions.
+    cautions:
+    - Test coverage for one feature area. Do not present test counts as an achievement; describe the behaviors
+      and failure paths covered instead.
   profile_candidates: []
   selected:
   - mealmate-001
