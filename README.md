@@ -133,9 +133,12 @@ editing the output.
   may send repository content to its model provider.
 - Add sensitive files and directories to `EXCLUSIONS.md` in your workspace.
   Excluded paths must never be read, quoted, or stored.
-- The analyzer treats target repositories as read-only. It does not run builds,
-  tests, hooks, package managers, or project scripts, and it checks that Git
-  status is unchanged when analysis finishes.
+- The analyzer preserves every original target repository and uses non-executing,
+  read-only inspection by default. When you explicitly authorize runtime
+  investigation, builds, tests, emulators, and profilers may run only in a
+  disposable isolated copy without excluded or uncommitted content. The
+  analyzer records the original HEAD, branch, and Git status and verifies that
+  all three are unchanged when the investigation finishes.
 - Git authorship can support that you contributed. It cannot prove that you led
   or solely owned the work. Stronger participation claims require your explicit
   confirmation.

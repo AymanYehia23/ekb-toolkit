@@ -9,8 +9,12 @@ Parameters:
 
 Follow `AGENTS.md`.
 
-**The target repository is read-only.** Use non-mutating inspection only. Never
-execute its code, scripts, builds, tests, hooks, or package-manager commands.
+**The original target repository is source-preserved.** Use non-mutating
+inspection by default. When the user explicitly authorizes runtime
+investigation, follow the controlled-execution rules in `AGENTS.md`: work only
+from a disposable isolated copy at the recorded commit, keep excluded and
+uncommitted content out of that copy, and verify that the original repository
+is byte-identical afterward.
 
 This procedure writes exactly two files in the workspace:
 `projects/<PROJECT>.candidates.yaml` and, when preserving or appending context,
