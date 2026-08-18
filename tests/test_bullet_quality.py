@@ -18,7 +18,8 @@ from ekb_index import BulletQualityError, collect_curated_bullets  # noqa: E402
 
 POLICY = {
     "bullet_quality": {
-        "maximum_words": 36,
+        "maximum_words": 28,
+        "maximum_sentences": 1,
         "require_terminal_punctuation": True,
         "forbidden_openings": ["responsible for", "worked on", "helped with"],
     },
@@ -48,9 +49,15 @@ class BulletQualityTest(unittest.TestCase):
         self.assertTrue(any("vague duty wording" in finding for finding in findings))
 
     def test_rejects_overlong_bullets(self) -> None:
-        bullet = " ".join(["word"] * 37) + "."
+        bullet = " ".join(["word"] * 29) + "."
         findings = bullet_text_findings(bullet, POLICY)
-        self.assertTrue(any("37 words" in finding for finding in findings))
+        self.assertTrue(any("29 words" in finding for finding in findings))
+
+    def test_rejects_multiple_sentences(self) -> None:
+        findings = bullet_text_findings(
+            "Built the import path. Added the rollback path.", POLICY
+        )
+        self.assertTrue(any("2 sentences" in finding for finding in findings))
 
     def test_rejects_missing_terminal_punctuation_and_generic_style(self) -> None:
         findings = bullet_text_findings(

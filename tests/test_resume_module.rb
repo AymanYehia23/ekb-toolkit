@@ -113,30 +113,22 @@ class ResumeModuleTest < Minitest::Test
     end
   end
 
-  def test_requires_two_selected_project_entries
+  def test_allows_freelance_projects_to_be_omitted
     with_model do |model, path, _directory|
-      model["projects"] = model["projects"].first(1)
-      _stdout, stderr, status = validate(model, path)
-      refute status.success?
-      assert_includes stderr, "at least 2 Selected Projects entries"
+      model["projects"] = []
+      stdout, stderr, status = validate(model, path)
+      assert status.success?, stderr
+      assert JSON.parse(stdout)["valid"]
     end
   end
 
-  def test_requires_two_distinct_curated_projects
+  def test_rejects_a_repeated_freelance_project
     with_model do |model, path, _directory|
-      model["projects"][1] = {
-        "primary" => {"text" => "Second Import View", "source_ref" => "fixture-001"},
-        "secondary" => nil,
-        "date" => nil,
-        "details" => [{
-          "text" => "Contributed to a data import pipeline with Ruby.",
-          "source_ref" => "fixture-001"
-        }]
-      }
+      model["projects"] << Marshal.load(Marshal.dump(model["projects"][0]))
       stdout, _stderr, status = validate(model, path)
       refute status.success?
       assert_includes JSON.parse(stdout)["errors"].join(" "),
-                      "at least two distinct curated projects"
+                      "Freelance Projects repeats a curated project"
     end
   end
 
@@ -176,10 +168,20 @@ class ResumeModuleTest < Minitest::Test
   def test_rejects_an_overlong_achievement_bullet
     with_model do |model, path, _directory|
       model["experience"][0]["bullets"][0]["text"] =
-        ((["word"] * 37).join(" ") + ".")
+        ((["word"] * 29).join(" ") + ".")
       _stdout, stderr, status = validate(model, path)
       refute status.success?
-      assert_includes stderr, "contains 37 words; maximum is 36"
+      assert_includes stderr, "contains 29 words; maximum is 28"
+    end
+  end
+
+  def test_rejects_multiple_achievements_in_one_bullet
+    with_model do |model, path, _directory|
+      model["experience"][0]["bullets"][0]["text"] =
+        "Contributed to a data import pipeline. Added PostgreSQL persistence."
+      _stdout, stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes stderr, "contains 2 sentences; maximum is 1"
     end
   end
 
@@ -396,6 +398,29 @@ class ResumeModuleTest < Minitest::Test
     end
   end
 
+  def test_rejects_direct_implementation_wording_for_contributed_source
+    with_model do |model, path, _directory|
+      model["experience"][0]["bullets"][0]["text"] =
+        "Built a data import pipeline supporting 3 formats with Ruby and PostgreSQL."
+      stdout, _stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "), "overstates contributed"
+    end
+  end
+
+  def test_rejects_independent_ownership_without_explicit_source_support
+    with_model do |model, path, _directory|
+      model["experience"][0]["bullets"][0] = {
+        "text" => "Independently implemented a scheduling service with Ruby and PostgreSQL.",
+        "source_ref" => "stronger-001"
+      }
+      stdout, _stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "),
+                      "independent-ownership wording without explicit source support"
+    end
+  end
+
   def test_accepts_legacy_shared_as_contributed
     with_model do |model, path, _directory|
       model["experience"][0]["bullets"][0] = {
@@ -473,6 +498,124 @@ class ResumeModuleTest < Minitest::Test
         %r{<w:pStyle w:val="ListBullet"/>.*?<w:position w:val="-3"/>}m,
         numbering
       )
+    end
+  end
+
+  def test_renderers_expose_readable_entry_spacing_tokens
+    with_model do |model, _path, directory|
+      output, _stdout, stderr, status = render_model(model, directory)
+      assert status.success?, stderr
+      report = JSON.parse(File.read(File.join(output, "validation.json")))
+      spacing = report.dig("presentation", "spacing_pt")
+      assert_equal 6, spacing["experience_entry_before"]
+      assert_equal 3, spacing["entry_meta_after"]
+      assert_equal 5, spacing["project_entry_before"]
+      assert_operator spacing["section_before"], :>, spacing["paragraph_after"]
+      document = docx_part(File.join(output, "resume.docx"), "word/document.xml")
+      assert_match(%r{<w:spacing w:before="120" w:after="20"/>}, document)
+      assert_match(%r{<w:spacing w:after="60"/>}, document)
+    end
+  end
+
+  def test_employer_project_is_rejected_from_freelance_projects
+    with_model do |model, path, _directory|
+      model["projects"] = [{
+        "primary" => {"text" => "Data Importer", "source_ref" => "fixture-001"},
+        "secondary" => nil,
+        "date" => nil,
+        "details" => [{
+          "text" => "Contributed to a data import pipeline supporting 3 formats.",
+          "source_ref" => "fixture-001"
+        }]
+      }]
+      stdout, _stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "),
+                      "Freelance Projects includes employer project fixture"
+    end
+  end
+
+  def test_independent_project_is_rejected_from_experience
+    with_model do |model, path, _directory|
+      model["experience"][0]["bullets"][0] = {
+        "text" => "Implemented a CSV export utility with Ruby.",
+        "source_ref" => "lowest-001"
+      }
+      stdout, _stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "),
+                      "places independent project lowest under Experience"
+    end
+  end
+
+  def test_ai_skill_without_work_example_is_warned
+    with_model do |model, _path, directory|
+      model["skills"] << {
+        "name" => "AI tools",
+        "items" => [{"text" => "Codex", "source_ref" => "profile-skill-ai-001"}]
+      }
+      output, _stdout, stderr, status = render_model(model, directory)
+      assert status.success?, stderr
+      warnings = JSON.parse(File.read(File.join(output, "validation.json")))
+        .dig("document_validation", "warnings").join(" ")
+      assert_includes warnings, "AI tools appear in Skills but not"
+    end
+  end
+
+  def test_ai_skill_with_supported_work_example_is_not_warned
+    with_model do |model, _path, directory|
+      model["skills"] << {
+        "name" => "AI tools",
+        "items" => [{"text" => "Codex", "source_ref" => "profile-skill-ai-001"}]
+      }
+      model["experience"][0]["bullets"] << {
+        "text" => "Used Codex to investigate import failures and prepare a verified repair.",
+        "source_ref" => "fixture-ai-001"
+      }
+      output, _stdout, stderr, status = render_model(model, directory)
+      assert status.success?, stderr
+      warnings = JSON.parse(File.read(File.join(output, "validation.json")))
+        .dig("document_validation", "warnings").join(" ")
+      refute_includes warnings, "AI tools appear in Skills but not"
+    end
+  end
+
+  def test_certificates_render_name_issuer_and_date_under_new_heading
+    with_model do |model, path, directory|
+      profile = YAML.safe_load(File.read(PROFILE), permitted_classes: [Date])
+      profile["certifications"] = [{
+        "id" => "profile-certification-001",
+        "name" => "Example Engineering Certificate",
+        "issuer" => "Example Institute",
+        "issued" => "2025-03",
+        "url" => "https://certs.example.test/verify",
+        "kind" => "user-stated"
+      }]
+      profile_path = File.join(directory, "profile.yaml")
+      File.write(profile_path, YAML.dump(profile))
+      model["certifications"] = [{
+        "primary" => {
+          "text" => "Example Engineering Certificate",
+          "source_ref" => "profile-certification-001",
+          "url" => "https://certs.example.test/verify"
+        },
+        "secondary" => {"text" => "Example Institute", "source_ref" => "profile-certification-001"},
+        "date" => {"text" => "Mar 2025", "source_ref" => "profile-certification-001"},
+        "details" => []
+      }]
+      write_model(path, model)
+      output = File.join(directory, "output")
+      _stdout, stderr, status = run_tool(
+        "render", "--model", path, "--profile", profile_path, "--projects", PROJECTS,
+        "--policy", POLICY, "--output-dir", output
+      )
+      assert status.success?, stderr
+      runs = docx_runs(File.join(output, "resume.docx"))
+      assert_includes runs, "CERTIFICATES"
+      refute_includes runs, "CERTIFICATIONS"
+      assert_includes runs, "Example Engineering Certificate"
+      assert_includes runs, "Example Institute"
+      assert_includes runs, "Mar 2025"
     end
   end
 
@@ -604,19 +747,19 @@ class ResumeModuleTest < Minitest::Test
     end
   end
 
-  def test_renders_selected_projects
+  def test_renders_freelance_projects
     with_model do |model, _path, directory|
       output, _stdout, stderr, status = render_model(model, directory)
       assert status.success?, stderr
       report = JSON.parse(File.read(File.join(output, "validation.json")))
       assert report["valid"]
       assert_equal 0, report.dig("document_validation", "errors").length
-      assert_equal ["stronger", "fixture"], report.dig(
-        "source_validation", "project_selection", "named_in_selected_projects"
+      assert_equal ["lowest"], report.dig(
+        "source_validation", "project_selection", "named_in_freelance_projects"
       )
       validation_text = File.read(File.join(output, "validation.md"))
-      assert_includes validation_text, "Project evidence used anywhere: stronger, fixture"
-      assert_includes validation_text, "Named in Selected Projects: stronger, fixture"
+      assert_includes validation_text, "Project evidence used anywhere: fixture, lowest"
+      assert_includes validation_text, "Named in Freelance Projects: lowest"
     end
   end
 
@@ -637,6 +780,29 @@ class ResumeModuleTest < Minitest::Test
       model["experience"][0]["bullets"][0] = {
         "text" => "Processed 1K+ users in 2 hours through a verified import workflow.",
         "source_ref" => "fixture-quantified-001"
+      }
+      stdout, stderr, status = validate(model, path)
+      assert status.success?, stderr
+      assert JSON.parse(stdout)["valid"]
+    end
+  end
+
+  def test_rejects_spelled_out_quantities_in_resume_prose
+    with_model do |model, path, _directory|
+      model["experience"][0]["bullets"][0]["text"] =
+        "Contributed to a data import pipeline supporting three formats."
+      _stdout, stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes stderr, "uses spelled-out quantity 'three'"
+      assert_includes stderr, "use digits by default"
+    end
+  end
+
+  def test_accepts_digits_when_the_source_spells_out_the_same_quantity
+    with_model do |model, path, _directory|
+      model["experience"][0]["bullets"][0] = {
+        "text" => "Processed imports for 2 clients through a verified workflow.",
+        "source_ref" => "fixture-word-number-001"
       }
       stdout, stderr, status = validate(model, path)
       assert status.success?, stderr
@@ -815,6 +981,28 @@ class ResumeModuleTest < Minitest::Test
     end
   end
 
+  def test_rejects_omitted_confirmed_header_hyperlinks
+    with_model do |model, path, _directory|
+      model["basics"]["contact"][0].delete("url")
+      model["basics"]["links"][0].delete("url")
+      stdout, _stderr, status = validate(model, path)
+      refute status.success?
+      errors = JSON.parse(stdout)["errors"].join(" ")
+      assert_includes errors, "resume.basics.contact[0] omits the confirmed profile hyperlink"
+      assert_includes errors, "resume.basics.links[0] omits the confirmed profile hyperlink"
+    end
+  end
+
+  def test_rejects_a_header_label_paired_with_another_profile_url
+    with_model do |model, path, _directory|
+      model["basics"]["links"][0]["url"] = "mailto:engineer@example.test"
+      stdout, _stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "),
+                      "resume.basics.links[0].url must use the URL recorded on profile-link-001"
+    end
+  end
+
   def test_accepts_a_literal_unlinked_phone_value
     with_model do |model, path, directory|
       profile = YAML.safe_load(File.read(PROFILE), permitted_classes: [Date])
@@ -896,18 +1084,18 @@ class ResumeModuleTest < Minitest::Test
   def test_renders_only_link_text_inside_narrative_prose
     with_model do |model, _path, directory|
       model["projects"][0]["details"][0] = {
-        "text" => "Data Importer contributed a pipeline supporting 3 formats.",
-        "source_ref" => "fixture-001",
-        "url" => "https://play.example.test/fixture",
-        "link_text" => "Data Importer"
+        "text" => "CSV Export Utility delivered a Ruby export workflow.",
+        "source_ref" => "lowest-001",
+        "url" => "https://code.example.test/lowest",
+        "link_text" => "CSV Export Utility"
       }
       output, _stdout, stderr, status = render_model(model, directory)
       assert status.success?, stderr
       document = docx_runs(File.join(output, "resume.docx"))
       hyperlinks = document.scan(%r{<w:hyperlink\b.*?</w:hyperlink>}m)
-      partial = hyperlinks.find { |element| element.include?("Data Importer") }
+      partial = hyperlinks.find { |element| element.include?("CSV Export Utility") }
       refute_nil partial
-      refute_includes partial, "contributed a pipeline"
+      refute_includes partial, "delivered a Ruby export workflow"
     end
   end
 
@@ -957,7 +1145,7 @@ class ResumeModuleTest < Minitest::Test
       assert_operator report.dig("presentation", "linked_items"), :>=, 1
       pdf = File.binread(File.join(output, "resume.pdf"))
       assert_includes pdf, "example.test/systems"
-      assert_includes pdf, "play.example.test/fixture"
+      assert_includes pdf, "code.example.test/lowest"
     end
   end
 
@@ -969,7 +1157,7 @@ class ResumeModuleTest < Minitest::Test
       assert_includes text, "Email | Portfolio"
       refute_includes text, "mailto:engineer@example.test"
       refute_includes text, "https://example.test/casey"
-      refute_includes text, "https://play.example.test/fixture"
+      refute_includes text, "https://code.example.test/lowest"
     end
   end
 
@@ -1074,36 +1262,16 @@ class ResumeModuleTest < Minitest::Test
       assert status.success?, stderr
       report = JSON.parse(stdout)
       assert report.dig("checks", "ranking_loaded")
-      assert_equal ["stronger", "fixture"], report.dig("project_selection", "selected")
-      assert_equal [1, 2], report.dig("project_selection", "ranks")
-      assert_equal ["stronger", "fixture"], report.dig("project_selection", "evidence_used")
-      assert_equal ["stronger", "fixture"],
-                   report.dig("project_selection", "named_in_selected_projects")
+      assert_equal ["fixture", "lowest"], report.dig("project_selection", "selected")
+      assert_equal [2, 3], report.dig("project_selection", "ranks")
+      assert_equal ["fixture", "lowest"], report.dig("project_selection", "evidence_used")
+      assert_equal ["lowest"],
+                   report.dig("project_selection", "named_in_freelance_projects")
     end
   end
 
   def test_ranking_warns_about_a_rank_inversion
     with_model do |model, path, _directory|
-      model["projects"] = [
-        {
-          "primary" => {"text" => "Data Importer", "source_ref" => "fixture-001"},
-          "secondary" => nil,
-          "date" => nil,
-          "details" => [{
-            "text" => "Contributed to a data import pipeline with Ruby.",
-            "source_ref" => "fixture-001"
-          }]
-        },
-        {
-          "primary" => {"text" => "CSV Export Utility", "source_ref" => "lowest-001"},
-          "secondary" => nil,
-          "date" => nil,
-          "details" => [{
-            "text" => "Implemented a CSV export utility with Ruby.",
-            "source_ref" => "lowest-001"
-          }]
-        }
-      ]
       write_model(path, model)
       stdout, _stderr, status = run_tool(
         "validate", "--model", path, "--profile", PROFILE, "--projects", PROJECTS,
@@ -1122,26 +1290,6 @@ class ResumeModuleTest < Minitest::Test
         "text" => "Open to relocation.",
         "source_ref" => "profile-eligibility-003"
       }
-      model["projects"] = [
-        {
-          "primary" => {"text" => "Data Importer", "source_ref" => "fixture-001"},
-          "secondary" => nil,
-          "date" => nil,
-          "details" => [{
-            "text" => "Contributed to a data import pipeline with Ruby.",
-            "source_ref" => "fixture-001"
-          }]
-        },
-        {
-          "primary" => {"text" => "CSV Export Utility", "source_ref" => "lowest-001"},
-          "secondary" => nil,
-          "date" => nil,
-          "details" => [{
-            "text" => "Implemented a CSV export utility with Ruby.",
-            "source_ref" => "lowest-001"
-          }]
-        }
-      ]
       write_model(path, model)
       stdout, _stderr, status = run_tool(
         "validate", "--model", path, "--profile", PROFILE, "--projects", PROJECTS,
@@ -1169,6 +1317,7 @@ class ResumeModuleTest < Minitest::Test
       ]}]
       model["alignment"]["requirements"][0]["evidence_refs"] = ["stronger-001"]
       model["quantifier_review"]["used"] = []
+      model["projects"] = []
       write_model(path, model)
       stdout, stderr, status = run_tool(
         "validate", "--model", path, "--profile", PROFILE, "--projects", PROJECTS,

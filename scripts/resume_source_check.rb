@@ -109,7 +109,10 @@ def profile_supports_text?(text, values)
   return true if variants.include?(normalized)
 
   tokens = normalized.split
-  corpus_tokens = variants.join(" ").split.uniq
+  numeric_variants = values.flat_map { |value| word_numeric_tokens(value) }
+    .map { |value| normalize_profile_text(value) }
+    .reject(&:empty?)
+  corpus_tokens = [*variants, *numeric_variants].join(" ").split.uniq
   !tokens.empty? && tokens.all? { |token| corpus_tokens.include?(token) }
 end
 
@@ -128,6 +131,7 @@ def collect_profile_sources(value, sources, errors, path = "profile")
           "profile_type" => value["type"],
           "profile_value" => value["value"],
           "profile_label" => value["label"],
+          "profile_url" => value["url"],
           "profile_values" => flatten_profile_values(value),
           "numeric_content" => JSON.generate(value.reject { |key, _child| %w[id kind].include?(key) })
         }
@@ -250,7 +254,10 @@ def address_like_label?(label)
   text.match?(/\A(?:[a-z0-9-]+\.)+[a-z]{2,}(?:[\/?#]|\z)/i)
 end
 
-def check_header_link_labels(visible_items, sources, errors)
+def check_header_link_labels(visible_items, sources, model, profile, errors)
+  require_links = model.dig("layout", "hyperlinks") != "off" &&
+                  profile.dig("preferences", "link_style", "auto_hyperlink").to_s != "off"
+
   visible_items.each do |item|
     next unless item["path"].match?(/\Aresume\.basics\.(?:contact|links)\[\d+\]\z/)
 
@@ -266,6 +273,13 @@ def check_header_link_labels(visible_items, sources, errors)
       next
     end
 
+    if require_links && source && source["origin"] == "profile" &&
+       !source["profile_url"].to_s.strip.empty? && item["url"].to_s.strip.empty?
+      label = source["profile_label"].to_s.strip
+      errors << "#{item['path']} omits the confirmed profile hyperlink; use label " \
+                "#{label.inspect} with its recorded url"
+    end
+
     next if item["url"].to_s.strip.empty?
 
     if address_like_label?(item["text"])
@@ -275,6 +289,7 @@ def check_header_link_labels(visible_items, sources, errors)
     next unless source && source["origin"] == "profile"
 
     label = source["profile_label"].to_s.strip
+    recorded_url = source["profile_url"].to_s.strip
     if label.empty?
       errors << "#{item['path']} links a profile item without a human-readable label in profile.yaml"
     elsif address_like_label?(label)
@@ -282,6 +297,9 @@ def check_header_link_labels(visible_items, sources, errors)
                 "Email, LinkedIn, GitHub, or Portfolio"
     elsif item["text"] != label
       errors << "#{item['path']}.text must use profile label #{label.inspect}"
+    end
+    if !recorded_url.empty? && normalize_url(item["url"]) != normalize_url(recorded_url)
+      errors << "#{item['path']}.url must use the URL recorded on #{item['source_ref']}"
     end
   end
 end
@@ -401,7 +419,7 @@ def rank_warnings(ranking, selected_projects, eligible_projects, resume_mode, re
 
   unranked = selected_projects.to_a.reject { |project| ranks.key?(project) }
   unless unranked.empty?
-    warnings << "selected projects are absent from the ranking: #{unranked.sort.join(', ')}"
+    warnings << "projects supplying selected evidence are absent from the ranking: #{unranked.sort.join(', ')}"
   end
   lowest = selected.map { |project| ranks[project] }.max
   # A targeted resume SHOULD skip higher-ranked projects that do not serve the
@@ -460,7 +478,7 @@ def shortlist_findings(shortlist, prose_refs, visible_refs, errors, warnings)
     end
     unless unused.empty?
       warnings << "shortlist for \"#{term}\" selects #{unused.join(', ')} but the resume does not " \
-                  "cite each project candidate in Summary, Experience, or Selected Projects, or each " \
+                  "cite each project candidate in Summary, Experience, or Freelance Projects, or each " \
                   "profile candidate anywhere visible"
     end
 
@@ -763,10 +781,20 @@ def check_summary_links(visible_items, errors)
   end
 end
 
+NUMBER_UNIT_PATTERN = begin
+  units = %w[
+    hour hours day days week weeks month months year years user users customer customers
+    client clients person people file files module modules screen screens project projects
+    device devices format formats application applications app apps order orders product products
+    integration integrations platform platforms country countries
+  ]
+  "(?:#{units.sort_by { |unit| -unit.length }.map { |unit| Regexp.escape(unit) }.join('|')}|team\\s+members?)"
+end.freeze
+
 def numeric_tokens(value)
   # Treat a quantifier as one semantic unit. This avoids accepting "4" merely
   # because the source contains "40", while allowing common CV formats.
-  value.to_s.scan(/(?<![A-Za-z0-9])(?:[$€£]\s*)?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:\s?[KMBkmb]\+?(?![A-Za-z]))?\+?(?:\s?%|\s+(?:hours?|days?|weeks?|months?|years?|users?|customers?|people|files?|modules?|screens?|projects?|devices?|formats?|team\s+members?))?/)
+  value.to_s.scan(/(?<![A-Za-z0-9])(?:[$€£]\s*)?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:\s?[KMBkmb]\+?(?![A-Za-z]))?\+?(?:\s?%|\s+#{NUMBER_UNIT_PATTERN})?/i)
     .map { |token| token.strip }
     .reject(&:empty?)
 end
@@ -784,13 +812,53 @@ end
 # checking it produces noise without catching claims. Counts that matter to a
 # reader start at two.
 WORD_NUMBERS = %w[
-  two three four five six seven eight nine ten eleven twelve thirteen fourteen
+  one two three four five six seven eight nine ten eleven twelve thirteen fourteen
   fifteen sixteen seventeen eighteen nineteen twenty thirty forty fifty sixty
   seventy eighty ninety hundred thousand million
 ].freeze
 
+WORD_NUMBER_VALUES = {
+  "one" => 1, "two" => 2, "three" => 3, "four" => 4, "five" => 5,
+  "six" => 6, "seven" => 7, "eight" => 8, "nine" => 9, "ten" => 10,
+  "eleven" => 11, "twelve" => 12, "thirteen" => 13, "fourteen" => 14,
+  "fifteen" => 15, "sixteen" => 16, "seventeen" => 17, "eighteen" => 18,
+  "nineteen" => 19, "twenty" => 20, "thirty" => 30, "forty" => 40,
+  "fifty" => 50, "sixty" => 60, "seventy" => 70, "eighty" => 80,
+  "ninety" => 90
+}.freeze
+
+def parse_word_number(words)
+  total = 0
+  current = 0
+  words.downcase.split(/[\s-]+/).each do |word|
+    if WORD_NUMBER_VALUES.key?(word)
+      current += WORD_NUMBER_VALUES[word]
+    elsif word == "hundred"
+      current = [current, 1].max * 100
+    elsif word == "thousand"
+      total += [current, 1].max * 1_000
+      current = 0
+    elsif word == "million"
+      total += [current, 1].max * 1_000_000
+      current = 0
+    else
+      return nil
+    end
+  end
+  total + current
+end
+
+def word_numeric_tokens(value)
+  words = WORD_NUMBERS.join("|")
+  pattern = /(?<![[:alnum:]])(?<number>(?:#{words})(?:[\s-]+(?:#{words}))*)(?:\s+(?<unit>#{NUMBER_UNIT_PATTERN}))?(?![[:alnum:]])/i
+  value.to_s.scan(pattern).filter_map do |number, unit|
+    parsed = parse_word_number(number)
+    parsed && [parsed, unit].compact.join(" ")
+  end
+end
+
 def word_number_tokens(value)
-  value.to_s.downcase.scan(/(?<![[:alnum:]])(#{WORD_NUMBERS.join('|')})(?![[:alnum:]])/).flatten
+  value.to_s.downcase.scan(/(?<![[:alnum:]])(#{(WORD_NUMBERS - ['one']).join('|')})(?![[:alnum:]])/).flatten
 end
 
 def alignment_term_present?(text, term)
@@ -809,22 +877,37 @@ end
 # Coverage is DERIVED here rather than authored in the model, so it cannot be
 # asserted into existence:
 #   demonstrated — a curated project record is cited in Summary, Experience,
-#                  or Selected Projects. The resume shows the capability.
+#                  or Freelance Projects. The resume shows the capability.
 #   stated       — cited only by a profile fact, or only in a list section.
 #                  The resume claims the capability.
 #   unsupported  — no eligible evidence.
 
 # A composed claim past this many sources stops being auditable by a reader who
 # wants to check it, which is the property that makes composition safe at all.
-# Read the shared policy so bank validation and final-resume validation cannot
-# drift when a workspace intentionally overrides the default.
-MAX_COMPOSED_SOURCES = begin
-  policy = options[:policy] && File.file?(options[:policy]) ? JSON.parse(read_utf8(options[:policy])) : {}
-  maximum = Integer(policy.dig("bullet_quality", "maximum_sources") || 4)
-  raise ArgumentError, "bullet_quality.maximum_sources must be positive" if maximum < 1
-  maximum
+# Read the shared policy so selection and final-resume validation cannot drift
+# when a workspace intentionally overrides the default.
+RESUME_POLICY = begin
+  options[:policy] && File.file?(options[:policy]) ? JSON.parse(read_utf8(options[:policy])) : {}
 rescue JSON::ParserError, ArgumentError => e
   warn "cannot read bullet source policy: #{e.message}"
+  exit 2
+end
+
+MAX_COMPOSED_SOURCES = begin
+  maximum = Integer(RESUME_POLICY.dig("bullet_quality", "maximum_sources") || 4)
+  raise ArgumentError, "bullet_quality.maximum_sources must be positive" if maximum < 1
+  maximum
+rescue ArgumentError => e
+  warn "cannot read bullet source policy: #{e.message}"
+  exit 2
+end
+
+MIN_FREELANCE_PROJECTS = begin
+  minimum = Integer(RESUME_POLICY.dig("selected_projects", "minimum_distinct_projects") || 0)
+  raise ArgumentError, "selected_projects.minimum_distinct_projects cannot be negative" if minimum < 0
+  minimum
+rescue ArgumentError => e
+  warn "cannot read freelance project policy: #{e.message}"
   exit 2
 end
 
@@ -912,29 +995,24 @@ def validate_bridge_presentation(model, index, sources, visible_items, errors)
     end
     next unless active
 
-    Array(model["projects"]).each_with_index do |entry, index_position|
-      next unless entry.is_a?(Hash)
-      prefix = "resume.projects[#{index_position}]"
-      entry_items = visible_items.select { |item| item["path"].start_with?(prefix) }
-      entry_project_refs = entry_items.flat_map do |item|
-        Array(item["refs"]).select { |ref| sources.dig(ref, "origin") == "project" }
-      end.uniq
-      relevant_records = record_refs & entry_project_refs
-      next if relevant_records.empty?
-
-      presented = entry_items.any? do |item|
-        next false unless item["path"].start_with?("#{prefix}.details[")
+    selected_records = record_refs.select do |record_ref|
+      visible_items.any? { |item| Array(item["refs"]).map(&:to_s).include?(record_ref) }
+    end
+    selected_records.each do |record_ref|
+      presented = visible_items.any? do |item|
+        next false unless item["path"].match?(
+          /\Aresume\.(?:experience\[\d+\](?:\.engagements\[\d+\])?\.bullets|projects\[\d+\]\.details)\[\d+\]\z/
+        )
         refs = Array(item["refs"]).map(&:to_s)
-        refs.include?(profile_ref) &&
-          !(refs & relevant_records).empty? &&
+        refs.include?(profile_ref) && refs.include?(record_ref) &&
           phrases.all? { |phrase| alignment_term_present?(item["text"].to_s, phrase) }
       end
       next if presented
 
-      label = entry.dig("primary", "text") || "project at index #{index_position}"
-      errors << "#{prefix} #{label.inspect} was selected through evidence bridge #{profile_ref}, " \
-                "but no project detail co-cites that profile fact and a bridged project record " \
-                "while stating #{phrases.map(&:inspect).join(', ')}"
+      project = sources.dig(record_ref, "project") || record_ref
+      errors << "bridged project #{project} was selected through evidence bridge #{profile_ref}, " \
+                "but no Experience or Freelance Projects bullet co-cites that profile fact and " \
+                "#{record_ref} while stating #{phrases.map(&:inspect).join(', ')}"
     end
   end
 end
@@ -1005,7 +1083,7 @@ def collect_alignment_requirements(model, sources, visible_items, index, errors,
       end
       message = "#{path} \"#{term}\" is a required requirement covered as #{coverage}, " \
                 "but eligible project evidence exists and was not used in Summary, Experience, " \
-                "or Selected Projects: #{top.join('; ')}."
+                "or Freelance Projects: #{top.join('; ')}."
       # Only a CRITICAL capability blocks. The 2026-07-29 calibration against the
       # external reviewer's per-skill table showed `stated` scoring 96.7% on
       # average against `demonstrated` at 86.7%, because the stated items were
@@ -1277,10 +1355,23 @@ visible_items.each do |item|
   # authorship, even when a co-cited record would allow it on its own.
   weakest = resolved.map { |(_ref, source)| source["involvement"] }.compact
   if weakest.include?("contributed") &&
-     text.match?(/\b(led\s+(?!to\b)|owned end[- ]to[- ]end|single-handedly|solely)\b/i)
+     text.match?(/\b(led\s+(?!to\b)|owned end[- ]to[- ]end|single-handedly|solely|independently|solo developer|sole developer|built|developed|implemented|designed)\b/i)
     contributed = resolved.select { |(_ref, source)| source["involvement"] == "contributed" }
                           .map { |(ref, _source)| ref }
     errors << "#{item['path']} overstates contributed source #{contributed.join(', ')}"
+  end
+  if text.match?(/\bled\s+(?!to\b)/i) && weakest.any? { |level| level != "led" }
+    errors << "#{item['path']} uses leadership wording without exclusively led sources"
+  end
+  sole_wording = text.match?(/\b(independently|single-handedly|solely|solo developer|sole developer)\b/i)
+  if sole_wording
+    explicit_support = resolved.any? do |(_ref, source)|
+      source["numeric_content"].to_s.match?(
+        /\b(independently|single-handedly|solely|solo developer|sole developer|only developer)\b/i
+      )
+    end
+    errors << "#{item['path']} uses independent-ownership wording without explicit source support" \
+      unless explicit_support
   end
 
   experience_match = item["path"].match?(/\Aresume\.summary\[\d+\]\z/) &&
@@ -1304,7 +1395,10 @@ visible_items.each do |item|
   # A number needs one source that carries it. Composition may not assemble a
   # figure that none of its sources states.
   supported_numbers = resolved.flat_map do |(_ref, source)|
-    numeric_tokens(source["numeric_content"]).map { |token| canonical_numeric_token(token) }
+    [
+      *numeric_tokens(source["numeric_content"]),
+      *word_numeric_tokens(source["numeric_content"])
+    ].map { |token| canonical_numeric_token(token) }
   end
   if experience_match && expected_experience_years
     supported_numbers << canonical_numeric_token("#{expected_experience_years}+ years")
@@ -1350,7 +1444,7 @@ end
 
 validate_bridge_presentation(model, evidence_index, sources, visible_items, errors)
 check_model_links(model, link_registry, errors)
-check_header_link_labels(visible_items, sources, errors)
+check_header_link_labels(visible_items, sources, model, profile, errors)
 check_mobility(model, profile, sources, errors)
 check_professional_title(model, profile, errors)
 check_summary_links(visible_items, errors)
@@ -1363,6 +1457,17 @@ selected_projects_section = visible_items
   .select { |item| item["path"].start_with?("resume.projects[") }
   .flat_map { |item| Array(item["refs"]).filter_map { |ref| sources.dig(ref, "project") } }
   .uniq
+
+employer_projects = Array(profile["experience"]).each_with_object({}) do |entry, memo|
+  next unless entry.is_a?(Hash)
+  memo[entry["organization"].to_s] = Array(entry["projects"]).map(&:to_s)
+end
+employment_project_owners = employer_projects.each_with_object({}) do |(organization, projects), memo|
+  projects.each { |project| memo[project] = organization }
+end
+standalone = Array(profile.dig("preferences", "standalone_projects")).map(&:to_s)
+academic = Array(profile.dig("preferences", "academic_projects")).map(&:to_s)
+
 section_entry_projects = Array(model["projects"]).each_with_index.filter_map do |_entry, index|
   prefix = "resume.projects[#{index}]"
   projects_for_entry = visible_items
@@ -1379,28 +1484,55 @@ section_entry_projects = Array(model["projects"]).each_with_index.filter_map do 
     projects_for_entry.first
   end
 end
-if section_entry_projects.uniq.length < 2
-  errors << "Selected Projects must contain at least two distinct curated projects"
+if section_entry_projects.uniq.length < MIN_FREELANCE_PROJECTS
+  errors << "Freelance Projects must contain at least #{MIN_FREELANCE_PROJECTS} distinct curated projects"
+end
+if section_entry_projects.length != section_entry_projects.uniq.length
+  errors << "Freelance Projects repeats a curated project; use the space for non-redundant evidence"
+end
+section_entry_projects.uniq.each do |project|
+  if employment_project_owners.key?(project)
+    errors << "Freelance Projects includes employer project #{project} from " \
+              "#{employment_project_owners[project]}; place it under that Experience entry"
+  elsif academic.include?(project)
+    errors << "Freelance Projects includes academic project #{project}; place it with Education"
+  elsif !standalone.include?(project)
+    errors << "Freelance Projects includes #{project}, but profile.preferences.standalone_projects " \
+              "does not confirm it as independent work"
+  end
 end
 
 # --- Engagements inside a role ---------------------------------------------
 #
 # A named engagement is a client project rendered under its employer, so it
-# carries the two invariants the Selected Projects section already has, plus one
+# carries the two invariants the Freelance Projects section already has, plus one
 # more that only applies here: the project must actually belong to that
 # employer. profile.yaml records the association, and blending a project into
 # the wrong company block is exactly what profile-constraint-002 forbids.
 
-employer_projects = Array(profile["experience"]).each_with_object({}) do |entry, memo|
-  next unless entry.is_a?(Hash)
-  memo[entry["organization"].to_s] = Array(entry["projects"]).map(&:to_s)
-end
-standalone = Array(profile.dig("preferences", "standalone_projects")).map(&:to_s)
-academic = Array(profile.dig("preferences", "academic_projects")).map(&:to_s)
-
 Array(model["experience"]).each_with_index do |entry, entry_index|
   next unless entry.is_a?(Hash)
   organization = entry.dig("organization", "text").to_s
+  entry_prefix = "resume.experience[#{entry_index}]"
+  entry_projects = visible_items
+    .select { |item| item["path"].start_with?(entry_prefix) }
+    .flat_map { |item| Array(item["refs"]).filter_map { |ref| sources.dig(ref, "project") } }
+    .uniq
+  allowed = employer_projects.fetch(organization, [])
+  entry_projects.each do |project|
+    if standalone.include?(project)
+      errors << "#{entry_prefix} places independent project #{project} under Experience; " \
+                "preferences.standalone_projects keeps it in Freelance Projects"
+    elsif academic.include?(project)
+      errors << "#{entry_prefix} places academic project #{project} under Experience; " \
+                "it belongs with its Education entry"
+    elsif !allowed.include?(project)
+      owner = employment_project_owners[project]
+      destination = owner ? " under #{owner}" : " with an employer in profile.yaml"
+      errors << "#{entry_prefix} places project #{project} under #{organization}, but profile.yaml " \
+                "associates it#{destination}"
+    end
+  end
   Array(entry["engagements"]).each_with_index do |_engagement, position|
     prefix = "resume.experience[#{entry_index}].engagements[#{position}]"
     projects_for_engagement = visible_items
@@ -1414,20 +1546,6 @@ Array(model["experience"]).each_with_index do |entry, entry_index|
     if projects_for_engagement.length > 1
       errors << "#{prefix} mixes sources from multiple projects: #{projects_for_engagement.sort.join(', ')}"
       next
-    end
-    project = projects_for_engagement.first
-    allowed = employer_projects[organization]
-    if allowed && !allowed.include?(project)
-      errors << "#{prefix} places project #{project} under #{organization}, which profile.yaml " \
-                "does not associate with that employer"
-    end
-    if standalone.include?(project)
-      errors << "#{prefix} places independent project #{project} under Experience; " \
-                "preferences.standalone_projects keeps it out of employment history"
-    end
-    if academic.include?(project)
-      errors << "#{prefix} places academic project #{project} under Experience; " \
-                "it belongs with its education entry"
     end
   end
 end
@@ -1541,6 +1659,7 @@ report = {
     "evidence_used" => ordered_projects,
     "evidence_ranks" => ordered_projects.map { |project| selected_ranks[project] }.compact,
     "named_in_selected_projects" => ordered_section_projects,
+    "named_in_freelance_projects" => ordered_section_projects,
     "named_ranks" => ordered_section_projects.map { |project| selected_ranks[project] }.compact,
     "named_labels" => selected_project_labels
   }

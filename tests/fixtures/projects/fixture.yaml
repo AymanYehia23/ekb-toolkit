@@ -53,3 +53,23 @@ records:
     reasoning: The repository records the exact scale and duration.
     limitations: No business result is claimed.
     tags: [metrics]
+  - id: fixture-ai-001
+    statement: Used Codex to investigate import failures and prepare a verified repair.
+    kind: user-stated
+    involvement: implemented
+    evidence:
+      - path: context/fixture-questions.md
+        at: Q2
+    reasoning: The workflow was confirmed by the user.
+    limitations: No productivity measurement is claimed.
+    tags: [ai-tools, debugging]
+  - id: fixture-word-number-001
+    statement: Processed imports for two clients through a verified workflow.
+    kind: user-stated
+    involvement: implemented
+    evidence:
+      - path: context/fixture-questions.md
+        at: Q3
+    reasoning: The client count was confirmed by the user.
+    limitations: No business outcome is claimed.
+    tags: [metrics]

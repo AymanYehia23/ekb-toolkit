@@ -39,6 +39,16 @@ def bullet_text_findings(text: str, policy: dict[str, Any]) -> list[str]:
             f"contains {word_count(stripped)} words; maximum is {maximum_words}"
         )
 
+    maximum_sentences = int(quality.get("maximum_sentences", 1))
+    if maximum_sentences < 1:
+        findings.append("policy bullet_quality.maximum_sentences must be positive")
+    else:
+        sentence_count = len(re.findall(r"[.!?]+(?=\s|$)", stripped))
+        if sentence_count > maximum_sentences:
+            findings.append(
+                f"contains {sentence_count} sentences; maximum is {maximum_sentences}"
+            )
+
     if quality.get("require_terminal_punctuation", True) and not stripped.endswith(
         (".", "!", "?")
     ):

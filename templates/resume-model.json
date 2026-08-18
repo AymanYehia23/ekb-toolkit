@@ -39,7 +39,7 @@
   },
   "summary": [
     {
-      "text": "Software Engineer with 3+ years of experience relevant to the target role. Contributed to supported engineering work across selected projects. Applies verified technical skills to role requirements. Keeps every public claim tied to curated evidence.",
+      "text": "Software Engineer with 3+ years of experience relevant to the target role. Contributed to supported engineering work across multiple systems. Applies verified technical skills to role requirements. Keeps every public claim tied to curated evidence.",
       "source_refs": ["profile-experience-001", "example-001"]
     }
   ],
@@ -71,36 +71,7 @@
       ]
     }
   ],
-  "projects": [
-    {
-      "primary": {
-        "text": "First selected project",
-        "source_ref": "example-project-001"
-      },
-      "secondary": null,
-      "date": null,
-      "details": [
-        {
-          "text": "Describe one target-relevant engineering feature.",
-          "source_ref": "example-project-001"
-        }
-      ]
-    },
-    {
-      "primary": {
-        "text": "Second selected project",
-        "source_ref": "example-project-002"
-      },
-      "secondary": null,
-      "date": null,
-      "details": [
-        {
-          "text": "Describe a distinct target-relevant engineering feature.",
-          "source_ref": "example-project-002"
-        }
-      ]
-    }
-  ],
+  "projects": [],
   "skills": [
     {
       "name": "Languages",

@@ -75,8 +75,8 @@ class ResumeCoverageTest < Minitest::Test
         tags: [flutter, delivery]
   YAML
 
-  # A second project exists only so the mandatory two-entry Selected Projects
-  # section can be satisfied; it carries no `performance` evidence.
+  # A second, independent project exercises Freelance Projects placement; it
+  # carries no `performance` evidence.
   OTHER_YAML = <<~YAML
     project: other
     repo: /read-only/other
@@ -159,6 +159,9 @@ class ResumeCoverageTest < Minitest::Test
       - project: other
         link_status: confirmed
         kind: user-stated
+    preferences:
+      standalone_projects: [other]
+      academic_projects: []
   YAML
 
   def with_workspace
@@ -198,11 +201,6 @@ class ResumeCoverageTest < Minitest::Test
         ]
       }],
       "projects" => [
-        {"primary" => {"text" => "Sample Checkout", "source_ref" => "sample-002"},
-         "details" => [
-           {"text" => "Built a checkout flow with server-confirmed payment status.",
-            "source_ref" => "sample-002"}
-         ]},
         {"primary" => {"text" => "Other App", "source_ref" => "other-001"},
          "details" => [
            {"text" => "Implemented an offline request queue that replays writes once connectivity returns.",
@@ -328,12 +326,9 @@ class ResumeCoverageTest < Minitest::Test
       "text" => "Uses AI agents throughout proof-of-concept builds.",
       "source_ref" => "profile-responsibility-ai-001"
     }
-    model["projects"][0] = {
-      "primary" => {"text" => "Sample AI POC", "source_ref" => "sample-004"},
-      "details" => [{
-        "text" => "Delivered a Flutter proof of concept in 3 days.",
-        "source_ref" => "sample-004"
-      }]
+    model["experience"][0]["bullets"] << {
+      "text" => "Delivered a Flutter proof of concept in 3 days.",
+      "source_ref" => "sample-004"
     }
     model["alignment"]["requirements"] << {
       "term" => "AI coding tools", "aliases" => ["AI agents"],
@@ -363,7 +358,7 @@ class ResumeCoverageTest < Minitest::Test
   def test_bridge_accepts_a_co_cited_project_detail_with_required_phrases
     with_workspace do |dir|
       model = bridged_project_model
-      model["projects"][0]["details"][0] = {
+      model["experience"][0]["bullets"][-1] = {
         "text" => "Built this Flutter proof-of-concept with AI agents in 3 days.",
         "source_refs" => ["profile-responsibility-ai-001", "sample-004"]
       }

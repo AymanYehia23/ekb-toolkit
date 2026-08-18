@@ -153,12 +153,25 @@ hard maximum. Each achievement bullet is one sentence, ends with terminal
 punctuation, and stays within `config/resume-policy.json`
 `bullet_quality.maximum_words`. Do not preserve an overlong sentence by
 shrinking the font or margins; select one idea and rewrite it at the right
-altitude.
+altitude. The configured ceiling is a guardrail, not a target: aim for one or
+two rendered lines and allow a longer bullet only when the achievement loses
+important meaning without it.
+
+**Entry rhythm.** Whitespace is part of the information hierarchy. Use the
+named `spacing_pt` tokens in the policy in both renderers: visible space between
+an employer heading/date block and its bullets, a larger break before the next
+employer, clear space before every freelance project, and consistent separation
+between entries in Education, Certificates, Awards, and Activities. A section
+heading must not touch its first entry. Do not reduce these gaps, the body font,
+or line spacing merely to keep weaker content on the page; cut or rewrite weak
+and repetitive content first.
 
 **Header.** Render the confirmed `basics.title` on its own centered line
-immediately below the confirmed name. Keep the professional personal email,
-phone number, readable professional-profile address, and location together in
-the contact row below the title. On its own centered line immediately below the
+immediately below the confirmed name. Keep the labeled professional email and
+profile links, literal phone number, and location together in the contact row
+below the title. When automatic links are on, a recorded header URL is
+mandatory: omitting it is not a fallback for an invalid or missing label. On
+its own centered line immediately below the
 contact row, render `basics.mobility`
 for every master resume and every job whose `target.location_scope` is
 `outside-country`. Use a concise phrasing from the profile relocation entry,
@@ -243,18 +256,21 @@ After the first render, inspect page count and page use. A single-page resume
 below `content_density.single_page_minimum_usable_height_ratio` is underfilled
 even with no clipping. Resolve empty space in this order:
 
-1. add target-relevant technical depth to the existing Selected Projects;
-2. add another distinct curated project when it contributes non-redundant
+1. restore a strong relevant Experience detail omitted for space;
+2. add a relevant independent project when it contributes non-redundant
    evidence;
-3. restore a stronger relevant Experience detail omitted for space;
-4. include another confirmed section only when it helps the target.
+3. add technical depth to an existing Freelance Projects entry only when it
+   remains concise and adds a separate achievement;
+4. include another compact confirmed section only when it helps the target.
 
 **Do not fill a page** with a longer generic summary, repeated claims, broad
-skills, weak certifications, or gameable counts. Re-render and inspect after
+skills, weak certificates, or gameable counts. Re-render and inspect after
 each meaningful revision. If the eligible evidence genuinely cannot support more
 target-relevant content, say so plainly rather than padding.
 
 When a one-page draft overflows, cut in this order: lower-value skills, then
-certifications, then older experience, then a Selected Projects detail. Remove a
-required project or a target-critical achievement last, and re-run the coverage
-audit after every layout-driven cut.
+weak certificates, then a repetitive or lower-value bullet, then older
+experience, then a Freelance Projects detail. Remove a target-critical
+achievement last, and re-run the coverage and placement audits after every
+layout-driven cut. Preserve the two-page maximum, but do not compress strong
+evidence into a dense wall merely to avoid a well-used second page.

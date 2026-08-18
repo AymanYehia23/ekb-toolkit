@@ -220,8 +220,8 @@ preferences:
   summary: auto # auto | include | omit
   page_target: 1 # 1 or 2
   default_market: europe # europe (A4) | north-america (Letter)
-  # Projects with no employer. They may appear under Selected Projects and
-  # must never appear inside Experience.
+  # Projects with no employer. They may appear under Freelance Projects when
+  # they add non-redundant evidence and must never appear inside Experience.
   standalone_projects: []
   academic_projects: []
   link_style:

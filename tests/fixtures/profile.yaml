@@ -45,6 +45,10 @@ project_links:
     link_status: unconfirmed
     kind: user-stated
     note: Attribution unconfirmed; must never be attached.
+  - project: lowest
+    repo: https://code.example.test/lowest
+    link_status: confirmed
+    kind: user-stated
 experience:
   - id: profile-experience-001
     organization: Example Systems
@@ -57,6 +61,13 @@ experience:
     kind: user-stated
 education: []
 certifications: []
+skills:
+  - id: profile-skill-ai-001
+    group: AI tools
+    label: Codex
+    depth: working
+    basis: 1 project
+    kind: user-stated
 languages:
   - id: profile-language-001
     name: English

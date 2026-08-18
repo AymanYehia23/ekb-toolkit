@@ -21,10 +21,17 @@
     "small": 10
   },
   "spacing_pt": {
-    "section_before": 7,
+    "section_before": 8,
     "section_after": 3,
     "paragraph_after": 2,
-    "bullet_after": 1.5
+    "bullet_after": 1.5,
+    "experience_entry_before": 6,
+    "entry_heading_after": 1,
+    "entry_meta_after": 3,
+    "engagement_before": 4,
+    "project_entry_before": 5,
+    "supporting_entry_before": 4,
+    "line_spacing_multiple": 1.05
   },
   "bullets": {
     "text_indent_pt": 20,
@@ -38,12 +45,12 @@
   "allowed_sections": [
     "Summary",
     "Experience",
-    "Selected Projects",
+    "Freelance Projects",
     "Career Breaks",
     "Skills",
     "Languages",
     "Education",
-    "Certifications",
+    "Certificates",
     "Awards",
     "Activities",
     "Interests"
@@ -66,7 +73,7 @@
     "require_email": true,
     "recommend_phone": true,
     "recommend_profile_link": true,
-    "note": "The confirmed professional title renders between the name and contact row. The validation report flags missing contact categories but does not invent them. Use a professional personal email address; do not use a previous employer address. Location and work authorization belong in the header only when relevant and confirmed in profile.yaml."
+    "note": "The confirmed professional title renders between the name and contact row. With automatic hyperlinks enabled, every included email or profile entry that has a recorded URL must render that URL behind its human-readable label; omission is a validation error. Phone remains a literal unlinked number. The validation report flags missing contact categories but does not invent them. Use a professional personal email address; do not use a previous employer address. Location and work authorization belong in the header only when relevant and confirmed in profile.yaml."
   },
   "mobility": {
     "placement": "header-below-contact",
@@ -120,7 +127,7 @@
     "sections": [
       "Summary",
       "Experience",
-      "Selected Projects",
+      "Freelance Projects",
       "Skills"
     ],
     "note": "Bold is real character formatting, which every ATS parser discards harmlessly along with the rest of the run properties. Generic product and UI nouns are excluded because bolding words such as screen or app adds no recruiting signal. The cap exists for the human reader: past roughly a dozen terms nothing stands out any more."
@@ -180,6 +187,7 @@
       "highly skilled",
       "adept at",
       "proficient in",
+      "solo developer",
       "strong track record",
       "thrives in fast-paced environments",
       "highly motivated professional",
@@ -189,9 +197,9 @@
     "note": "Public resume text must use direct engineering language and plain punctuation. Replace forbidden symbols with a full stop, colon, comma, parentheses, or ASCII hyphen. Replace generic terms with the concrete feature, action, constraint, or verified result. This list is a default, not a doctrine: edit it. The em dash and en dash are here because they are the most reliable visual tell of generated text in a document nobody expects to be typeset."
   },
   "selected_projects": {
-    "minimum_distinct_projects": 2,
+    "minimum_distinct_projects": 0,
     "default_projects": 2,
-    "note": "Every full application resume renders a Selected Projects section containing at least two distinct curated projects. Each entry must resolve to exactly one project through its source references."
+    "note": "The model keeps the stable `projects` field, but it renders as Freelance Projects. Include up to two strong independent projects by default when they add evidence beyond Experience. Employer and academic projects are ineligible, and the section may be empty when no suitable independent work exists. Each entry must resolve to exactly one project through its source references."
   },
   "quantifier_quality": {
     "test_context_terms": [
@@ -235,7 +243,8 @@
     "note": "Public resume text must not present test cases, test files, test-code size, source-code lines, source files, or commit counts as achievements. These counts are easy to change by splitting code, tests, files, or commits and do not explain engineering value. Describe the structural change, delivered capability, tested behaviors, boundaries, failure paths, determinism, or release risk instead. Other verified numbers still need to be materially meaningful and resistant to trivial manipulation."
   },
   "bullet_quality": {
-    "maximum_words": 36,
+    "maximum_words": 28,
+    "maximum_sentences": 1,
     "maximum_selected_per_project": 5,
     "maximum_sources": 4,
     "require_terminal_punctuation": true,
@@ -254,11 +263,36 @@
       "scope",
       "activity"
     ],
-    "note": "Applies to every engineering stack. Select evidence in Outcome > Impact > Scope > Activity order. A bullet should state one defensible achievement: the delivered or changed capability, its verified consequence or meaningful scope, and only the technical details needed to distinguish the work. Do not force a result clause when no outcome is supported, and do not turn a record into a comma-separated inventory. The word and source limits are validation gates; selection quality still requires engineering judgement."
+    "note": "Applies to every engineering stack. Select and order evidence in Outcome > Impact > Scope > Activity order so the strongest bullet is first. A bullet is one short sentence and one defensible achievement: the delivered or changed capability, its verified consequence or meaningful scope, and only the technical details needed to distinguish the work. Lead at recruiter-readable professional impact and add implementation detail only when it proves an important skill, keyword, constraint, or technical result. Do not force a result clause when no outcome is supported, and do not turn a record into a comma-separated inventory. The word, sentence, and source limits are validation gates; selection quality still requires engineering judgement."
+  },
+  "number_format": {
+    "digits_default": true,
+    "spelled_numbers": [
+      "two", "three", "four", "five", "six", "seven", "eight", "nine",
+      "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen",
+      "sixteen", "seventeen", "eighteen", "nineteen", "twenty", "thirty",
+      "forty", "fifty", "sixty", "seventy", "eighty", "ninety", "hundred",
+      "thousand", "million"
+    ],
+    "one_count_units": [
+      "year", "years", "client", "clients", "customer", "customers", "user",
+      "users", "application", "applications", "app", "apps", "project",
+      "projects", "order", "orders", "team", "teams", "product", "products",
+      "integration", "integrations", "platform", "platforms", "country",
+      "countries", "day", "days", "week", "weeks", "month", "months"
+    ],
+    "note": "Use digits for quantities in Summary, Experience, and Freelance Projects. Preserve established punctuation such as 50,000+, 7,500+, 99.9%, and 40%. Names and official credential titles are not rewritten."
+  },
+  "ai_experience": {
+    "terms": [
+      "AI", "artificial intelligence", "AI-assisted", "AI agents", "AI tools",
+      "Claude", "Codex", "Windsurf", "open-source AI agents"
+    ],
+    "note": "Core engineering skills remain primary. Include an AI tool only when confirmed profile or project evidence supports genuine use and the term helps the role. When AI appears in Skills, prefer one supported achievement in Summary, Experience, or Freelance Projects that shows how it contributed to delivery, investigation, prototyping, automation, or another engineering result. The renderer warns when AI is visible only as a skill keyword."
   },
   "content_density": {
     "single_page_minimum_usable_height_ratio": 0.84,
-    "note": "A one-page resume that uses less than 84 percent of the printable height is underfilled. Add target-relevant technical depth to Selected Projects first, then add another distinct project if it contributes new evidence. Do not pad with generic prose, weak skills, or gameable counts."
+    "note": "A one-page resume that uses less than 84 percent of the printable height is underfilled. Restore a strong non-redundant Experience detail first, then add a relevant independent project or compact confirmed section. Do not pad with generic prose, weak skills, or gameable counts."
   },
   "requirements": {
     "single_column": true,
@@ -273,7 +307,7 @@
     "password_protected_pdf": false,
     "page_target": 1,
     "page_maximum": 2,
-    "selected_projects_minimum": 2
+    "selected_projects_minimum": 0
   },
   "experience_budget": {
     "role_bullets_default": 3,

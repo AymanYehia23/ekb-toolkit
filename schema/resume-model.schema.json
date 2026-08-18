@@ -142,7 +142,7 @@
           "enum": [
             "selected-projects"
           ],
-          "description": "Optional deliberate page break used to balance a two-page resume."
+          "description": "Optional deliberate page break before the public Freelance Projects section, using the stable internal value selected-projects for schema-version compatibility."
         },
         "hyperlinks": {
           "enum": [
@@ -226,7 +226,8 @@
     },
     "projects": {
       "type": "array",
-      "minItems": 2,
+      "minItems": 0,
+      "description": "Independent work rendered under Freelance Projects. Employer projects belong under their associated Experience entry, academic projects belong with Education, and this array stays empty when no suitable independent project adds non-redundant evidence.",
       "items": {
         "$ref": "#/$defs/profileEntry"
       }
@@ -257,6 +258,7 @@
     },
     "certifications": {
       "type": "array",
+      "description": "Relevant confirmed credentials rendered under Certificates. Use primary for the certificate name, secondary for the issuer, and date for the available year or date.",
       "items": {
         "$ref": "#/$defs/profileEntry"
       }

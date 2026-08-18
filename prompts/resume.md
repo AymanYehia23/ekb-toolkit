@@ -249,8 +249,10 @@ under-covered requirement; when it fires, name the reason at delivery rather
 than silently accepting it.
 
 Selection and placement are different decisions. A project is **selected** when
-any visible item cites one of its records. The `projects` array is only what
-renders under Selected Projects.
+any visible item cites one of its records. The stable `projects` array renders
+under **Freelance Projects** and accepts only projects listed in
+`profile.preferences.standalone_projects`. Employer projects belong under their
+associated Experience entry; academic projects belong with Education.
 
 For a master resume, verify the highest-ranked eligible project is represented
 somewhere. Omit it only for a binding cap, a counting rule, or a stronger
@@ -269,7 +271,7 @@ an eligible selected source.
 The checker derives a second, stronger measure you cannot assert:
 
 - **demonstrated** — a curated project record is cited in Summary, Experience,
-  or Selected Projects. An achievement shows the capability.
+  or Freelance Projects. An achievement shows the capability.
 - **stated** — carried only by a profile fact or a list section such as Skills.
   The resume claims the capability.
 - **unsupported** — no eligible evidence exists.
@@ -366,6 +368,14 @@ the recorded preference during layout iteration. A narrative item may carry a
 project `url` only when it also sets `link_text` to the exact project name shown
 inside the prose. Otherwise omit the URL. Entity-name fields and the
 contact/profile fields remain whole-item links. Summary items never carry URLs.
+
+When `layout.hyperlinks` is `auto`, build every included header contact or
+profile link from its recorded `label` and `url`; never substitute `value` for
+the visible text and never omit a recorded URL to make an invalid label pass.
+Email therefore renders as `Email`, profile services render as `LinkedIn`,
+`GitHub`, or `Portfolio`, and the address stays in the hyperlink target. Phone
+is the deliberate exception: render its literal value and never attach a URL.
+Source validation treats an omitted confirmed header URL as an error.
 
 Set `basics.title` to the exact confirmed `profile.professional_title` value and
 cite its `profile-title-*` ID. This is the stable title rendered directly below
@@ -482,21 +492,32 @@ stack, and one or two bullets.
   curated project, and that project must be associated with this employer in
   `profile.yaml`. The checker rejects a project placed under the wrong company,
   and rejects independent or academic work inside Experience;
-- do not repeat an engagement's accomplishment in Selected Projects.
+- do not repeat an engagement's accomplishment in Freelance Projects; in normal
+  operation the placement rules make that duplication invalid anyway.
 
 Keep the flat form for a role with one dominant project. Engagements raise the
 ceiling for a dense role; they are not a better default.
 
-### Selected Projects
+### Freelance Projects
 
-Render at least two distinct curated projects. Default to two and add more only
-when the target needs genuinely different evidence. Each entry resolves through
-its `source_ref` values to exactly one project.
+Use this section only for work confirmed by the career map and
+`profile.preferences.standalone_projects` as independent. Default to the two
+strongest relevant independent projects that add evidence beyond Experience,
+but render fewer or omit the section when fewer genuinely useful independent
+projects exist. Never fill the section with employer or academic work merely to
+reach a count. Each entry resolves through its `source_ref` values to exactly one
+independent project.
 
-Choose projects that add target-relevant evidence not already clear elsewhere.
-The section is not a podium for the highest ranks. Keep independent work out of
-Experience, honor the career map, and avoid repeating an accomplishment in both
-places.
+For a master resume, weigh independent projects by relevance to the intended
+role family, technical depth, professional significance, scale, supported
+impact, supported ownership, project quality, seniority demonstrated, and
+evidence strength. Then apply a marginal-value test: prefer the project that
+adds the strongest capability not already clear in Experience. Raw bullet count,
+recency, and impressive terminology are not selection criteria.
+
+Employer projects remain eligible and often important. Represent their strongest
+non-redundant evidence under the associated role, using a named engagement when
+that improves clarity. Never repeat an employer project in Freelance Projects.
 
 ### Role-facing balance
 
@@ -528,7 +549,7 @@ evidence.
 ### The bullet quality gate
 
 Apply `config/resume-policy.json` `bullet_quality` to every Experience and
-Selected Projects bullet, whether it came from a curated bank or was drafted for
+Freelance Projects bullet, whether it came from a curated bank or was drafted for
 this application. This standard is identical across mobile, web, backend, data,
 desktop, infrastructure, embedded, and developer-tooling work.
 
@@ -549,11 +570,23 @@ a record into a comma-separated inventory, or force unsupported impact wording.
 A neutral structural result is preferable to a vague claim that something was
 "better" or "faster."
 
+Write for a recruiter first and an engineer second. Translate low-level
+implementation into the professional value of the change, then retain the
+framework, architecture, protocol, or tool only when it proves an important
+skill, matches a meaningful target keyword, explains the constraint, or makes a
+technical result credible. Never invent maintainability, scalability,
+productivity, performance, or business impact to make the translation sound
+stronger.
+
 Every bullet must be independently understandable, end with terminal
 punctuation, fit the configured word limit, avoid vague duty openings, and cite
 no more than the configured maximum number of independently eligible sources.
 If a bullet cannot answer what capability, constraint, or result would be
 missing without the work, replace it with stronger evidence or cut it.
+
+Order bullets within every role, engagement, and freelance project by the same
+Outcome > Impact > Scope > Activity priority. The first bullet is the strongest
+supported reason that entry matters, not merely the first event chronologically.
 
 ### The quantifier gate
 
@@ -566,6 +599,13 @@ A verified number is eligible evidence but not automatically useful content. Use
 a number only when its unit communicates material scale, constraint, adoption,
 workload, latency, duration, or an externally meaningful result, and cannot be
 raised trivially without changing the substance of the work.
+
+Render quantities with digits by default: `2 years`, `4 clients`, `14
+applications`, `50,000+ users`, `7,500+ orders`, `99.9%`. Preserve the exact
+supported value and its established punctuation. Do not convert, round,
+estimate, add a plus sign, or otherwise modify a number for presentation. The
+source checker accepts a digit rendering of an equivalent spelled-out source,
+but the underlying quantity must still be supported.
 
 **Never present test case count, test file count, or test-code line count as an
 achievement.** These change through splitting while the tested behavior stays
@@ -584,6 +624,40 @@ gate after any length-driven rewrite; shortening must not turn an achievement
 back into an activity list or drop the wording that carries its consequence.
 
 This pass may improve wording and selection. **It may not create evidence.**
+
+Use ownership language at the level the sources support. Prefer `Independently
+built`, `Independently developed`, `Built and delivered`, `Designed and
+developed`, or `Led the development of` only when the underlying involvement
+and record wording license that exact level. Avoid the informal label `solo
+developer`. `contributed` remains contributed; `implemented` does not become
+led, and neither automatically means independent ownership.
+
+### AI experience and skills
+
+Treat AI as an engineering method, not a brand claim. If eligible project or
+profile evidence shows AI-assisted delivery, investigation, ERP/system analysis,
+prototyping, automation, demo production, or workflow improvement, consider the
+strongest relevant example for the associated Experience entry or independent
+project. State what the engineer did and what the supported workflow or delivery
+result was. Do not claim that AI replaced engineering work, and do not invent a
+productivity result.
+
+AI tools such as Claude, Codex, Windsurf, or open-source agents may appear in
+Skills only when a confirmed profile skill or eligible project record supports
+genuine use and the term is relevant enough for recruiter or ATS matching. Keep
+core languages, frameworks, architecture, platforms, and engineering practices
+ahead of AI tools. When AI is listed in Skills and eligible accomplishment
+evidence exists, do not leave it as a keyword only; represent one natural work
+example elsewhere on the page.
+
+### Certificates
+
+Build `certifications` only from confirmed `profile.certifications`. Render the
+public heading as **Certificates**, with the certificate name in `primary`, the
+issuing organization in `secondary`, and the supported date or year in `date`.
+Include only credentials that add material value to the professional profile or
+target, keep details compact, and omit the section when none qualify. Never use
+a weak certificate merely to fill space.
 
 Re-run the candidate cautions, editorial-value, and role-scope checks after this
 pass. A keyword-dense sentence is still wrong when it reverses the record's

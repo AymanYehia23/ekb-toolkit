@@ -199,7 +199,7 @@ own.
 So the checker derives a second, stronger grade:
 
 - **demonstrated** — a curated project record is cited in Summary, Experience,
-  or Selected Projects. An achievement *shows* the capability.
+  or Freelance Projects. An achievement *shows* the capability.
 - **stated** — carried only by a profile fact or a list section. The resume
   *claims* the capability.
 - **unsupported** — no eligible evidence exists.

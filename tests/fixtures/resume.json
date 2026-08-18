@@ -21,16 +21,10 @@
   }],
   "projects": [
     {
-      "primary": {"text": "Data Importer", "source_ref": "fixture-001", "url": "https://play.example.test/fixture"},
-      "secondary": {"text": "Ruby and PostgreSQL", "source_ref": "fixture-001"},
+      "primary": {"text": "CSV Export Utility", "source_ref": "lowest-001", "url": "https://code.example.test/lowest"},
+      "secondary": {"text": "Ruby", "source_ref": "lowest-001"},
       "date": null,
-      "details": [{"text": "Contributed to a data import pipeline supporting 3 formats.", "source_ref": "fixture-001"}]
-    },
-    {
-      "primary": {"text": "Scheduling Service", "source_ref": "stronger-001"},
-      "secondary": {"text": "Ruby and PostgreSQL", "source_ref": "stronger-001"},
-      "date": null,
-      "details": [{"text": "Implemented a scheduling service with Ruby and PostgreSQL.", "source_ref": "stronger-001"}]
+      "details": [{"text": "Implemented a CSV export utility with Ruby.", "source_ref": "lowest-001"}]
     }
   ],
   "skills": [{"name": "Technologies", "items": [{"text": "Ruby", "source_ref": "fixture-001"}, {"text": "PostgreSQL", "source_ref": "fixture-001"}]}],

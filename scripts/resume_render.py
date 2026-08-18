@@ -23,11 +23,12 @@ from docx.oxml.ns import qn
 from docx.oxml.shared import OxmlElement
 from docx.shared import Inches, Pt, RGBColor
 from pypdf import PdfReader
+from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4, LETTER
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
-from reportlab.platypus import KeepTogether, ListFlowable, ListItem, PageBreak, Paragraph, SimpleDocTemplate
+from reportlab.platypus import HRFlowable, KeepTogether, ListFlowable, ListItem, PageBreak, Paragraph, SimpleDocTemplate
 
 from bullet_quality import bullet_text_findings
 from ekb_paths import config_path
@@ -425,6 +426,60 @@ def validate_writing_style(model: dict[str, Any], policy: dict[str, Any] | None)
                 raise ResumeError(f"{path} contains forbidden AI-style wording {phrase!r}")
 
 
+NUMBER_FORMAT_PATH = re.compile(
+    r"^(?:"
+    r"summary\[\d+\]|"
+    r"experience\[\d+\]\.bullets\[\d+\]|"
+    r"experience\[\d+\]\.engagements\[\d+\]\.bullets\[\d+\]|"
+    r"projects\[\d+\]\.details\[\d+\]"
+    r")\.text$"
+)
+
+
+def validate_number_format(model: dict[str, Any], policy: dict[str, Any] | None) -> None:
+    """Keep public quantities scannable without rewriting names or credentials."""
+    if not policy:
+        return
+    number_policy = policy.get("number_format", {})
+    if not number_policy.get("digits_default", False):
+        return
+    spelled = number_policy.get("spelled_numbers", [])
+    one_units = number_policy.get("one_count_units", [])
+    if not isinstance(spelled, list) or not all(
+        isinstance(item, str) and item.strip() for item in spelled
+    ):
+        raise ResumeError("policy number_format.spelled_numbers must contain non-empty strings")
+    if not isinstance(one_units, list) or not all(
+        isinstance(item, str) and item.strip() for item in one_units
+    ):
+        raise ResumeError("policy number_format.one_count_units must contain non-empty strings")
+
+    patterns: list[re.Pattern[str]] = []
+    if spelled:
+        patterns.append(
+            re.compile(
+                r"(?<!\w)(?:" + "|".join(re.escape(item) for item in spelled) + r")(?!\w)",
+                flags=re.IGNORECASE,
+            )
+        )
+    if one_units:
+        patterns.append(
+            re.compile(
+                r"(?<!\w)one\s+(?:" + "|".join(re.escape(item) for item in one_units) + r")(?!\w)",
+                flags=re.IGNORECASE,
+            )
+        )
+    for path, text in public_resume_text(model):
+        if not NUMBER_FORMAT_PATH.fullmatch(path):
+            continue
+        for pattern in patterns:
+            match = pattern.search(text)
+            if match:
+                raise ResumeError(
+                    f"{path} uses spelled-out quantity {match.group(0)!r}; use digits by default"
+                )
+
+
 def validate_quantifier_quality(model: dict[str, Any], policy: dict[str, Any] | None) -> None:
     """Reject test and source-code size metrics that can be inflated mechanically."""
     if not policy:
@@ -751,11 +806,11 @@ def validate_model(model: dict[str, Any], policy: dict[str, Any] | None = None) 
 
     entry_keys = {"primary", "secondary", "date", "details"}
     minimum_projects = int(
-        (policy or {}).get("selected_projects", {}).get("minimum_distinct_projects", 2)
+        (policy or {}).get("selected_projects", {}).get("minimum_distinct_projects", 0)
     )
     if not isinstance(model["projects"], list) or len(model["projects"]) < minimum_projects:
         raise ResumeError(
-            f"projects must contain at least {minimum_projects} Selected Projects entries"
+            f"projects must contain at least {minimum_projects} Freelance Projects entries"
         )
     for section in ("projects", "education", "certifications", "awards", "activities"):
         entries = model.get(section, [])
@@ -837,6 +892,7 @@ def validate_model(model: dict[str, Any], policy: dict[str, Any] | None = None) 
         if not isinstance(quantifiers[key], list) or not all(isinstance(item, str) and item.strip() for item in quantifiers[key]):
             raise ResumeError(f"quantifier_review.{key} must be an array of non-empty strings")
     validate_writing_style(model, policy)
+    validate_number_format(model, policy)
     validate_quantifier_quality(model, policy)
     validate_bullet_quality(model, policy)
 
@@ -1027,7 +1083,7 @@ def resume_lines(model: dict[str, Any]) -> list[str]:
             )
             lines.extend(f"• {text_of(item)}" for item in engagement["bullets"])
     if model.get("projects"):
-        lines.append("SELECTED PROJECTS")
+        lines.append("FREELANCE PROJECTS")
         for entry in model["projects"]:
             main = " | ".join(
                 part
@@ -1049,7 +1105,7 @@ def resume_lines(model: dict[str, Any]) -> list[str]:
     if model.get("languages"):
         lines.append("LANGUAGES")
         lines.append(", ".join(text_of(item) for item in model["languages"]))
-    for key, heading in (("education", "EDUCATION"), ("certifications", "CERTIFICATIONS"), ("awards", "AWARDS"), ("activities", "ACTIVITIES")):
+    for key, heading in (("education", "EDUCATION"), ("certifications", "CERTIFICATES"), ("awards", "AWARDS"), ("activities", "ACTIVITIES")):
         if model.get(key):
             lines.append(heading)
             for entry in model[key]:
@@ -1290,7 +1346,9 @@ def render_docx(model: dict[str, Any], policy: dict[str, Any], output: Path) -> 
     normal._element.rPr.rFonts.set(qn("w:eastAsia"), policy["fonts"]["primary"])
     normal.font.size = Pt(policy["sizes_pt"]["body"])
     normal.paragraph_format.space_after = Pt(policy["spacing_pt"]["paragraph_after"])
-    normal.paragraph_format.line_spacing = 1.0
+    normal.paragraph_format.line_spacing = float(
+        policy["spacing_pt"].get("line_spacing_multiple", 1.0)
+    )
     configure_docx_bullet_marker(document, policy)
     bullets = bullet_layout(policy)
 
@@ -1362,7 +1420,12 @@ def render_docx(model: dict[str, Any], policy: dict[str, Any], output: Path) -> 
     for entry in model["experience"]:
         heading = document.add_paragraph()
         heading.paragraph_format.keep_with_next = True
-        heading.paragraph_format.space_after = Pt(0)
+        heading.paragraph_format.space_before = Pt(
+            policy["spacing_pt"].get("experience_entry_before", 0)
+        )
+        heading.paragraph_format.space_after = Pt(
+            policy["spacing_pt"].get("entry_heading_after", 0)
+        )
         organization_url = link_of(model, entry["organization"])
         if organization_url:
             add_docx_hyperlink(
@@ -1380,7 +1443,9 @@ def render_docx(model: dict[str, Any], policy: dict[str, Any], output: Path) -> 
         set_run_font(heading.add_run(f" | {text_of(entry['title'])}"), policy["fonts"]["primary"], policy["sizes_pt"]["body"], bold=True)
         meta = document.add_paragraph()
         meta.paragraph_format.keep_with_next = True
-        meta.paragraph_format.space_after = Pt(1)
+        meta.paragraph_format.space_after = Pt(
+            policy["spacing_pt"].get("entry_meta_after", 1)
+        )
         date_location = " | ".join(
             part
             for part in (f"{text_of(entry['start'])} - {text_of(entry['end'])}", text_of(entry["location"]))
@@ -1398,8 +1463,12 @@ def render_docx(model: dict[str, Any], policy: dict[str, Any], output: Path) -> 
             title = document.add_paragraph()
             title.paragraph_format.keep_with_next = True
             title.paragraph_format.left_indent = Pt(bullets["engagement_title_indent_pt"])
-            title.paragraph_format.space_before = Pt(1)
-            title.paragraph_format.space_after = Pt(0)
+            title.paragraph_format.space_before = Pt(
+                policy["spacing_pt"].get("engagement_before", 1)
+            )
+            title.paragraph_format.space_after = Pt(
+                policy["spacing_pt"].get("entry_heading_after", 0)
+            )
             name_url = link_of(model, engagement["name"])
             if name_url:
                 add_docx_hyperlink(
@@ -1434,14 +1503,19 @@ def render_docx(model: dict[str, Any], policy: dict[str, Any], output: Path) -> 
                 add_docx_sourced_runs(paragraph, model, item, policy, emphasizer)
 
     if model.get("projects"):
-        emphasizer.enter("Selected Projects")
+        emphasizer.enter("Freelance Projects")
         if model["layout"].get("page_break_before") == "selected-projects":
             document.add_page_break()
-        add_docx_section_heading(document, "Selected Projects", policy)
+        add_docx_section_heading(document, "Freelance Projects", policy)
         for entry in model["projects"]:
             heading = document.add_paragraph()
             heading.paragraph_format.keep_with_next = True
-            heading.paragraph_format.space_after = Pt(1)
+            heading.paragraph_format.space_before = Pt(
+                policy["spacing_pt"].get("project_entry_before", 0)
+            )
+            heading.paragraph_format.space_after = Pt(
+                policy["spacing_pt"].get("entry_meta_after", 1)
+            )
             primary = entry["primary"]
             primary_url = link_of(model, primary)
             if primary_url:
@@ -1507,13 +1581,19 @@ def render_docx(model: dict[str, Any], policy: dict[str, Any], output: Path) -> 
         add_docx_section_heading(document, "Languages", policy)
         document.add_paragraph(", ".join(text_of(item) for item in model["languages"]))
 
-    for key, heading_label in (("education", "Education"), ("certifications", "Certifications"), ("awards", "Awards"), ("activities", "Activities")):
+    for key, heading_label in (("education", "Education"), ("certifications", "Certificates"), ("awards", "Awards"), ("activities", "Activities")):
         if not model.get(key):
             continue
         add_docx_section_heading(document, heading_label, policy)
         for entry in model[key]:
             paragraph = document.add_paragraph()
             paragraph.paragraph_format.keep_with_next = bool(entry["details"])
+            paragraph.paragraph_format.space_before = Pt(
+                policy["spacing_pt"].get("supporting_entry_before", 0)
+            )
+            paragraph.paragraph_format.space_after = Pt(
+                policy["spacing_pt"].get("paragraph_after", 0)
+            )
             primary_url = link_of(model, entry["primary"])
             if primary_url:
                 add_docx_hyperlink(
@@ -1533,6 +1613,9 @@ def render_docx(model: dict[str, Any], policy: dict[str, Any], output: Path) -> 
                 paragraph.add_run(f" | {tail}")
             for detail in entry["details"]:
                 detail_paragraph = document.add_paragraph()
+                detail_paragraph.paragraph_format.space_after = Pt(
+                    policy["spacing_pt"].get("paragraph_after", 0)
+                )
                 add_docx_sourced_runs(detail_paragraph, model, detail, policy)
 
     if model.get("hobbies"):
@@ -1563,22 +1646,31 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
     font = policy["fonts"]["pdf_primary"]
     body_size = policy["sizes_pt"]["body"]
     bullet_tokens = bullet_layout(policy)
+    line_spacing = float(policy["spacing_pt"].get("line_spacing_multiple", 1.12))
     styles = {
         "name": ParagraphStyle("EKBName", parent=sample["Normal"], fontName=f"{font}-Bold", fontSize=policy["sizes_pt"]["name"], leading=policy["sizes_pt"]["name"] + 2, alignment=TA_CENTER, spaceAfter=1),
         "title": ParagraphStyle("EKBTitle", parent=sample["Normal"], fontName=font, fontSize=body_size, leading=body_size + 1.5, alignment=TA_CENTER, spaceAfter=2),
         "contact": ParagraphStyle("EKBContact", parent=sample["Normal"], fontName=font, fontSize=policy["sizes_pt"]["small"], leading=policy["sizes_pt"]["small"] + 1.5, alignment=TA_CENTER, spaceAfter=2),
         "mobility": ParagraphStyle("EKBMobility", parent=sample["Normal"], fontName=font, fontSize=policy["sizes_pt"]["small"], leading=policy["sizes_pt"]["small"] + 1.5, alignment=TA_CENTER, spaceAfter=5),
-        "section": ParagraphStyle("EKBSection", parent=sample["Normal"], fontName=f"{font}-Bold", fontSize=policy["sizes_pt"]["section"], leading=policy["sizes_pt"]["section"] + 1, spaceBefore=policy["spacing_pt"]["section_before"], spaceAfter=policy["spacing_pt"]["section_after"], borderWidth=0, borderPadding=0, keepWithNext=True),
-        "entry": ParagraphStyle("EKBEntry", parent=sample["Normal"], fontName=font, fontSize=body_size, leading=body_size + 1.4, spaceAfter=0, keepWithNext=True),
-        "body": ParagraphStyle("EKBBody", parent=sample["Normal"], fontName=font, fontSize=body_size, leading=body_size + 1.4, spaceAfter=policy["spacing_pt"]["paragraph_after"]),
-        "meta": ParagraphStyle("EKBMeta", parent=sample["Normal"], fontName=font, fontSize=policy["sizes_pt"]["small"], leading=policy["sizes_pt"]["small"] + 1.1, spaceAfter=1, keepWithNext=True),
+        "section": ParagraphStyle("EKBSection", parent=sample["Normal"], fontName=f"{font}-Bold", fontSize=policy["sizes_pt"]["section"], leading=policy["sizes_pt"]["section"] + 1, spaceBefore=policy["spacing_pt"]["section_before"], spaceAfter=1, borderWidth=0, borderPadding=0, keepWithNext=True),
+        "entry": ParagraphStyle("EKBEntry", parent=sample["Normal"], fontName=font, fontSize=body_size, leading=body_size * line_spacing, spaceAfter=policy["spacing_pt"].get("entry_heading_after", 0), keepWithNext=True),
+        "body": ParagraphStyle("EKBBody", parent=sample["Normal"], fontName=font, fontSize=body_size, leading=body_size * line_spacing, spaceAfter=policy["spacing_pt"]["paragraph_after"]),
+        "meta": ParagraphStyle("EKBMeta", parent=sample["Normal"], fontName=font, fontSize=policy["sizes_pt"]["small"], leading=policy["sizes_pt"]["small"] * line_spacing, spaceAfter=policy["spacing_pt"].get("entry_meta_after", 1), keepWithNext=True),
     }
 
     def paragraph(text: str, style: str = "body") -> Paragraph:
         return Paragraph(html.escape(text), styles[style])
 
     def section(label: str) -> list[Any]:
-        return [paragraph(label.upper(), "section")]
+        rule = HRFlowable(
+            width="100%",
+            thickness=0.4,
+            color=colors.HexColor("#666666"),
+            spaceBefore=0,
+            spaceAfter=policy["spacing_pt"]["section_after"],
+        )
+        rule.keepWithNext = True
+        return [paragraph(label.upper(), "section"), rule]
 
     story: list[Any] = [
         paragraph(text_of(model["basics"]["name"]), "name"),
@@ -1636,9 +1728,11 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
     story.extend(section("Experience"))
     for entry in model["experience"]:
         organization = linked(entry["organization"])
+        entry_style = styles["entry"].clone("experienceEntry")
+        entry_style.spaceBefore = policy["spacing_pt"].get("experience_entry_before", 0)
         heading = Paragraph(
             f"<b>{organization} | {html.escape(text_of(entry['title']))}</b>",
-            styles["entry"],
+            entry_style,
         )
         date_location = " | ".join(
             part
@@ -1667,7 +1761,7 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
             engagement_heading = Paragraph(label, styles["entry"])
             engagement_heading.style = styles["entry"].clone("engagementEntry")
             engagement_heading.style.leftIndent = bullet_tokens["engagement_title_indent_pt"]
-            engagement_heading.style.spaceBefore = 1
+            engagement_heading.style.spaceBefore = policy["spacing_pt"].get("engagement_before", 1)
             story.append(engagement_heading)
             story.append(
                 ListFlowable(
@@ -1684,10 +1778,10 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
             )
 
     if model.get("projects"):
-        emphasizer.enter("Selected Projects")
+        emphasizer.enter("Freelance Projects")
         if model["layout"].get("page_break_before") == "selected-projects":
             story.append(PageBreak())
-        story.extend(section("Selected Projects"))
+        story.extend(section("Freelance Projects"))
         for entry in model["projects"]:
             primary = linked(entry["primary"])
             tail = " | ".join(
@@ -1696,7 +1790,10 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
             main = f"<b>{primary}</b>"
             if tail:
                 main += f" | {html.escape(tail)}"
-            flowables: list[Any] = [Paragraph(main, styles["entry"])]
+            project_style = styles["entry"].clone("freelanceProjectEntry")
+            project_style.spaceBefore = policy["spacing_pt"].get("project_entry_before", 0)
+            project_style.spaceAfter = policy["spacing_pt"].get("entry_meta_after", 1)
+            flowables: list[Any] = [Paragraph(main, project_style)]
             if entry["details"]:
                 flowables.append(
                     ListFlowable(
@@ -1736,7 +1833,7 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
         story.extend(section("Languages"))
         story.append(paragraph(", ".join(text_of(item) for item in model["languages"])))
 
-    for key, heading_label in (("education", "Education"), ("certifications", "Certifications"), ("awards", "Awards"), ("activities", "Activities")):
+    for key, heading_label in (("education", "Education"), ("certifications", "Certificates"), ("awards", "Awards"), ("activities", "Activities")):
         if not model.get(key):
             continue
         story.extend(section(heading_label))
@@ -1745,7 +1842,9 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
             main = f"<b>{linked(entry['primary'])}</b>"
             if tail:
                 main += f" | {html.escape(tail)}"
-            flowables: list[Any] = [Paragraph(main, styles["body"])]
+            supporting_style = styles["body"].clone("supportingEntry")
+            supporting_style.spaceBefore = policy["spacing_pt"].get("supporting_entry_before", 0)
+            flowables: list[Any] = [Paragraph(main, supporting_style)]
             flowables.extend(Paragraph(linked(item), styles["body"]) for item in entry["details"])
             story.append(KeepTogether(flowables))
 
@@ -1929,7 +2028,7 @@ def link_warnings(model: dict[str, Any]) -> list[str]:
                 warnings.append(f"No hyperlink on engagement: {text_of(engagement['name'])}")
     for entry in model.get("projects", []):
         if not url_of(entry["primary"]):
-            warnings.append(f"No hyperlink on selected project: {text_of(entry['primary'])}")
+            warnings.append(f"No hyperlink on freelance project: {text_of(entry['primary'])}")
     for entry in model.get("certifications", []):
         if not url_of(entry["primary"]):
             warnings.append(f"No hyperlink on certification: {text_of(entry['primary'])}")
@@ -1960,7 +2059,7 @@ def emphasis_warnings(model: dict[str, Any], policy: dict[str, Any], emphasizer:
     # nothing about readability. Judge density on the prose sections only.
     prose = sum(
         count for section, count in emphasizer.per_section.items()
-        if section in {"Summary", "Experience", "Selected Projects"}
+        if section in {"Summary", "Experience", "Freelance Projects"}
     )
     bullets = len(experience_items(model)) + sum(
         len(entry["details"]) for entry in model.get("projects", [])
@@ -2066,6 +2165,44 @@ def editorial_warnings(model: dict[str, Any]) -> list[str]:
     return warnings
 
 
+def ai_visibility_warnings(model: dict[str, Any], policy: dict[str, Any]) -> list[str]:
+    """Flag AI keywords that have no supported engineering example on the page."""
+    terms = policy.get("ai_experience", {}).get("terms", [])
+    if not isinstance(terms, list) or not all(
+        isinstance(item, str) and item.strip() for item in terms
+    ):
+        raise ResumeError("policy ai_experience.terms must contain non-empty strings")
+    if not terms:
+        return []
+
+    patterns = [
+        re.compile(rf"(?<!\w){re.escape(term)}(?!\w)", flags=re.IGNORECASE)
+        for term in terms
+    ]
+    skills_text = " ".join(
+        [group.get("name", "") for group in model.get("skills", [])]
+        + [
+            text_of(item)
+            for group in model.get("skills", [])
+            for item in group.get("items", [])
+        ]
+    )
+    if not any(pattern.search(skills_text) for pattern in patterns):
+        return []
+
+    achievement_items = [*model.get("summary", []), *experience_items(model)]
+    achievement_items.extend(
+        detail for entry in model.get("projects", []) for detail in entry.get("details", [])
+    )
+    achievement_text = " ".join(text_of(item) for item in achievement_items)
+    if any(pattern.search(achievement_text) for pattern in patterns):
+        return []
+    return [
+        "AI tools appear in Skills but not in Summary, Experience, or Freelance Projects; "
+        "use a supported engineering achievement when eligible evidence exists"
+    ]
+
+
 def content_density_warnings(
     model: dict[str, Any],
     policy: dict[str, Any],
@@ -2081,8 +2218,8 @@ def content_density_warnings(
     if threshold and ratio < threshold:
         return [
             f"Single-page resume is underfilled: content uses {ratio:.1%} of printable height, "
-            f"below the {threshold:.1%} minimum; add target-relevant Selected Projects "
-            "evidence or another distinct project"
+            f"below the {threshold:.1%} minimum; restore strong non-redundant Experience "
+            "evidence or add a relevant independent project"
         ]
     return []
 
@@ -2139,6 +2276,7 @@ def render(args: argparse.Namespace) -> int:
         pdf_text, pdf_pages, detected_page_size, fill_ratios = extract_pdf(pdf_path, policy)
         errors: list[str] = []
         warnings = editorial_warnings(model)
+        warnings.extend(ai_visibility_warnings(model, policy))
         warnings.extend(application_guidance_warnings(model, policy))
         warnings.extend(content_density_warnings(model, policy, pdf_pages, fill_ratios))
         warnings.extend(link_warnings(model))
@@ -2193,6 +2331,7 @@ def render(args: argparse.Namespace) -> int:
                 "emphasis_applied": emphasizer.count,
                 "linked_items": count_links(model),
                 "bullet_layout": bullet_layout(policy),
+                "spacing_pt": policy["spacing_pt"],
                 "attachment_stem": attachment_stem,
             },
             "document_validation": {
@@ -2212,6 +2351,10 @@ def render(args: argparse.Namespace) -> int:
         }
         validation_json = temp_dir / "validation.json"
         validation_json.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+        named_freelance = source_report.get("project_selection", {}).get(
+            "named_in_freelance_projects",
+            source_report.get("project_selection", {}).get("named_in_selected_projects", []),
+        )
         validation_md = temp_dir / "validation.md"
         validation_md.write_text(
             "# Resume validation\n\n"
@@ -2235,11 +2378,11 @@ def render(args: argparse.Namespace) -> int:
                 else ""
             )
             + (
-                f"- Named in Selected Projects: "
-                f"{', '.join(source_report['project_selection']['named_in_selected_projects'])}"
+                f"- Named in Freelance Projects: "
+                f"{', '.join(named_freelance)}"
                 f" (ranks {', '.join(str(rank) for rank in source_report['project_selection']['named_ranks'])})\n"
-                if source_report.get("project_selection", {}).get("named_in_selected_projects")
-                else "- Named in Selected Projects: none\n"
+                if named_freelance
+                else "- Named in Freelance Projects: none\n"
             )
             + coverage_section(source_report)
             + selection_score_section(source_report)
