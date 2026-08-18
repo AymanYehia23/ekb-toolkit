@@ -37,6 +37,12 @@ Only `repo-verified` and `user-stated` records may support a public claim.
 `inferred` may guide private selection and may appear in interview preparation
 when visibly labelled. It may never become a resume line.
 
+A curated record may additionally set `resume_eligible: false` when it is worth
+preserving as technical or interview history but the user has explicitly
+excluded it from resume use. This flag does not change provenance or
+participation. Bullet and resume generators must omit it, and source validators
+must reject it if cited by public resume prose.
+
 The eligible sets live in `config/toolkit.yaml` under `evidence`. Read them
 there rather than assuming these defaults.
 

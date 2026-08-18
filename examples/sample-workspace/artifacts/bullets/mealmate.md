@@ -6,11 +6,13 @@
   recovery paths, preventing completed charges from being recognized before
   backend verification.
   <!-- src: mealmate-001 -->
+  <!-- quality: {"level":"impact","result_type":"reliability","change":"The checkout does not recognize a charge as complete until the backend verifies it, including after a network drop.","metric":{"status":"not-applicable"},"checks":{"specificity":"pass","ownership":"pass","result":"pass","evidence":"pass","metric":"not-applicable","relevance":"pass","readability":"pass","credibility":"pass"}} -->
 
 - Introduced widget and golden tests for empty-cart, quantity-limit, and
   promotion paths that had produced 2 regressions, then added them to the
   pull-request pipeline.
   <!-- src: mealmate-002 -->
+  <!-- quality: {"level":"outcome","result_type":"reliability","change":"Regression-producing checkout states became automated pull-request checks.","metric":{"status":"used","basis":"The curated record links the selected paths to 2 observed regressions."},"checks":{"specificity":"pass","ownership":"pass","result":"pass","evidence":"pass","metric":"pass","relevance":"pass","readability":"pass","credibility":"pass"}} -->
 
 ---
 

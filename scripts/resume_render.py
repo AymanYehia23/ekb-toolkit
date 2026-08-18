@@ -30,7 +30,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import HRFlowable, KeepTogether, ListFlowable, ListItem, PageBreak, Paragraph, SimpleDocTemplate
 
-from bullet_quality import bullet_text_findings
+from bullet_quality import bullet_text_findings, semantic_review_findings
 from ekb_paths import config_path
 
 
@@ -563,16 +563,54 @@ BULLET_TEXT_PATH = re.compile(
 
 
 def validate_bullet_quality(model: dict[str, Any], policy: dict[str, Any] | None) -> None:
-    """Enforce objective wording boundaries on achievement bullets only."""
+    """Enforce wording plus the explicit evidence-backed A-H quality review."""
     if not policy:
         return
     bullet_policy = {"bullet_quality": policy.get("bullet_quality") or {}}
+    bullet_sources: dict[str, list[str]] = {}
     for path, text in public_resume_text(model):
         if not BULLET_TEXT_PATH.fullmatch(path):
             continue
         findings = bullet_text_findings(text, bullet_policy)
         if findings:
             raise ResumeError(f"{path} {findings[0]}")
+        item_path = path.removesuffix(".text")
+        value: Any = model
+        for token in re.findall(r"[^.\[\]]+|\d+", item_path):
+            value = value[int(token)] if token.isdigit() else value[token]
+        refs = (
+            [value["source_ref"]]
+            if "source_ref" in value
+            else list(value.get("source_refs") or [])
+        )
+        bullet_sources[item_path] = refs
+
+    if model.get("schema_version") != 2:
+        return
+    reviews = model.get("bullet_quality_review")
+    if not isinstance(reviews, list):
+        raise ResumeError("schema_version 2 requires bullet_quality_review")
+    review_by_path: dict[str, dict[str, Any]] = {}
+    for index, review in enumerate(reviews):
+        path = review.get("path") if isinstance(review, dict) else None
+        if not isinstance(path, str) or not path:
+            raise ResumeError(f"bullet_quality_review[{index}].path must be non-empty")
+        if path in review_by_path:
+            raise ResumeError(f"bullet_quality_review repeats path {path!r}")
+        review_by_path[path] = review
+    missing = set(bullet_sources) - set(review_by_path)
+    unexpected = set(review_by_path) - set(bullet_sources)
+    if missing or unexpected:
+        raise ResumeError(
+            "bullet_quality_review paths do not match public bullets; "
+            f"missing={sorted(missing)}, unexpected={sorted(unexpected)}"
+        )
+    for path, sources in bullet_sources.items():
+        findings = semantic_review_findings(
+            review_by_path[path], expected_sources=sources, expected_path=path
+        )
+        if findings:
+            raise ResumeError(f"bullet_quality_review[{path!r}] {findings[0]}")
 
 
 def validate_model(model: dict[str, Any], policy: dict[str, Any] | None = None) -> None:
@@ -580,12 +618,17 @@ def validate_model(model: dict[str, Any], policy: dict[str, Any] | None = None) 
         "schema_version", "application_id", "target", "layout", "basics", "experience",
         "projects", "skills", "education", "certifications", "alignment", "quantifier_review",
     }
-    optional = {"summary", "languages", "awards", "activities", "hobbies", "career_breaks"}
+    optional = {
+        "summary", "languages", "awards", "activities", "hobbies", "career_breaks",
+        "bullet_quality_review",
+    }
     missing, unexpected = required - set(model), set(model) - required - optional
     if missing or unexpected:
         raise ResumeError(f"resume model keys invalid; missing={sorted(missing)}, unexpected={sorted(unexpected)}")
-    if model["schema_version"] != 1:
-        raise ResumeError("resume model schema_version must be 1")
+    if model["schema_version"] not in {1, 2}:
+        raise ResumeError("resume model schema_version must be 1 or 2")
+    if model["schema_version"] == 2 and "bullet_quality_review" not in model:
+        raise ResumeError("resume model schema_version 2 requires bullet_quality_review")
     app_id = model["application_id"]
     if not isinstance(app_id, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}-[a-z0-9]+(?:-[a-z0-9]+)*", app_id):
         raise ResumeError("application_id is not safe or date-prefixed")
@@ -2252,9 +2295,12 @@ def render(args: argparse.Namespace) -> int:
     validate_model(model, policy)
     if args.ats_plain:
         apply_plain_mode(model)
-    expected_policy = model["schema_version"]
-    if policy.get("version") != expected_policy:
-        raise ResumeError(f"policy version must be {expected_policy} for this resume model")
+    compatible_models = policy.get("compatible_model_versions", [policy.get("version")])
+    if model["schema_version"] not in compatible_models:
+        raise ResumeError(
+            f"policy version {policy.get('version')} is not compatible with "
+            f"resume model v{model['schema_version']}"
+        )
     if len(set(policy.get("sizes_pt", {}).values())) > 2:
         raise ResumeError("ATS policy must use no more than two font sizes")
     source_report = run_source_check(

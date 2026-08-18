@@ -176,6 +176,7 @@ scripts/ekb status                  show workspace state
 scripts/ekb index [--check]         rebuild the evidence index
 scripts/ekb shortlist <app-id>      build an application evidence shortlist
 scripts/ekb check                   check cross-file consistency
+scripts/ekb bullet-audit            audit rendered bullets against ranked banks
 scripts/ekb skills [--tags]         check the evidence behind profile skills
 scripts/ekb validate <app-id>       validate sources without rendering
 scripts/ekb render <app-id>         validate and create DOCX and PDF files

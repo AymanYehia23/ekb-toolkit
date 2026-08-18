@@ -12,7 +12,11 @@ import unittest
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 
-from bullet_quality import bullet_text_findings, parse_bullet_bank  # noqa: E402
+from bullet_quality import (  # noqa: E402
+    bullet_text_findings,
+    parse_bullet_bank,
+    semantic_review_findings,
+)
 from ekb_index import BulletQualityError, collect_curated_bullets  # noqa: E402
 
 
@@ -29,6 +33,15 @@ POLICY = {
         "forbidden_phrases": ["results-driven professional"],
     },
 }
+
+QUALITY = (
+    '<!-- quality: {"level":"impact","result_type":"delivery",'
+    '"change":"A typed pipeline with rollback checks became available.",'
+    '"metric":{"status":"not-applicable"},"checks":{'
+    '"specificity":"pass","ownership":"pass","result":"pass",'
+    '"evidence":"pass","metric":"not-applicable","relevance":"pass",'
+    '"readability":"pass","credibility":"pass"}} -->'
+)
 
 
 class BulletQualityTest(unittest.TestCase):
@@ -68,14 +81,16 @@ class BulletQualityTest(unittest.TestCase):
         self.assertTrue(any("generic wording" in finding for finding in findings))
 
     def test_parses_inline_and_following_source_comments(self) -> None:
-        text = """# Example: resume bullet bank
+        text = f"""# Example: resume bullet bank
 
 - Built a typed import pipeline. <!-- src: example-001 -->
+  {QUALITY}
 
 - Added rollback-safe deployment checks.
   <!-- src: example-002 -->
   <!-- src: example-003 -->
   <!-- variant concise: Added rollback-safe deployment checks for failed releases. -->
+  {QUALITY}
 
 ---
 
@@ -95,6 +110,49 @@ class BulletQualityTest(unittest.TestCase):
             ["Added rollback-safe deployment checks for failed releases."],
             entries[1]["variants"],
         )
+        self.assertEqual("impact", entries[0]["quality_reviews"][0]["level"])
+
+    def test_semantic_review_rejects_activity_and_failed_checks(self) -> None:
+        review = {
+            "level": "activity",
+            "result_type": "engineering",
+            "change": "A screen was implemented.",
+            "metric": {"status": "not-applicable"},
+            "checks": {
+                "specificity": "pass",
+                "ownership": "pass",
+                "result": "fail",
+                "evidence": "pass",
+                "metric": "not-applicable",
+                "relevance": "pass",
+                "readability": "pass",
+                "credibility": "pass",
+            },
+        }
+        findings = semantic_review_findings(review)
+        self.assertTrue(any("activity is not publishable" in finding for finding in findings))
+        self.assertTrue(any("check 'result'" in finding for finding in findings))
+
+    def test_semantic_review_requires_estimate_audit(self) -> None:
+        review = {
+            "level": "impact",
+            "result_type": "delivery",
+            "change": "A repeated manual step was removed.",
+            "metric": {"status": "estimated-not-used"},
+            "checks": {
+                "specificity": "pass",
+                "ownership": "pass",
+                "result": "pass",
+                "evidence": "pass",
+                "metric": "pass",
+                "relevance": "pass",
+                "readability": "pass",
+                "credibility": "pass",
+            },
+        }
+        findings = semantic_review_findings(review)
+        self.assertTrue(any("assumptions" in finding for finding in findings))
+        self.assertTrue(any("resume_use" in finding for finding in findings))
 
     def test_evidence_index_lifts_the_parsed_text_without_a_separator(self) -> None:
         with tempfile.TemporaryDirectory(prefix="ekb-bullet-quality-") as directory:
@@ -102,7 +160,8 @@ class BulletQualityTest(unittest.TestCase):
             bank_dir.mkdir(parents=True)
             (bank_dir / "example.md").write_text(
                 "# Example\n\n- Built a typed import pipeline with rollback checks.\n"
-                "  <!-- src: example-001 -->\n\n---\n\n## Not selected\n",
+                "  <!-- src: example-001 -->\n  " + QUALITY +
+                "\n\n---\n\n## Not selected\n",
                 encoding="utf-8",
             )
             bullets = collect_curated_bullets(directory)
@@ -116,7 +175,8 @@ class BulletQualityTest(unittest.TestCase):
             bank_dir = Path(directory) / "artifacts" / "bullets"
             bank_dir.mkdir(parents=True)
             (bank_dir / "example.md").write_text(
-                "# Example\n\n- Worked on an API.\n  <!-- src: example-001 -->\n",
+                "# Example\n\n- Worked on an API.\n  <!-- src: example-001 -->\n  "
+                + QUALITY + "\n",
                 encoding="utf-8",
             )
             with self.assertRaises(BulletQualityError):

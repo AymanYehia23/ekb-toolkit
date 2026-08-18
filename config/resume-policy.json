@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "compatible_model_versions": [1, 2],
   "page_sizes": {
     "europe": "A4",
     "north-america": "LETTER"
@@ -263,7 +264,34 @@
       "scope",
       "activity"
     ],
-    "note": "Applies to every engineering stack. Select and order evidence in Outcome > Impact > Scope > Activity order so the strongest bullet is first. A bullet is one short sentence and one defensible achievement: the delivered or changed capability, its verified consequence or meaningful scope, and only the technical details needed to distinguish the work. Lead at recruiter-readable professional impact and add implementation detail only when it proves an important skill, keyword, constraint, or technical result. Do not force a result clause when no outcome is supported, and do not turn a record into a comma-separated inventory. The word, sentence, and source limits are validation gates; selection quality still requires engineering judgement."
+    "publishable_levels": [
+      "outcome",
+      "impact",
+      "scope"
+    ],
+    "result_types": [
+      "user",
+      "product",
+      "business",
+      "engineering",
+      "delivery",
+      "reliability",
+      "team",
+      "scale",
+      "security",
+      "other"
+    ],
+    "quality_checks": [
+      "specificity",
+      "ownership",
+      "result",
+      "evidence",
+      "metric",
+      "relevance",
+      "readability",
+      "credibility"
+    ],
+    "note": "Applies to every engineering stack. Select and order evidence in Outcome > Impact > Scope > Activity order so the strongest bullet is first. Activity is an audit classification, not a publishable level: cut it or select stronger evidence. A bullet is one short sentence and one defensible achievement: the delivered or changed capability, its verified consequence or meaningful scope, and only the technical details needed to distinguish the work. Lead at recruiter-readable professional impact and add implementation detail only when it proves an important skill, keyword, constraint, or technical result. Do not force a result clause when no outcome is supported, and do not turn a record into a comma-separated inventory. Schema-version 2 records the A-H semantic review and metric decision for every public bullet; the executable validator requires an exact review-to-bullet and review-to-evidence match."
   },
   "number_format": {
     "digits_default": true,

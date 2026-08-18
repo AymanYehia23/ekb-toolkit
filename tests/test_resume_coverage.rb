@@ -73,6 +73,18 @@ class ResumeCoverageTest < Minitest::Test
         reasoning: The duration was confirmed by the user.
         limitations: This was a proof of concept, not a production release.
         tags: [flutter, delivery]
+      - id: sample-005
+        statement: >
+          Contributed controller tests for an internal prototype.
+        kind: repo-verified
+        involvement: contributed
+        resume_eligible: false
+        evidence:
+          - path: test/controller_test.dart
+            at: ddd555
+        reasoning: The test contribution is retained as technical history.
+        limitations: The user explicitly excluded this record from resume use.
+        tags: [flutter, testing]
   YAML
 
   # A second, independent project exercises Freelance Projects placement; it
@@ -244,6 +256,32 @@ class ResumeCoverageTest < Minitest::Test
       row = index["records"].find { |record| record["id"] == "sample-001" }
       assert row["eligible"]
       assert_equal "implemented", row["involvement"]
+    end
+  end
+
+  def test_index_excludes_a_resume_ineligible_record_from_capabilities
+    with_workspace do |dir|
+      index = YAML.safe_load(File.read(File.join(dir, "index", "evidence-index.yaml")))
+      row = index["records"].find { |record| record["id"] == "sample-005" }
+      refute row["resume_eligible"]
+      refute row["eligible"]
+      refute_includes index.fetch("capabilities", {}).fetch("testing", []), "sample-005"
+    end
+  end
+
+  def test_resume_checker_rejects_a_resume_ineligible_record
+    with_workspace do |dir|
+      model = base_model
+      model["experience"][0]["bullets"][0] = {
+        "text" => "Contributed controller tests for an internal prototype.",
+        "source_ref" => "sample-005"
+      }
+      report, status = check(dir, model)
+      refute status.success?
+      assert(
+        report["errors"].any? { |error| error.include?("resume-ineligible source sample-005") },
+        report["errors"].inspect
+      )
     end
   end
 

@@ -200,6 +200,9 @@ requirement that asks for experience using the earlier technology.
 Project records are eligible when `kind` and `involvement` are in the sets
 configured in `config/toolkit.yaml` under `evidence`. By default that means
 `repo-verified` or `user-stated`, and `led`, `implemented`, or `contributed`.
+They must also not set `resume_eligible: false`; that explicit user decision
+overrides keyword relevance, rank, metrics, and target fit. The source checker
+rejects a resume that cites an excluded record.
 Exclude `inferred`, `team-context`, and `unknown` from public personal claims.
 
 `profile.yaml` `responsibilities` and `skills` are eligible too, and are the
@@ -353,7 +356,7 @@ metrics, impact, leadership, employment facts, or experience.
 
 ## 5. Assemble the model
 
-Write `artifacts/applications/<id>/resume.json` against
+Write a schema-version 2 `artifacts/applications/<id>/resume.json` against
 `schema/resume-model.schema.json` and `templates/resume-model.json`. Copy the
 frozen `targeting.resume_mode` to `target.mode`; the validator rejects a missing
 or unknown mode. Copy `job_country`, `job_country_code`, `location_scope`, and
@@ -587,6 +590,29 @@ missing without the work, replace it with stronger evidence or cut it.
 Order bullets within every role, engagement, and freelance project by the same
 Outcome > Impact > Scope > Activity priority. The first bullet is the strongest
 supported reason that entry matters, not merely the first event chronologically.
+
+For every public Experience, engagement, and Freelance Projects bullet, add one
+entry to the model's private `bullet_quality_review`. Its path and
+`evidence_refs` must exactly match the public bullet object. Record:
+
+- `level`: outcome, impact, or scope; activity is not accepted;
+- `result_type`: user, product, business, engineering, delivery, reliability,
+  team, scale, security, or other;
+- `change`: the concrete answer to what became possible or different;
+- `scope_justification` when scope is the strongest supported altitude;
+- the metric decision, including basis for a used or omitted number and the
+  assumptions, calculation, confidence, and `resume_use: false` for an
+  unconfirmed estimate;
+- the A-H checks: specificity, ownership, result, evidence, metric, relevance,
+  readability, and credibility.
+
+Every check must pass, except metric may be `not-applicable`. A result is not a
+synonym for a grammatical result clause: purpose-only wording and generic
+claims such as improved efficiency fail unless the cited evidence establishes
+the consequence. The renderer rejects missing reviews, activity classifications,
+failed checks, duplicate paths, and reviews whose evidence differs from the
+bullet. Historical schema-version 1 artifacts remain readable but new models
+must use version 2.
 
 ### The quantifier gate
 

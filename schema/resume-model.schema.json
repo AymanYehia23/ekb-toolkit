@@ -20,7 +20,8 @@
   ],
   "properties": {
     "schema_version": {
-      "const": 1
+      "enum": [1, 2],
+      "description": "Version 2 adds a mandatory semantic quality review for every public achievement bullet. Version 1 remains readable for historical artifacts."
     },
     "application_id": {
       "type": "string",
@@ -315,6 +316,13 @@
           "$ref": "#/$defs/stringList"
         }
       }
+    },
+    "bullet_quality_review": {
+      "type": "array",
+      "description": "Private A-H review for every Experience, engagement, and Freelance Projects bullet. Paths and evidence references must exactly match the public bullet objects.",
+      "items": {
+        "$ref": "#/$defs/bulletQualityReview"
+      }
     }
   },
   "allOf": [
@@ -337,6 +345,16 @@
             }
           }
         }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "schema_version": {"const": 2}
+        }
+      },
+      "then": {
+        "required": ["bullet_quality_review"]
       }
     }
   ],
@@ -553,6 +571,103 @@
             "$ref": "#/$defs/sourcedText"
           }
         }
+      }
+    },
+    "qualityChecks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "specificity",
+        "ownership",
+        "result",
+        "evidence",
+        "metric",
+        "relevance",
+        "readability",
+        "credibility"
+      ],
+      "properties": {
+        "specificity": {"const": "pass"},
+        "ownership": {"const": "pass"},
+        "result": {"const": "pass"},
+        "evidence": {"const": "pass"},
+        "metric": {"enum": ["pass", "not-applicable"]},
+        "relevance": {"const": "pass"},
+        "readability": {"const": "pass"},
+        "credibility": {"const": "pass"}
+      }
+    },
+    "metricDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": {
+          "enum": [
+            "used",
+            "available-not-used",
+            "not-applicable",
+            "estimated-not-used"
+          ]
+        },
+        "basis": {"type": "string", "minLength": 1},
+        "assumptions": {"type": "string", "minLength": 1},
+        "calculation": {"type": "string", "minLength": 1},
+        "confidence": {"type": "string", "minLength": 1},
+        "resume_use": {"type": "boolean"}
+      }
+    },
+    "bulletQualityReview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "level",
+        "result_type",
+        "change",
+        "evidence_refs",
+        "metric",
+        "checks"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^(?:experience\\[\\d+\\]\\.bullets\\[\\d+\\]|experience\\[\\d+\\]\\.engagements\\[\\d+\\]\\.bullets\\[\\d+\\]|projects\\[\\d+\\]\\.details\\[\\d+\\])$"
+        },
+        "level": {"enum": ["outcome", "impact", "scope"]},
+        "result_type": {
+          "enum": [
+            "user",
+            "product",
+            "business",
+            "engineering",
+            "delivery",
+            "reliability",
+            "team",
+            "scale",
+            "security",
+            "other"
+          ]
+        },
+        "change": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What became possible or materially different because of the contribution."
+        },
+        "scope_justification": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Required by the executable validator when level is scope."
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "metric": {"$ref": "#/$defs/metricDecision"},
+        "checks": {"$ref": "#/$defs/qualityChecks"}
       }
     },
     "requirement": {

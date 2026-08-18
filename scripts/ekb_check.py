@@ -36,7 +36,11 @@ import sys
 import yaml
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from bullet_quality import bullet_text_findings, parse_bullet_bank  # noqa: E402
+from bullet_quality import (  # noqa: E402
+    bullet_text_findings,
+    parse_bullet_bank,
+    semantic_review_findings,
+)
 from ekb_paths import load_config, workspace_root  # noqa: E402
 
 FAIL = []
@@ -93,6 +97,7 @@ def main():
                 record_meta[record["id"]] = {
                     "kind": record.get("kind"),
                     "involvement": record.get("involvement"),
+                    "resume_eligible": record.get("resume_eligible", True) is not False,
                 }
         for r in records:
             if r.get("supersedes"):
@@ -387,6 +392,13 @@ def main():
                     )
                 if len(set(sources)) != len(sources):
                     fail(f"{location} repeats a source comment")
+                if entry["quality_errors"]:
+                    fail(f"{location} {entry['quality_errors'][0]}")
+                if len(entry["quality_reviews"]) != 1:
+                    fail(f"{location} must contain exactly one quality review comment")
+                else:
+                    for finding in semantic_review_findings(entry["quality_reviews"][0]):
+                        fail(f"{location} {finding}")
                 for source in sources:
                     meta = record_meta.get(source)
                     if meta is None:
@@ -401,6 +413,8 @@ def main():
                             f"{location} cites ineligible involvement "
                             f"{meta.get('involvement')!r} from {source}"
                         )
+                    if not meta.get("resume_eligible", True):
+                        fail(f"{location} cites resume-ineligible record {source}")
         missing = [p for p in sorted(curated) if not os.path.isfile(f"artifacts/{kind}/{p}.md")]
         if missing:
             warn(

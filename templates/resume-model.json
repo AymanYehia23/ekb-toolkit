@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "application_id": "2026-07-21-example-company-software-engineer",
   "target": {
     "mode": "job-targeted",
@@ -65,7 +65,7 @@
       },
       "bullets": [
         {
-          "text": "Contributed to an evidence-backed engineering feature.",
+          "text": "Built a typed import pipeline that isolates malformed records while preserving valid batches for retry.",
           "source_ref": "example-001"
         }
       ]
@@ -111,5 +111,29 @@
     "used": [],
     "available_not_used": [],
     "opportunities": []
-  }
+  },
+  "bullet_quality_review": [
+    {
+      "path": "experience[0].bullets[0]",
+      "level": "impact",
+      "result_type": "reliability",
+      "change": "Malformed records are isolated without discarding valid work from the batch.",
+      "evidence_refs": [
+        "example-001"
+      ],
+      "metric": {
+        "status": "not-applicable"
+      },
+      "checks": {
+        "specificity": "pass",
+        "ownership": "pass",
+        "result": "pass",
+        "evidence": "pass",
+        "metric": "not-applicable",
+        "relevance": "pass",
+        "readability": "pass",
+        "credibility": "pass"
+      }
+    }
+  ]
 }

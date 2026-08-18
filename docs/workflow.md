@@ -96,6 +96,7 @@ Then rebuild what depends on records:
 ```bash
 scripts/ekb index
 scripts/ekb check
+scripts/ekb bullet-audit   # after a full bullet-bank quality pass
 ```
 
 ## Applying: the screening gate

@@ -1018,7 +1018,7 @@ def validate_bridge_presentation(model, index, sources, visible_items, errors)
 end
 
 def collect_alignment_requirements(model, sources, visible_items, index, errors, warnings)
-  return [] unless model["schema_version"] == 1
+  return [] unless [1, 2].include?(model["schema_version"])
   alignment = model["alignment"]
   return [] unless alignment.is_a?(Hash) && alignment["requirements"].is_a?(Array)
 
@@ -1046,6 +1046,9 @@ def collect_alignment_requirements(model, sources, visible_items, index, errors,
       end
       if source["origin"] == "project" && !%w[led implemented contributed].include?(source["involvement"])
         errors << "#{path} uses ineligible involvement #{source['involvement'].inspect} from #{reference}"
+      end
+      if source["origin"] == "project" && source["resume_eligible"] == false
+        errors << "#{path} uses resume-ineligible source #{reference}"
       end
     end
     if status == "matched"
@@ -1301,6 +1304,7 @@ project_files.each do |path|
       "project" => project_key,
       "kind" => record["kind"],
       "involvement" => normalize_involvement(record),
+      "resume_eligible" => record.fetch("resume_eligible", true) != false,
       "numeric_content" => JSON.generate({
         "statement" => record["statement"],
         "reasoning" => record["reasoning"],
@@ -1347,6 +1351,9 @@ visible_items.each do |item|
     next unless source["origin"] == "project"
     unless %w[led implemented contributed].include?(source["involvement"])
       errors << "#{item['path']} uses ineligible involvement #{source['involvement'].inspect} from #{ref}"
+    end
+    if source["resume_eligible"] == false
+      errors << "#{item['path']} uses resume-ineligible source #{ref}"
     end
   end
 
@@ -1556,6 +1563,7 @@ end
 eligible_projects = sources.values
   .select do |source|
     source["origin"] == "project" &&
+      source["resume_eligible"] != false &&
       %w[repo-verified user-stated].include?(source["kind"]) &&
       %w[led implemented contributed].include?(source["involvement"])
   end

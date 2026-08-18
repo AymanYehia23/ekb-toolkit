@@ -25,6 +25,8 @@ Identical to `prompts/interview.md`:
 - facts from `projects/<PROJECT>.yaml` only;
 - `profile/professional-profile.yaml` for standing constraints, which bind in
   addition to each record's own limitations;
+- omit every record with `resume_eligible: false`; it is retained for technical
+  or interview history and may not source public bullet prose;
 - never strengthen certainty, causality, achieved impact, involvement, or scope
   beyond the record;
 - source comments as `<!-- src: PROJECT-NNN -->`.
@@ -50,6 +52,34 @@ Store an approved alternative as
 `<!-- variant concise: Complete alternative sentence. -->` inside the same
 bullet block after its source comments. The variant obeys every wording rule
 and uses the same sources; never create a second top-level bullet for it.
+
+After the source comments, add exactly one private semantic review comment:
+
+```html
+<!-- quality: {"level":"impact","result_type":"delivery","change":"Testers can use one installed build across declared environments.","metric":{"status":"not-applicable"},"checks":{"specificity":"pass","ownership":"pass","result":"pass","evidence":"pass","metric":"not-applicable","relevance":"pass","readability":"pass","credibility":"pass"}} -->
+```
+
+Use single-line valid JSON. The review is an auditable decision, not public
+resume prose. `level` must be `outcome`, `impact`, or `scope`; activity-only
+work is not publishable. A scope-level bullet also needs
+`scope_justification`. Classify `result_type` as user, product, business,
+engineering, delivery, reliability, team, scale, security, or other.
+
+Record the metric decision rather than merely scanning for digits:
+
+- `used` with the exact evidence basis;
+- `available-not-used` with the basis and why the number adds no value;
+- `not-applicable` when no useful defensible number exists;
+- `estimated-not-used` with observed basis, assumptions, calculation,
+  confidence, and `resume_use: false` until the estimate is confirmed through
+  the normal evidence-review workflow.
+
+All eight checks must pass, except metric may be `not-applicable`. `result`
+asks what became possible, different, safer, more reliable, broader, or
+measurably better. Intent alone (`to improve...`) does not pass. `evidence`
+means every part of that answer is licensed by the cited curated record and its
+limitations. `credibility` means the user could defend the wording without
+adding a fact that is absent from the record.
 
 This procedure is stack-agnostic. Apply the same judgement to mobile, web,
 backend, data, desktop, embedded, infrastructure, developer tooling, and any
@@ -142,12 +172,13 @@ Rules:
   delivered capability can lead instead.
 
 Put the source comment immediately after each bullet.
+Put its quality comment immediately after the source and variant comments.
 
 ## Not selected
 
 End with a compact `Not selected` section listing record IDs only, grouped by
-reason: low relevance, redundant coverage, unknown participation, insufficient
-support.
+reason: resume-excluded, low relevance, redundant coverage, unknown
+participation, insufficient support.
 
 This is an internal selection audit, not extra resume content. It is here so a
 later reader can see that a record was considered and passed over, rather than
@@ -157,7 +188,8 @@ wondering whether it was missed.
 
 Map every source comment to a real curated record. Compare every bullet against
 its statement, evidence, limitations, and involvement. Confirm no provisional
-inference reached the public text. Then run `scripts/ekb check`; do not
+inference reached the public text. Confirm the quality comment answers all eight
+checks and records the metric decision. Then run `scripts/ekb check`; do not
 checkpoint a bank that fails its bullet-quality checks.
 
 Report the output path and the selected record IDs. Checkpoint with

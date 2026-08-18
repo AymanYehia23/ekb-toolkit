@@ -17,6 +17,7 @@
 #   ekb validate <app-id>        source-eligibility check, no rendering
 #   ekb render <app-id> [...]    validate, then write DOCX and PDF
 #   ekb compare <a.json> <b.json>  score two competing drafts
+#   ekb bullet-audit             audit historical bullets against ranked banks
 #   ekb git <mode> [...]         local checkpoint in the workspace
 #
 # Every subcommand reads the workspace resolved by scripts/ekb_paths.py:
@@ -118,6 +119,7 @@ status)
 
 index) exec "$PYTHON" "$TOOLKIT/scripts/ekb_index.py" "$@" ;;
 check) exec "$PYTHON" "$TOOLKIT/scripts/ekb_check.py" "$@" ;;
+bullet-audit) exec "$PYTHON" "$TOOLKIT/scripts/bullet_audit.py" "$@" ;;
 skills) exec "$PYTHON" "$TOOLKIT/scripts/ekb_skills.py" "$@" ;;
 git) exec "$TOOLKIT/scripts/ekb_git.sh" "$@" ;;
 

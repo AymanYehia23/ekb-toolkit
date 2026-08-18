@@ -15,29 +15,32 @@ Never hand-edit this file. Fix the record and regenerate.
   the list and caching weekly aggregation, measured on the same mid-range
   Android device.
   <!-- src: fittrack-003 -->
-
   <!-- variant concise: Cut workout history frame build time from 31 ms to 9 ms
   by virtualizing the list, measured on the same mid-range Android device. -->
+  <!-- quality: {"level":"outcome","result_type":"user","change":"Workout history frame build time fell from 31 ms to 9 ms on the same Android device.","metric":{"status":"used","basis":"Same-device before/after measurement of 31 ms and 9 ms."},"checks":{"specificity":"pass","ownership":"pass","result":"pass","evidence":"pass","metric":"pass","relevance":"pass","readability":"pass","credibility":"pass"}} -->
 
 - Consolidated three overlapping local caches into a single repository-backed
   store, removing the path by which a stale workout entry could survive a failed
   sync and reappear in history.
   <!-- src: fittrack-001 -->
+  <!-- quality: {"level":"impact","result_type":"reliability","change":"A failed sync can no longer leave a stale workout entry in a second cache path that later resurfaces.","metric":{"status":"not-applicable"},"checks":{"specificity":"pass","ownership":"pass","result":"pass","evidence":"pass","metric":"not-applicable","relevance":"pass","readability":"pass","credibility":"pass"}} -->
 
 - Built offline workout logging with local-first writes, a persisted replay
   queue, and last-write-wins resolution chosen over field-level merging because
   workout entries are small and immutable.
   <!-- src: fittrack-002 -->
+  <!-- quality: {"level":"scope","result_type":"reliability","change":"Workout logging remains available offline and queued writes replay through one documented conflict policy.","scope_justification":"The record spans local-first persistence, replay, and conflict resolution for the complete logging workflow.","metric":{"status":"not-applicable"},"checks":{"specificity":"pass","ownership":"pass","result":"pass","evidence":"pass","metric":"not-applicable","relevance":"pass","readability":"pass","credibility":"pass"}} -->
 
 - Set up the release pipeline that builds, signs, and uploads both platforms
   from CI, moving signing material off developer machines into the CI secret
   store.
   <!-- src: fittrack-004 -->
+  <!-- quality: {"level":"impact","result_type":"delivery","change":"Both mobile platforms build, sign, and upload from CI while developer machines no longer hold the release signing material.","metric":{"status":"not-applicable"},"checks":{"specificity":"pass","ownership":"pass","result":"pass","evidence":"pass","metric":"not-applicable","relevance":"pass","readability":"pass","credibility":"pass"}} -->
 
 - Contributed to right-to-left support across the app by replacing directional
-  padding and icon mirroring in 14 widgets and adding golden tests for both
-  directions.
+  padding and icon mirroring and adding golden tests for both directions.
   <!-- src: fittrack-005 -->
+  <!-- quality: {"level":"impact","result_type":"user","change":"The affected interface surfaces support right-to-left layout with golden coverage in both directions.","metric":{"status":"available-not-used","basis":"Widget count is gameable implementation scope and does not communicate user impact."},"checks":{"specificity":"pass","ownership":"pass","result":"pass","evidence":"pass","metric":"pass","relevance":"pass","readability":"pass","credibility":"pass"}} -->
 
 ---
 

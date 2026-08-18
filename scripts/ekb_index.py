@@ -35,7 +35,11 @@ except ImportError:  # pragma: no cover
     sys.exit("PyYAML is required: pip install pyyaml")
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from bullet_quality import bullet_text_findings, parse_bullet_bank  # noqa: E402
+from bullet_quality import (  # noqa: E402
+    bullet_text_findings,
+    parse_bullet_bank,
+    semantic_review_findings,
+)
 from ekb_paths import workspace_root, load_config  # noqa: E402
 
 ROOT = workspace_root()
@@ -226,6 +230,15 @@ def collect_curated_bullets(root: str) -> dict:
                 raise BulletQualityError(
                     f"{location} cites {len(entry['sources'])} sources; maximum is {maximum_sources}"
                 )
+            if entry["quality_errors"]:
+                raise BulletQualityError(f"{location} {entry['quality_errors'][0]}")
+            if len(entry["quality_reviews"]) != 1:
+                raise BulletQualityError(
+                    f"{location} must contain exactly one quality review comment"
+                )
+            semantic_findings = semantic_review_findings(entry["quality_reviews"][0])
+            if semantic_findings:
+                raise BulletQualityError(f"{location} {semantic_findings[0]}")
         for parsed in entries:
             refs = parsed["sources"]
             # A bullet citing two records cannot be used under the one-source
@@ -236,7 +249,12 @@ def collect_curated_bullets(root: str) -> dict:
             body = parsed["text"]
             if not body or len(body) < 40:
                 continue
-            entry = {"bullet": normalize_punctuation(body)}
+            review = parsed["quality_reviews"][0]
+            entry = {
+                "bullet": normalize_punctuation(body),
+                "bullet_level": review["level"],
+                "result_type": review["result_type"],
+            }
             if parsed["variants"]:
                 short = parsed["variants"][0]
                 if short:
@@ -513,6 +531,7 @@ def build(root: str) -> dict:
             record_id = str(record["id"])
             involvement = normalize_involvement(record)
             kind = str(record.get("kind") or "")
+            resume_eligible = record.get("resume_eligible", True) is not False
             tags = canonical_tags(record.get("tags"))
             statement = str(record.get("statement") or "")
             raw_limitations = record.get("limitations") or []
@@ -552,7 +571,12 @@ def build(root: str) -> dict:
                     "tier": tiers.get(project),
                     "involvement": involvement,
                     "kind": kind,
-                    "eligible": kind in ELIGIBLE_KINDS and involvement in ELIGIBLE_INVOLVEMENT,
+                    "resume_eligible": resume_eligible,
+                    "eligible": (
+                        resume_eligible
+                        and kind in ELIGIBLE_KINDS
+                        and involvement in ELIGIBLE_INVOLVEMENT
+                    ),
                     "strength": score,
                     "signals": signals,
                     "tags": tags,
