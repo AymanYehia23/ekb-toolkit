@@ -142,7 +142,10 @@ Writing should be concise and sound like an experienced engineer:
 market. Cover the supported professional identity, relevant experience and
 expertise, career direction, and work-authorization context only when applicable
 and confirmed. Relocation belongs in the dedicated header line below, so do not
-repeat it in the summary. Never pad a sentence or invent context to reach four.
+repeat it in the summary. In a job-targeted resume, the opening identity must
+retain the exact confirmed profile title; append the target specialization after
+it instead of replacing it with a framework-first label. Never pad a sentence or
+invent context to reach four.
 Set `layout.summary_word_limit` between 40 and 120 for a one-document
 override without changing market or page size; the four-to-six-sentence rule
 still applies. What the summary should SAY is in `prompts/resume.md`.
@@ -193,7 +196,17 @@ or charts for proficiency.
 **Engagements.** When a role uses `experience[].engagements`: one or two
 role-level framing lines, two to four engagements, one or two bullets each.
 `experience_budget` in the policy holds these numbers and the renderer reports
-overruns as warnings rather than truncating.
+overruns as warnings rather than truncating. A heading is part of the page cost:
+do not retain a one-bullet engagement whose only incremental value is an
+architecture, framework, or keyword already visible elsewhere. Prefer a
+stronger second bullet under an existing flagship engagement when it adds a
+distinct delivery, product, platform, integration, release, scale, or outcome
+signal.
+
+**Career breaks.** This section is optional. Render it only when the tailored
+model retained a break because it materially explains the visible timeline or
+is directly useful for the target. It competes for page space with Experience;
+do not render a confirmed profile break automatically.
 
 **Bullet geometry** comes from the policy and must be identical in DOCX and PDF.
 Bullet text starts inside the company or project title margin, wrapped lines
@@ -256,6 +269,19 @@ After the first render, inspect page count and page use. A single-page resume
 below `content_density.single_page_minimum_usable_height_ratio` is underfilled
 even with no clipping. Resolve empty space in this order:
 
+Before adding anything, compare it with the whole public resume. Reject an
+Experience or Freelance Projects detail that only repeats a capability already
+clear in Summary, Skills, or another bullet; it must add a distinct achievement,
+system boundary, scale, or supported result. When value is otherwise comparable,
+prefer deepening a strong existing engagement, especially one with a confirmed
+public link, over introducing a weak one-bullet engagement.
+
+Also re-run the career-strength audit before treating the page as full. Do not
+spend the final available lines on a second-best keyword match while omitting a
+higher-ranked relevant ownership, productization, adoption, scale, or sustained-
+delivery record. Requirement coverage and career strength are separate checks;
+the first cannot stand in for the second.
+
 1. restore a strong relevant Experience detail omitted for space;
 2. add a relevant independent project when it contributes non-redundant
    evidence;
@@ -268,9 +294,10 @@ skills, weak certificates, or gameable counts. Re-render and inspect after
 each meaningful revision. If the eligible evidence genuinely cannot support more
 target-relevant content, say so plainly rather than padding.
 
-When a one-page draft overflows, cut in this order: lower-value skills, then
-weak certificates, then a repetitive or lower-value bullet, then older
-experience, then a Freelance Projects detail. Remove a target-critical
+When a one-page draft overflows, first remove an optional career break that does
+not materially explain the visible timeline, then lower-value skills, weak
+certificates, a repetitive or lower-value bullet, older experience, and finally
+a Freelance Projects detail. Remove a target-critical
 achievement last, and re-run the coverage and placement audits after every
 layout-driven cut. Preserve the two-page maximum, but do not compress strong
 evidence into a dense wall merely to avoid a well-used second page.

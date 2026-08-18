@@ -26,9 +26,9 @@
     "section_after": 3,
     "paragraph_after": 2,
     "bullet_after": 1.5,
-    "experience_entry_before": 6,
+    "experience_entry_before": 9,
     "entry_heading_after": 1,
-    "entry_meta_after": 3,
+    "entry_meta_after": 5,
     "engagement_before": 4,
     "project_entry_before": 5,
     "supporting_entry_before": 4,
@@ -70,6 +70,11 @@
     "page_maximum": 2,
     "note": "Prefer one page for a confirmed career span of up to five years. A second page is available for longer careers when relevant evidence needs it; it is not a target. Years-of-experience wording is recalculated from the confirmed profile timeline and validated separately."
   },
+  "career_breaks": {
+    "default": "omit",
+    "note": "Career breaks are optional explanatory context, not an automatic section. Include one only when it materially resolves a recent or otherwise conspicuous timeline question that the visible employment dates cannot answer, or when the target context makes the explanation directly useful. A broad year-only label that still leaves the exact transition unclear fails the marginal-value test. On a constrained page, prefer stronger target-relevant Experience evidence and omit the section unless its explanatory value is greater.",
+    "competes_for_page_space": true
+  },
   "contact_hygiene": {
     "require_email": true,
     "recommend_phone": true,
@@ -93,9 +98,10 @@
     "note": "Rendering keeps stable resume.docx and resume.pdf files for tooling and also writes professionally named attachment copies derived only from the confirmed name and target role."
   },
   "job_targeted_content_balance": {
-    "summary_lead": "Begin with the primary discipline advertised by the role. Put an unrequested vendor, platform, or domain specialization later.",
+    "summary_lead": "Begin with the exact confirmed profile professional title. Append the advertised discipline, framework, or specialization when eligible evidence supports it; never replace the profile identity with a framework-first target label.",
     "customer_facing_experience": "When the target asks for customer-facing apps and eligible evidence exists in a current or highly relevant role, retain at least one concrete product, UI, or user-workflow bullet. Authentication, infrastructure, release, and CI/CD evidence must not occupy every bullet.",
     "distinct_integrations": "When the posting explicitly requests payments or another third-party integration, retain a distinct implementation when it adds a materially different gateway, trust boundary, or failure model.",
+    "engagement_marginal_value": "A named engagement pays for both a heading and its bullets. Remove it when its only incremental value is architecture, framework, or keyword wording already visible in Summary, Skills, Freelance Projects, or another Experience bullet. Retain a one-bullet engagement only when it adds a distinct product, ownership, platform, integration, release, scale, measured, or user-workflow signal. Prefer a stronger second bullet under the highest-ranked relevant existing engagement when that adds more value.",
     "note": "Semantic selection gates applied before layout cuts. They exist because a layout pass cuts by length and has no idea which bullet answered the posting's main question."
   },
   "links": {
@@ -199,8 +205,8 @@
   },
   "selected_projects": {
     "minimum_distinct_projects": 0,
-    "default_projects": 2,
-    "note": "The model keeps the stable `projects` field, but it renders as Freelance Projects. Include up to two strong independent projects by default when they add evidence beyond Experience. Employer and academic projects are ineligible, and the section may be empty when no suitable independent work exists. Each entry must resolve to exactly one project through its source references."
+    "default_projects": 1,
+    "note": "The model keeps the stable `projects` field, but it renders as Freelance Projects. Default to the single strongest independent project only when it adds evidence beyond Experience. Add a second only when it contributes material, non-redundant target coverage that is stronger than the available Experience detail. Employer and academic projects are ineligible, and the section may be empty when no suitable independent work exists. Each entry must resolve to exactly one project through its source references."
   },
   "quantifier_quality": {
     "test_context_terms": [
@@ -343,7 +349,7 @@
     "role_bullets_with_engagements_max": 2,
     "engagements_max": 4,
     "engagement_bullets_max": 2,
-    "note": "A flat employer block gives every project inside a role the same three or four slots, so a role covering many distinct client deliverables cannot show them. Engagements raise the ceiling for that shape: one or two framing lines plus up to four named projects carrying up to two bullets each. The maxima are editorial targets enforced as warnings, not structural limits; the schema bounds are wider on purpose so a genuinely dense role is not truncated."
+    "note": "A flat employer block gives every project inside a role the same three or four slots, so a role covering many distinct client deliverables cannot show them. Engagements raise the ceiling for that shape: one or two framing lines plus up to four named projects carrying up to two bullets each. Every added engagement or bullet must pass a resume-wide marginal-value test: keyword repetition already visible in Summary, Skills, Freelance Projects, or another achievement is insufficient. Treat the engagement heading itself as page cost. If removing a one-bullet engagement leaves its capability visible elsewhere, reject it unless the bullet adds a distinct product, ownership, platform, integration, release, scale, measured, or user-workflow signal. Prefer a complementary second achievement under the highest-ranked relevant existing engagement over a weak one-bullet engagement; use a confirmed public link only as a tiebreaker between otherwise comparable evidence. A single-screen repair, isolated widget, local overflow fix, package pin, or narrow bug fix is normally ineligible for a scarce second Experience bullet when broader eligible product-flow, integration, multi-surface, reusable-system, or measured evidence exists. Run a separate career-strength audit so literal requirement coverage does not crowd out a higher-ranked relevant ownership, productization, adoption, scale, or sustained-delivery record. The maxima are editorial targets enforced as warnings, not structural limits; the schema bounds are wider on purpose so a genuinely dense role is not truncated."
   },
   "_readme": "Layout, ATS structure, and writing policy for generated resumes. Every value here is a default you may change. The renderer and the source checker both read this file, so a change takes effect in DOCX, PDF, and validation at once."
 }

@@ -257,9 +257,22 @@ under **Freelance Projects** and accepts only projects listed in
 `profile.preferences.standalone_projects`. Employer projects belong under their
 associated Experience entry; academic projects belong with Education.
 
-For a master resume, verify the highest-ranked eligible project is represented
-somewhere. Omit it only for a binding cap, a counting rule, or a stronger
-non-redundant coverage decision, and record that reason.
+For every resume, run a career-strength audit after requirement coverage. The
+requirement shortlist is built from posting aliases and is not the complete
+selection universe: it can answer every keyword with narrow implementation
+records while omitting the portfolio's strongest ownership, productization,
+scale, adoption, or sustained-delivery evidence. Compare the visible project
+set with the highest-ranked eligible projects and the professional profile's
+signature and core strengths. Represent the highest-ranked relevant project
+when it adds a non-redundant career-strength signal, even when no posting term
+uniquely requires it. Omit it only for a binding cap, counting rule, genuine
+target mismatch, or a stronger non-redundant decision, and record that reason
+in the nearest related shortlist decision and at delivery.
+
+For a master resume this audit is absolute: verify the highest-ranked eligible
+project is represented somewhere unless one of those recorded constraints
+applies. For a job-targeted resume, relevance still governs, but literal keyword
+coverage must not crowd out clearly stronger seniority or product evidence.
 
 **The ranking is private.** No rank, tier, score, or dimension may appear in the
 document, and no wording may be derived from one.
@@ -416,7 +429,10 @@ Prefer one source when one will do.
 ### What the summary carries
 
 A `job-targeted` resume requires a supported summary so its declared
-`target.summary_lead` is visible. A `master` resume may omit it rather than pad.
+`target.summary_lead` is visible. The lead must begin with the exact confirmed
+`profile.professional_title` rendered in `basics.title`; add the advertised
+discipline, framework, or specialization after that identity when eligible
+evidence supports it. A `master` resume may omit it rather than pad.
 
 - **`master`** — show variety in proportion to the actual eligible body of work.
   Give the dominant specialization the largest share, then use the rest for the
@@ -431,8 +447,11 @@ A `job-targeted` resume requires a supported summary so its declared
   of work, then use the ranking to break ties. Narrow unrelated domains; never
   inflate a small exposure because the posting names it. Record the supported
   target-facing identity in `target.summary_lead` and begin the first sentence
-  with that exact phrase. The lead names the advertised discipline before any
-  unrequested vendor, platform, or domain specialization.
+  with that exact phrase. Construct it as the exact confirmed professional title
+  followed, when useful and supported, by the advertised specialization: for
+  example, `Mobile Software Engineer specializing in Flutter`. Do not replace
+  the profile identity with the target role or a framework-first label such as
+  `Flutter software engineer`.
 
 For either mode, generate a fresh candidate set. Do not apply a fixed project or
 domain allowlist. No prior resume's choice becomes a standing rule.
@@ -504,12 +523,14 @@ ceiling for a dense role; they are not a better default.
 ### Freelance Projects
 
 Use this section only for work confirmed by the career map and
-`profile.preferences.standalone_projects` as independent. Default to the two
-strongest relevant independent projects that add evidence beyond Experience,
-but render fewer or omit the section when fewer genuinely useful independent
-projects exist. Never fill the section with employer or academic work merely to
-reach a count. Each entry resolves through its `source_ref` values to exactly one
-independent project.
+`profile.preferences.standalone_projects` as independent. Default to the single
+strongest relevant independent project when it adds evidence beyond Experience.
+Add a second only when it contributes material, non-redundant target coverage
+that is stronger than the available Experience detail. Otherwise use that space
+to deepen Experience, or omit the section when no independent project is
+genuinely useful. Never fill the section with employer or academic work merely
+to reach a count. Each entry resolves through its `source_ref` values to exactly
+one independent project.
 
 For a master resume, weigh independent projects by relevance to the intended
 role family, technical depth, professional significance, scale, supported
@@ -526,15 +547,51 @@ that improves clarity. Never repeat an employer project in Freelance Projects.
 
 Run a balance audit before finalizing Experience.
 
+Apply the marginal-value test across the entire public resume before adding an
+engagement or bullet. A capability already clear in Summary, Skills, or another
+achievement does not justify more space by keyword match alone; the new item
+must add a distinct delivered system, engineering change, boundary, scale, or
+supported result. Prefer a complementary second achievement under an existing
+strong engagement over a new one-bullet engagement that merely restates an
+already-visible capability. A confirmed public link is a useful tiebreaker when
+the evidence and relevance are otherwise comparable, but it never substitutes
+for stronger evidence.
+
+Charge a named engagement for both its heading and its bullet space. Test it by
+removing the entire engagement: if every capability it carried remains visible
+in Summary, Skills, Freelance Projects, or another Experience bullet, omit it
+unless the project adds a distinct product, ownership, platform, integration,
+release, scale, measured, or user-workflow signal. Architecture or framework
+terminology is not itself a distinct signal when the same architecture is
+already established elsewhere. In that case, inspect the highest-ranked
+relevant existing engagement for a stronger second achievement before adding or
+retaining another project heading.
+
 Each distinct employer or contract entry must represent the meaningful scope of
 that role, not merely the narrow record that happened to match one requirement
 most literally. If an entry has only one project bullet, it must describe the
 broadest defensible product, workflow, system, or recurring responsibility
-available for that role. A single-screen repair, isolated widget, package pin,
-or local bug fix may supplement broader work, but it must not be the sole public
-summary when eligible end-to-end, multi-surface, integration, or product-flow
-evidence exists. When space permits two bullets, choose complementary proof
-points rather than two details from the same small area.
+available for that role. A single-screen repair, isolated widget, local overflow
+fix, package pin, or narrow bug fix normally fails the marginal-value test even
+as a supplement when broader eligible end-to-end, multi-surface, integration,
+reusable-system, measured, or product-flow evidence exists. Use such a narrow
+record only when it is the sole defensible support for a target-critical
+capability and leaving that capability unstated would materially weaken the
+application. When space permits two bullets, the second must add product scope,
+system breadth, a distinct boundary, reusable capability, supported outcome, or
+another complementary proof point; fixing one screen is not enough by itself.
+
+### Career breaks
+
+Treat `career_breaks` as optional explanatory context, not as an automatic copy
+of every confirmed profile entry. Include a break only when it materially
+resolves a recent or otherwise conspicuous timeline question that the visible
+employment dates cannot answer, or when the target context makes the explanation
+directly useful. A broad year-only label that still leaves the exact transition
+unclear fails the marginal-value test. On a constrained page, compare its value
+against the strongest omitted target-relevant Experience evidence and omit the
+section unless the explanation is more useful. Keep the profile record intact;
+an empty resume section is a presentation decision, not deletion of history.
 
 When a posting asks for customer-facing products and a current or highly
 relevant role has eligible product, UI, or user-workflow evidence, retain at

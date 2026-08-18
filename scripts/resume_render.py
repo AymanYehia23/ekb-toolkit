@@ -777,6 +777,12 @@ def validate_model(model: dict[str, Any], policy: dict[str, Any] | None = None) 
         lead = target.get("summary_lead")
         if not lead:
             raise ResumeError("job-targeted resumes require target.summary_lead")
+        confirmed_title = text_of(model["basics"]["title"])
+        if not lead.casefold().startswith(confirmed_title.casefold()):
+            raise ResumeError(
+                "target.summary_lead must begin with the confirmed basics.title "
+                f"({confirmed_title!r})"
+            )
         if not summary:
             raise ResumeError("job-targeted resumes with target.summary_lead require a summary")
         if not summary_text.casefold().startswith(lead.casefold()):
@@ -1460,11 +1466,11 @@ def render_docx(model: dict[str, Any], policy: dict[str, Any], output: Path) -> 
 
     emphasizer.enter("Experience")
     add_docx_section_heading(document, "Experience", policy)
-    for entry in model["experience"]:
+    for entry_index, entry in enumerate(model["experience"]):
         heading = document.add_paragraph()
         heading.paragraph_format.keep_with_next = True
         heading.paragraph_format.space_before = Pt(
-            policy["spacing_pt"].get("experience_entry_before", 0)
+            policy["spacing_pt"].get("experience_entry_before", 0) if entry_index else 0
         )
         heading.paragraph_format.space_after = Pt(
             policy["spacing_pt"].get("entry_heading_after", 0)
@@ -1769,10 +1775,12 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
 
     emphasizer.enter("Experience")
     story.extend(section("Experience"))
-    for entry in model["experience"]:
+    for entry_index, entry in enumerate(model["experience"]):
         organization = linked(entry["organization"])
         entry_style = styles["entry"].clone("experienceEntry")
-        entry_style.spaceBefore = policy["spacing_pt"].get("experience_entry_before", 0)
+        entry_style.spaceBefore = (
+            policy["spacing_pt"].get("experience_entry_before", 0) if entry_index else 0
+        )
         heading = Paragraph(
             f"<b>{organization} | {html.escape(text_of(entry['title']))}</b>",
             entry_style,

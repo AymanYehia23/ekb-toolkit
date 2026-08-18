@@ -248,10 +248,22 @@ class ResumeModuleTest < Minitest::Test
 
   def test_job_targeted_summary_must_begin_with_declared_lead
     with_model do |model, path, _directory|
-      model["target"]["summary_lead"] = "Flutter Mobile Engineer"
+      model["target"]["summary_lead"] = "Software Engineer specializing in Flutter"
       _stdout, stderr, status = validate(model, path)
       refute status.success?
       assert_includes stderr, "must begin with target.summary_lead"
+    end
+  end
+
+  def test_job_targeted_summary_lead_must_preserve_confirmed_profile_title
+    with_model do |model, path, _directory|
+      model["target"]["summary_lead"] = "Ruby Engineer"
+      model["summary"][0]["text"] = model["summary"][0]["text"].sub(
+        "Software Engineer", "Ruby Engineer"
+      )
+      _stdout, stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes stderr, "must begin with the confirmed basics.title"
     end
   end
 
@@ -503,18 +515,32 @@ class ResumeModuleTest < Minitest::Test
 
   def test_renderers_expose_readable_entry_spacing_tokens
     with_model do |model, _path, directory|
+      model["experience"] << Marshal.load(Marshal.dump(model["experience"].first))
       output, _stdout, stderr, status = render_model(model, directory)
       assert status.success?, stderr
       report = JSON.parse(File.read(File.join(output, "validation.json")))
       spacing = report.dig("presentation", "spacing_pt")
-      assert_equal 6, spacing["experience_entry_before"]
-      assert_equal 3, spacing["entry_meta_after"]
+      assert_equal 9, spacing["experience_entry_before"]
+      assert_equal 5, spacing["entry_meta_after"]
       assert_equal 5, spacing["project_entry_before"]
       assert_operator spacing["section_before"], :>, spacing["paragraph_after"]
       document = docx_part(File.join(output, "resume.docx"), "word/document.xml")
-      assert_match(%r{<w:spacing w:before="120" w:after="20"/>}, document)
-      assert_match(%r{<w:spacing w:after="60"/>}, document)
+      assert_match(%r{<w:spacing w:after="100"/>}, document)
+      assert_match(%r{<w:spacing w:before="180" w:after="20"/>}, document)
     end
+  end
+
+  def test_career_breaks_are_optional_and_compete_with_experience
+    policy = JSON.parse(File.read(POLICY, encoding: "UTF-8"))
+    assert_equal "omit", policy.dig("career_breaks", "default")
+    assert_equal true, policy.dig("career_breaks", "competes_for_page_space")
+  end
+
+  def test_engagement_policy_requires_a_distinct_incremental_signal
+    policy = JSON.parse(File.read(POLICY, encoding: "UTF-8"))
+    rule = policy.dig("job_targeted_content_balance", "engagement_marginal_value")
+    assert_includes rule, "Remove it when its only incremental value"
+    assert_includes rule, "Prefer a stronger second bullet"
   end
 
   def test_employer_project_is_rejected_from_freelance_projects
