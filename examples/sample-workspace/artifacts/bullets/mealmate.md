@@ -7,9 +7,9 @@
   backend verification.
   <!-- src: mealmate-001 -->
 
-- Introduced widget and golden tests covering the cart's empty state, quantity
-  limits, and the promotion path that had produced two regressions, and wired
-  them into the pull request pipeline.
+- Introduced widget and golden tests for empty-cart, quantity-limit, and
+  promotion paths that had produced 2 regressions, then added them to the
+  pull-request pipeline.
   <!-- src: mealmate-002 -->
 
 ---

@@ -11,13 +11,13 @@ later as suggestions during resume drafting.
 Never hand-edit this file. Fix the record and regenerate.
 -->
 
-- Reduced workout history frame build time from a measured 31 ms to 9 ms by
-  virtualizing the list and moving weekly aggregation off the build path,
-  measured on the same mid-range Android device before and after.
+- Reduced workout history frame build time from 31 ms to 9 ms by virtualizing
+  the list and caching weekly aggregation, measured on the same mid-range
+  Android device.
   <!-- src: fittrack-003 -->
 
   <!-- variant concise: Cut workout history frame build time from 31 ms to 9 ms
-  by virtualizing the list and moving aggregation off the build path. -->
+  by virtualizing the list, measured on the same mid-range Android device. -->
 
 - Consolidated three overlapping local caches into a single repository-backed
   store, removing the path by which a stale workout entry could survive a failed
@@ -25,8 +25,8 @@ Never hand-edit this file. Fix the record and regenerate.
   <!-- src: fittrack-001 -->
 
 - Built offline workout logging with local-first writes, a persisted replay
-  queue, and a last-write-wins resolution rule chosen over a field-level merge
-  because a workout entry is small and immutable.
+  queue, and last-write-wins resolution chosen over field-level merging because
+  workout entries are small and immutable.
   <!-- src: fittrack-002 -->
 
 - Set up the release pipeline that builds, signs, and uploads both platforms
@@ -34,9 +34,9 @@ Never hand-edit this file. Fix the record and regenerate.
   store.
   <!-- src: fittrack-004 -->
 
-- Contributed to right-to-left support across the app, replacing directional
-  padding and icon mirroring in fourteen widgets and adding golden tests for
-  both directions rather than only enabling the locale.
+- Contributed to right-to-left support across the app by replacing directional
+  padding and icon mirroring in 14 widgets and adding golden tests for both
+  directions.
   <!-- src: fittrack-005 -->
 
 ---

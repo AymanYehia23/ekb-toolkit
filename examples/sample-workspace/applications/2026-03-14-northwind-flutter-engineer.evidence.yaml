@@ -26,7 +26,7 @@
 schema_version: 1
 kind: evidence-shortlist
 application: 2026-03-14-northwind-flutter-engineer
-generated_at: '2026-08-17'
+generated_at: '2026-08-18'
 generator: scripts/ekb_shortlist.py
 basis:
   requirements: 15
@@ -51,8 +51,8 @@ requirements:
     - shipped
     - tested
     - curated-bullet
-    claim: Introduced widget and golden tests covering the cart's empty state, quantity limits, and the
-      promotion path that had produced two regressions, and wired them into the pull request pipeline.
+    claim: Introduced widget and golden tests for empty-cart, quantity-limit, and promotion paths that
+      had produced 2 regressions, then added them to the pull-request pipeline.
     cautions:
     - Test coverage for one feature area. Do not present test counts as an achievement; describe the behaviors
       and failure paths covered instead.
@@ -107,9 +107,8 @@ requirements:
     - shipped
     - curated-bullet
     - interview-story
-    claim: Reduced workout history frame build time from a measured 31 ms to 9 ms by virtualizing the
-      list and moving weekly aggregation off the build path, measured on the same mid-range Android device
-      before and after.
+    claim: Reduced workout history frame build time from 31 ms to 9 ms by virtualizing the list and caching
+      weekly aggregation, measured on the same mid-range Android device.
     cautions:
     - Profile-mode measurement on one mid-range Android device. It is not a release-mode figure and not
       a cross-device claim, so the number must travel with its context or not at all.
@@ -134,8 +133,8 @@ requirements:
     - shipped
     - curated-bullet
     - interview-story
-    claim: Built offline workout logging with local-first writes, a persisted replay queue, and a last-write-wins
-      resolution rule chosen over a field-level merge because a workout entry is small and immutable.
+    claim: Built offline workout logging with local-first writes, a persisted replay queue, and last-write-wins
+      resolution chosen over field-level merging because workout entries are small and immutable.
     cautions:
     - Single-device sync only. There is no multi-device conflict resolution and no server-side reconciliation,
       so wording must not imply distributed consistency work.
@@ -216,9 +215,8 @@ requirements:
     - shipped
     - tested
     - curated-bullet
-    claim: Contributed to right-to-left support across the app, replacing directional padding and icon
-      mirroring in fourteen widgets and adding golden tests for both directions rather than only enabling
-      the locale.
+    claim: Contributed to right-to-left support across the app by replacing directional padding and icon
+      mirroring in 14 widgets and adding golden tests for both directions.
     cautions:
     - Shared work. Feature-level wording is supported; sole authorship is not. Translation itself was
       handled by an external vendor.
@@ -370,8 +368,8 @@ requirements:
     - shipped
     - tested
     - curated-bullet
-    claim: Introduced widget and golden tests covering the cart's empty state, quantity limits, and the
-      promotion path that had produced two regressions, and wired them into the pull request pipeline.
+    claim: Introduced widget and golden tests for empty-cart, quantity-limit, and promotion paths that
+      had produced 2 regressions, then added them to the pull-request pipeline.
     cautions:
     - Test coverage for one feature area. Do not present test counts as an achievement; describe the behaviors
       and failure paths covered instead.

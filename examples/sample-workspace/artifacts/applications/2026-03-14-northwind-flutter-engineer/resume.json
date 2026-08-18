@@ -77,7 +77,7 @@
       "end": { "text": "Present", "source_ref": "profile-experience-001" },
       "bullets": [
         {
-          "text": "Reduced workout history frame build time from a measured 31 ms to 9 ms by virtualizing the list and moving weekly aggregation off the build path, measured on the same mid-range Android device before and after.",
+          "text": "Reduced workout history frame build time from 31 ms to 9 ms by virtualizing the list and caching weekly aggregation, measured on the same mid-range Android device.",
           "source_ref": "fittrack-003"
         },
         {
@@ -85,8 +85,12 @@
           "source_ref": "fittrack-002"
         },
         {
-          "text": "Consolidated three overlapping local caches into a single repository-backed store, removing the path by which a stale entry could survive a failed sync and reappear in history.",
-          "source_ref": "fittrack-001"
+          "text": "Set up a CI release pipeline for signed Android and iOS uploads, moving signing material from developer machines into the CI secret store.",
+          "source_ref": "fittrack-004"
+        },
+        {
+          "text": "Contributed to right-to-left support by replacing directional padding and icon mirroring in 14 widgets and adding golden tests for both directions.",
+          "source_ref": "fittrack-005"
         }
       ]
     },
@@ -106,48 +110,13 @@
           "source_ref": "mealmate-001"
         },
         {
-          "text": "Introduced widget and golden tests covering the cart's empty state, quantity limits, and the promotion path that had produced two regressions.",
+          "text": "Introduced widget and golden tests covering the cart's empty state, quantity limits, and the promotion path that had produced 2 regressions.",
           "source_ref": "mealmate-002"
         }
       ]
     }
   ],
-  "projects": [
-    {
-      "primary": {
-        "text": "FitTrack",
-        "source_ref": "fittrack-004",
-        "url": "https://play.google.com/store/apps/details?id=com.example.fittrack"
-      },
-      "secondary": { "text": "Flutter, Android, iOS", "source_ref": "fittrack-004" },
-      "date": null,
-      "details": [
-        {
-          "text": "Set up the release pipeline that builds, signs, and uploads both platforms from CI, moving signing material off developer machines into the CI secret store.",
-          "source_ref": "fittrack-004"
-        },
-        {
-          "text": "Contributed to right-to-left support, replacing directional padding and icon mirroring across fourteen widgets and adding golden tests for both directions.",
-          "source_ref": "fittrack-005"
-        }
-      ]
-    },
-    {
-      "primary": {
-        "text": "MealMate",
-        "source_ref": "mealmate-002",
-        "url": "https://play.google.com/store/apps/details?id=com.example.mealmate"
-      },
-      "secondary": { "text": "Flutter, payments", "source_ref": "mealmate-002" },
-      "date": null,
-      "details": [
-        {
-          "text": "Wired cart regression tests into the pull request pipeline so the promotion path could not silently break again.",
-          "source_ref": "mealmate-002"
-        }
-      ]
-    }
-  ],
+  "projects": [],
   "skills": [
     {
       "name": "Mobile",
@@ -287,10 +256,11 @@
     ]
   },
   "quantifier_review": {
-    "used": ["fittrack-003: 31 ms to 9 ms, with device and build-mode context attached"],
-    "available_not_used": [
-      "fittrack-005: fourteen widgets. Used in the project detail because it communicates the real scope of an RTL migration, which is the point that is usually missed."
+    "used": [
+      "fittrack-003: 31 ms to 9 ms, with device and build-mode context attached",
+      "fittrack-005: 14 widgets, used under the associated employment experience"
     ],
+    "available_not_used": [],
     "opportunities": [
       "MealMate order volume or market count, if the user can supply a figure they are allowed to state."
     ]
