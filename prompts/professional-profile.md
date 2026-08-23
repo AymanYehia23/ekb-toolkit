@@ -94,6 +94,12 @@ label from technical depth or project volume. Express technical strength as a
 coherent thesis, such as architecture plus a distinctive integration context,
 not as a package inventory.
 
+Also preserve summary boundaries learned from user review: which identity must
+appear exactly once, which accurate but awkward internal terms should stay out
+of the opening, and which cross-project dimensions are strong enough to replace
+generic specialization wording. These are strategy constraints, not reusable
+prose.
+
 Look for the professional meaning behind activities. Confirmed requirements
 meetings, feature discussions, and demos may show the ability to understand an
 operating problem, translate it into product and technical decisions, and carry

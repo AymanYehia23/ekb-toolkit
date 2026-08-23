@@ -1191,6 +1191,12 @@ def timeline_warnings(profile)
     next unless entry.is_a?(Hash)
     start_month = month_index(entry["start"])
     end_month = month_index(entry["end"])
+    if entry["precision"].to_s == "year" && entry["end"].to_s.match?(/\A\d{4}\z/) && end_month
+      # A year-only end means some point in that year, not January 1. Treat the
+      # whole stated year as covered for gap detection so an intentionally
+      # omitted explanatory section does not create a false timeline warning.
+      end_month += 11
+    end
     next unless start_month && end_month
     {"label" => entry["label"] || "confirmed career break", "start" => start_month, "end" => end_month}
   end

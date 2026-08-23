@@ -137,7 +137,7 @@
           "type": "integer",
           "minimum": 40,
           "maximum": 120,
-          "description": "Optional explicit user override for the summary word ceiling. The default is 90 words in every market; the summary must still contain four to six complete sentences."
+          "description": "Optional explicit user override for the summary word ceiling. The default is 90 words in every market; the summary must still contain three to five complete sentences."
         },
         "page_break_before": {
           "enum": [
@@ -160,6 +160,12 @@
           ],
           "default": "matched-requirements",
           "description": "Keyword highlighting mode. 'matched-requirements' bolds aliases of alignment requirements whose status is 'matched' and whose 'emphasize' is not false, at most once per term per section. 'none' disables bolding. Emphasis is a render-time formatting pass over text that is already written; it never changes wording or selection."
+        },
+        "activities_heading": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "description": "Optional visible heading for the generic activities data. Use Volunteering when the entries are volunteer roles."
         }
       }
     },
@@ -466,11 +472,19 @@
             "$ref": "#/$defs/sourcedText"
           }
         },
+        "bullets_position": {
+          "enum": [
+            "before_engagements",
+            "after_engagements"
+          ],
+          "default": "before_engagements",
+          "description": "Controls whether role-level experience bullets render before or after named engagements. Use before_engagements when they frame the role itself."
+        },
         "engagements": {
           "type": "array",
           "minItems": 1,
           "maxItems": 5,
-          "description": "Named client projects or products delivered inside this role. Optional. A role whose evidence spans many distinct deliverables cannot express that through one flat bullet list, because a single employer block gives every project the same three or four slots. Each engagement must resolve through its source references to exactly one curated project, and that project must be associated with this employer in profile.yaml. When engagements are present the role-level bullets become framing lines: keep them to one or two.",
+          "description": "Named client projects or products delivered inside this role. Optional. A role whose evidence spans many distinct deliverables cannot express that through one flat bullet list, because a single employer block gives every project the same three or four slots. Each engagement must resolve through its source references to exactly one curated project, and that project must be associated with this employer in profile.yaml. Job-targeted role-level bullets remain short framing lines; a master resume may retain additional distinct company-level or recurring-responsibility evidence under policy.",
           "items": {
             "type": "object",
             "additionalProperties": false,

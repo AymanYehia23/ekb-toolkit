@@ -138,16 +138,16 @@ Writing should be concise and sound like an experienced engineer:
 
 ## 4. Length and structure budgets
 
-**Summary.** Four to six complete sentences with a 90-word ceiling in every
+**Summary.** Three to five complete sentences with a 90-word ceiling in every
 market. Cover the supported professional identity, relevant experience and
 expertise, career direction, and work-authorization context only when applicable
 and confirmed. Relocation belongs in the dedicated header line below, so do not
 repeat it in the summary. In a job-targeted resume, the opening identity must
 retain the exact confirmed profile title; append the target specialization after
 it instead of replacing it with a framework-first label. Never pad a sentence or
-invent context to reach four.
+invent context to reach three. Do not repeat the identity in a later sentence.
 Set `layout.summary_word_limit` between 40 and 120 for a one-document
-override without changing market or page size; the four-to-six-sentence rule
+override without changing market or page size; the three-to-five-sentence rule
 still applies. What the summary should SAY is in `prompts/resume.md`.
 
 **Bullets.** Roles stay reverse chronological. For a flat role: three bullets
@@ -168,6 +168,11 @@ between entries in Education, Certificates, Awards, and Activities. A section
 heading must not touch its first entry. Do not reduce these gaps, the body font,
 or line spacing merely to keep weaker content on the page; cut or rewrite weak
 and repetitive content first.
+
+The gap before a Volunteering/Activities heading must use the same
+`section_before` token as every other section. Its heading-to-entry interior may
+use a named compact override when cross-viewer pagination requires it; never
+misrepresent that inner adjustment as a smaller inter-section gap.
 
 **Header.** Render the confirmed `basics.title` on its own centered line
 immediately below the confirmed name. Keep the labeled professional email and
@@ -194,7 +199,10 @@ flags the missing mapping; it does not manufacture it. Do not use bars, stars,
 or charts for proficiency.
 
 **Engagements.** When a role uses `experience[].engagements`: one or two
-role-level framing lines, two to four engagements, one or two bullets each.
+role-level framing lines for job-targeted resumes, or up to four distinct
+employer-level lines for a master resume; two to four engagements; and up to
+three bullets per engagement when each adds separate value. Render role framing
+before named engagements by default.
 `experience_budget` in the policy holds these numbers and the renderer reports
 overruns as warnings rather than truncating. A heading is part of the page cost:
 do not retain a one-bullet engagement whose only incremental value is an
@@ -213,7 +221,9 @@ Bullet text starts inside the company or project title margin, wrapped lines
 align under the first text line, and the marker is vertically offset to the
 body-text baseline. An engagement title aligns with the role bullet text and its
 own bullets sit one level deeper, giving three visible depths: employer, named
-project, achievement. Do not rely on a viewer's default list indentation.
+project, achievement. Do not rely on a viewer's default list indentation or a
+private-use Symbol-font glyph; use a portable round Unicode bullet in the
+document font.
 
 **Page size and count.** A4 for Europe, Letter for North America. Honor
 `profile.preferences.page_target`; the source validator rejects a model that
@@ -269,6 +279,11 @@ After the first render, inspect page count and page use. A single-page resume
 below `content_density.single_page_minimum_usable_height_ratio` is underfilled
 even with no clipping. Resolve empty space in this order:
 
+A master resume should normally reach
+`content_density.master_single_page_target_usable_height_ratio` when strong,
+non-redundant evidence and confirmed compact sections can do so. Page use never
+justifies unequal section gaps, weakened hierarchy, or a low-value bullet.
+
 Before adding anything, compare it with the whole public resume. Reject an
 Experience or Freelance Projects detail that only repeats a capability already
 clear in Summary, Skills, or another bullet; it must add a distinct achievement,
@@ -293,6 +308,13 @@ the first cannot stand in for the second.
 skills, weak certificates, or gameable counts. Re-render and inspect after
 each meaningful revision. If the eligible evidence genuinely cannot support more
 target-relevant content, say so plainly rather than padding.
+
+Inspect the wrapping of every summary sentence, bullet, skill line, and compact
+supporting entry. Rewrite a sentence that leaves one word alone on its final
+line or splits a short meaning-bearing phrase awkwardly. Use a non-breaking
+space only after a concise rewrite cannot preserve the phrase; do not scatter
+non-breaking spaces as a substitute for editing. The validation report surfaces
+one-word PDF wrap orphans, but DOCX still requires visual inspection.
 
 When a one-page draft overflows, first remove an optional career break that does
 not materially explain the visible timeline, then lower-value skills, weak

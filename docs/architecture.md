@@ -208,6 +208,9 @@ that `git status --short` is byte-identical before and after.
 | `profile` | profile, derived profiles, ranking, policy | `profile/vN` |
 | `application` | frozen posting, screening, shortlist, outputs | none |
 | `screening` | frozen posting and screening only | none |
+| `policy` | workspace resume-policy override | none |
+| `index` | generated evidence index | none |
+| `bullet-audit` | generated cross-application bullet audit | none |
 
 It refuses to run with a pre-populated index, stages only named paths, never
 runs a broad `git add`, and **never pushes**.

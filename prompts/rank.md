@@ -86,6 +86,12 @@ authorship, demo qualifiers, counting rules, academic placement, unconfirmed
 links, and any record that must never reach a resume. Add `never_with` when a
 counting rule forbids two projects being cited for the same claim.
 
+Resolve project identity before ranking or selection. Two labels that point to
+the same confirmed store URL, repository, white-label base, or underlying
+product are not automatically two public projects. Record the canonical project
+and a counting or `never_with` rule so a later resume cannot duplicate the work
+under different headings.
+
 **A ranking that loses a cap is worse than no ranking**, because it invites a
 selection the evidence cannot support.
 

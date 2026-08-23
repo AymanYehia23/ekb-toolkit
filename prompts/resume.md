@@ -34,6 +34,11 @@ If `profile/profile.yaml` is missing or lacks blocking information, follow
 `prompts/profile.md` and return here. Reuse every confirmed fact; do not ask
 again.
 
+Honor `profile.preferences.resume_defaults` as standing presentation decisions.
+Master defaults bind unless the user explicitly overrides them. Job-targeted
+defaults still pass the target-relevance and page-value gates; they prevent
+forgotten preferences but never force a low-value section into an application.
+
 ## 2. Freeze, screen, then target
 
 ### Freeze
@@ -182,9 +187,15 @@ about should have a prepared answer behind it.
 
 Rows carrying `bullet` hold wording distilled earlier from that record. Start
 from it rather than rewriting from the raw statement: it is already
-recruiter-facing. It remains a **suggestion, not evidence**. Adapt it to the
-target, keep the record's involvement wording and caps, and where a phrasing and
-its record disagree, the record wins.
+recruiter-facing. It remains a **suggestion, not evidence**, but it is the
+approved public wording for that project. Use the selected bullet or its
+approved concise variant verbatim by default. Do not casually paraphrase it
+inside an application. If a generally stronger, shorter, or clearer version is
+needed, update `artifacts/bullets/<project>.md` through `prompts/bullets.md`,
+rebuild the index, and then use it. A target-specific adaptation is allowed only
+when it adds material target meaning, preserves involvement and caps, and is
+recorded in the application decision. Where a phrasing and its record disagree,
+the record wins.
 
 Every candidate also carries `cautions`, copied from the curated record's
 limitations. Read them before choosing or phrasing the record. A shortlist claim
@@ -469,15 +480,22 @@ seconds, the strength of its evidence, and what it hides or dilutes. Store only
 the selected summary in the resume model unless the user asked to see the
 alternatives.
 
-The first two sentences must communicate a technical thesis rather than a
-technology inventory. If confirmed client activity is included, translate it
+The first sentence must state the exact confirmed professional identity and the
+conservative years figure once. Every later sentence must add a different
+career-level signal; never introduce a second framework-specific identity such
+as `Flutter engineer specializing in...` after already saying `Mobile Software
+Engineer`. The first two sentences must communicate a technical thesis rather
+than a technology inventory. Avoid audience labels such as `customer-facing`
+and internal integration terminology in a general summary when a concrete
+product, delivery, performance, or domain statement communicates more. If
+confirmed client activity is included, translate it
 into its supported engineering meaning: understanding operational context,
 refining requirements or feature decisions, translating needs into technical
 work, and carrying the result through delivery. Do not preserve a weak list of
 meetings and demos, and do not invent a commercial result or formal product
 title.
 
-Write four to six complete sentences within the presentation policy's 90-word
+Write three to five complete sentences within the presentation policy's 90-word
 ceiling. Use separate sourced items when sentences rely on different records so
 the provenance remains auditable. A useful order is: supported target-facing
 identity; relevant experience; strongest expertise; career direction; then work
@@ -505,10 +523,15 @@ single-project contract end up with nearly the same space.
 Use `experience[].engagements` when a role's eligible evidence spans several
 distinct named products or clients and the target benefits from seeing them
 apart. Each engagement carries a `name`, an optional `context` such as the
-stack, and one or two bullets.
+stack, and up to three bullets when the policy and page permit them.
 
-- keep role-level `bullets` to one or two framing lines when engagements are
-  present. They say what the role was, not what one project did;
+- in a job-targeted resume, keep role-level `bullets` to one or two framing
+  lines when engagements are present. In a master resume, retain up to four
+  distinct employer-level or recurring-responsibility bullets when each adds a
+  separate signal. They say what the experience was, not what one project did;
+- render role-level framing before the named engagements unless the user has an
+  explicit contrary preference. A reader should understand the role before
+  reading its project examples;
 - two or three engagements by default, four at most;
 - each engagement must resolve through its `source_ref` values to exactly one
   curated project, and that project must be associated with this employer in
@@ -566,6 +589,12 @@ terminology is not itself a distinct signal when the same architecture is
 already established elsewhere. In that case, inspect the highest-ranked
 relevant existing engagement for a stronger second achievement before adding or
 retaining another project heading.
+
+Before selection, canonicalize every named product against `profile.yaml`
+project associations and confirmed links. Do not render two headings for the
+same project, reuse one store URL for two labels, or count a white-label base as
+several achievements. When two records describe the same underlying capability,
+apply the professional profile's counting and `never_with` rules before wording.
 
 Each distinct employer or contract entry must represent the meaningful scope of
 that role, not merely the narrow record that happened to match one requirement
@@ -643,6 +672,17 @@ punctuation, fit the configured word limit, avoid vague duty openings, and cite
 no more than the configured maximum number of independently eligible sources.
 If a bullet cannot answer what capability, constraint, or result would be
 missing without the work, replace it with stronger evidence or cut it.
+
+A supported number is not automatically a strong number. Reject adoption,
+build, release, file, test, or operational counts when their magnitude reads as
+routine, small, or gameable and the capability is stronger without them. Never
+use a weak metric merely because quantified bullets were requested.
+
+Experience must describe the engineer's scope, recurring responsibility, and
+delivery breadth as well as named projects. Do not turn an employer into a list
+of project headings. When AI tools appear in Skills and eligible delivery
+evidence exists, place one natural engineering example at role or project level;
+do not isolate AI as an awkward one-bullet pseudo-project.
 
 Order bullets within every role, engagement, and freelance project by the same
 Outcome > Impact > Scope > Activity priority. The first bullet is the strongest

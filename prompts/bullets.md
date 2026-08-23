@@ -13,6 +13,13 @@ The bank exists so wording is distilled once, close to the evidence, rather than
 re-invented inside every application. The evidence index lifts these phrasings
 later as suggestions for resume drafting.
 
+Treat an approved bank as the wording source of truth for that project. A resume
+should use a selected top-level bullet or its approved concise variant verbatim
+unless target context makes a different angle materially necessary. When the
+better wording is generally reusable, update this bank first and regenerate the
+index instead of creating a one-off resume sentence that future applications
+cannot recover.
+
 This procedure is a read-only consumer of curated knowledge. It writes only
 `artifacts/bullets/<PROJECT>.md`.
 
@@ -113,6 +120,9 @@ Reject as primary bullets:
 - a framework or architecture inventory with no delivered capability;
 - duplicate examples of a capability already represented by stronger evidence;
 - a list of everything changed in a commit or feature.
+- a supported number whose magnitude weakens the candidate's positioning, such
+  as modest adoption, routine build totals, or maintenance counts that do not
+  establish product, delivery, scale, or outcome significance.
 
 ### Write one defensible achievement
 
@@ -121,7 +131,9 @@ Use this semantic shape, not a rigid sentence template:
 > direct contribution + delivered or changed capability + verified consequence
 > or meaningful scope + only the distinguishing technical proof
 
-Lead with what changed, not the technology used. Name the affected workflow,
+Begin with the contribution or engineering change, then give the result. Lead
+with what changed, not the technology used or a result fragment with no action.
+Name the affected workflow,
 system boundary, user, or operational process when the source supports it. Keep
 one main idea per bullet and select at most two or three technical mechanisms
 that explain why the work is non-trivial. If the sentence becomes a
@@ -153,6 +165,9 @@ Every publishable bullet must:
 Rules:
 
 - precise engineering language, natural sentence variation;
+- recruiter-readable wording before implementation detail. Translate low-level
+  exceptions, interceptors, request helpers, widgets, and internal layer names
+  into the reliability, product, delivery, or user consequence they establish;
 - direct verbs when involvement supports them;
 - scoped contribution wording for meaningful shared participation; name the
   contributed component when the evidence supports that boundary, and use
@@ -170,6 +185,8 @@ Rules:
   comparative language without a supported before/after basis;
 - do not begin with "Used <technology>" or "Built with <technology>" when the
   delivered capability can lead instead.
+- avoid awkward shorthand, sentence fragments, and internal vocabulary that a
+  mobile engineering recruiter would need the repository to understand.
 
 Put the source comment immediately after each bullet.
 Put its quality comment immediately after the source and variant comments.

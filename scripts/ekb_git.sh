@@ -13,6 +13,9 @@
 #   profile                privacy-gated, creates the next profile/vN tag
 #   application <id>       privacy-gated, the frozen posting and its outputs
 #   screening   <id>       privacy-gated, a screened opportunity with no resume
+#   policy                 workspace resume-policy override only
+#   index                  generated evidence index only
+#   bullet-audit           generated cross-application bullet audit only
 #
 # Usage:  scripts/ekb_git.sh snapshot fittrack
 
@@ -24,7 +27,7 @@ die() {
 }
 
 usage() {
-  die "usage: ekb_git.sh candidates PROJECT | snapshot PROJECT | artifact PROJECT interview|bullets | profile | application ID | screening ID"
+  die "usage: ekb_git.sh candidates PROJECT | snapshot PROJECT | artifact PROJECT interview|bullets | profile | application ID | screening ID | policy | index | bullet-audit"
 }
 
 [[ $# -ge 1 ]] || usage
@@ -200,6 +203,24 @@ screening)
   add_if_present "applications/$name.yaml"
   scan_for_secrets "${paths[@]}"
   commit_if_changed "screening: $name" "${paths[@]}" || exit 0
+  ;;
+
+policy)
+  [[ $# -eq 1 ]] || usage
+  [[ -f config/resume-policy.json ]] || die "config/resume-policy.json does not exist"
+  commit_if_changed "workspace: update resume policy" config/resume-policy.json || exit 0
+  ;;
+
+index)
+  [[ $# -eq 1 ]] || usage
+  [[ -f index/evidence-index.yaml ]] || die "index/evidence-index.yaml does not exist"
+  commit_if_changed "index: rebuild evidence index" index/evidence-index.yaml || exit 0
+  ;;
+
+bullet-audit)
+  [[ $# -eq 1 ]] || usage
+  [[ -f artifacts/bullets/impact-audit.json ]] || die "artifacts/bullets/impact-audit.json does not exist"
+  commit_if_changed "bullets: rebuild impact audit" artifacts/bullets/impact-audit.json || exit 0
   ;;
 
 *)

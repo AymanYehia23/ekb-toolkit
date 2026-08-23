@@ -215,11 +215,13 @@ auditable rather than becoming folklore.
 
 ### `summary.default_words`
 
-90, across four to six complete sentences. **A ceiling, not a target.** The
+90, across three to five complete sentences. **A ceiling, not a target.** The
 summary covers supported professional identity, relevant experience and
 expertise, career direction, and applicable confirmed mobility context. It is
 also the only place a cross-project fact can live, because a bullet describes
-one project. Never pad or invent context to fill the sentence count.
+one project. State the professional identity once, and require every later
+sentence to add a distinct signal. Never pad or invent context to fill the
+sentence count.
 
 ### `emphasis.max_terms`
 
@@ -236,7 +238,8 @@ dense role is not cut by policy.
 
 0.84. A one-page resume using less than 84% of the printable height is
 underfilled even with no clipping. The fix is more evidence, never a longer
-summary.
+summary. Master resumes additionally target 97% page use when strong,
+non-redundant content can reach it without disturbing normal section spacing.
 
 ### `page_length`
 

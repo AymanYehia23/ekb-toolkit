@@ -7,8 +7,11 @@
   },
   "margins_inches": {
     "top": 0.65,
+    "docx_top": 0.55,
     "right": 0.7,
     "bottom": 0.65,
+    "docx_bottom": 0.25,
+    "pdf_bottom": 0.35,
     "left": 0.7
   },
   "fonts": {
@@ -22,22 +25,22 @@
     "small": 10
   },
   "spacing_pt": {
-    "section_before": 8,
-    "section_after": 3,
+    "section_before": 6,
+    "section_after": 2,
     "paragraph_after": 2,
-    "bullet_after": 1.5,
-    "experience_entry_before": 9,
+    "bullet_after": 0,
+    "experience_entry_before": 8,
     "entry_heading_after": 1,
-    "entry_meta_after": 5,
-    "engagement_before": 4,
+    "entry_meta_after": 4,
+    "engagement_before": 3,
     "project_entry_before": 5,
-    "supporting_entry_before": 4,
-    "line_spacing_multiple": 1.05
+    "supporting_entry_before": 2,
+    "line_spacing_multiple": 1.02
   },
   "bullets": {
     "text_indent_pt": 20,
     "hanging_pt": 11,
-    "marker_font_size_pt": 6,
+    "marker_font_size_pt": 8,
     "marker_vertical_offset_pt": -1.5,
     "note": "Bullet text sits inside the company or project title margin, wrapped lines align under the first text line, and the marker is lowered to the text baseline in both DOCX and PDF. An engagement title aligns with the role bullet text and its own bullets sit one level deeper, giving three visible depths: employer, named project, achievement. Both renderers consume these tokens; neither infers indentation from a viewer default.",
     "engagement_title_indent_pt": 20,
@@ -54,16 +57,17 @@
     "Certificates",
     "Awards",
     "Activities",
+    "Volunteering",
     "Interests"
   ],
   "summary": {
     "default_words": 90,
     "minimum_override": 40,
     "maximum_override": 120,
-    "minimum_sentences": 4,
-    "maximum_sentences": 6,
+    "minimum_sentences": 3,
+    "maximum_sentences": 5,
     "experience_years": "required",
-    "note": "Use four to six complete sentences with a 90-word ceiling. The first sentence states N+ years of experience from the confirmed, non-overlapping employment timeline as of the application date. Cover the supported professional identity, relevant experience and expertise, career direction, and work-authorization context only when applicable and confirmed. Relocation renders as a separate header line and is not repeated here. The summary is the only place a cross-project fact can live, because a bullet describes one project. Do not pad a sentence or invent context to reach the minimum."
+    "note": "Use three to five complete sentences with a 90-word ceiling. The first sentence states the exact confirmed professional identity and N+ years of experience from the confirmed, non-overlapping employment timeline as of the application date. Every later sentence must add a distinct career-level signal; never restate the identity as a framework-specific title or repeat the opening in different words. Prefer architecture, performance, testing, delivery, production support, product scope, or domain breadth over internal implementation terminology. Relocation renders as a separate header line and is not repeated here. The summary is the only place a cross-project fact can live, because a bullet describes one project. Do not pad a sentence or invent context to reach the minimum."
   },
   "page_length": {
     "one_page_through_years": 5,
@@ -199,7 +203,8 @@
       "thrives in fast-paced environments",
       "highly motivated professional",
       "fast-paced environment",
-      "think outside the box"
+      "think outside the box",
+      "full delivery arc"
     ],
     "note": "Public resume text must use direct engineering language and plain punctuation. Replace forbidden symbols with a full stop, colon, comma, parentheses, or ASCII hyphen. Replace generic terms with the concrete feature, action, constraint, or verified result. This list is a default, not a doctrine: edit it. The em dash and en dash are here because they are the most reliable visual tell of generated text in a document nobody expects to be typeset."
   },
@@ -297,7 +302,7 @@
       "readability",
       "credibility"
     ],
-    "note": "Applies to every engineering stack. Select and order evidence in Outcome > Impact > Scope > Activity order so the strongest bullet is first. Activity is an audit classification, not a publishable level: cut it or select stronger evidence. A bullet is one short sentence and one defensible achievement: the delivered or changed capability, its verified consequence or meaningful scope, and only the technical details needed to distinguish the work. Lead at recruiter-readable professional impact and add implementation detail only when it proves an important skill, keyword, constraint, or technical result. Do not force a result clause when no outcome is supported, and do not turn a record into a comma-separated inventory. Schema-version 2 records the A-H semantic review and metric decision for every public bullet; the executable validator requires an exact review-to-bullet and review-to-evidence match."
+    "note": "Applies to every engineering stack. Select and order evidence in Outcome > Impact > Scope > Activity order so the strongest bullet is first. Activity is an audit classification, not a publishable level: cut it or select stronger evidence. A bullet is one short sentence and one defensible achievement: begin with the contribution or engineering change, then state its verified consequence or meaningful scope, and keep only the technical details needed to distinguish the work. Lead at recruiter-readable professional impact and add implementation detail only when it proves an important skill, keyword, constraint, or technical result. A supported number earns space only when it materially strengthens the achievement; small adoption figures, build counts, and operational counts that read as routine or unimpressive should remain private. Reject repeated capabilities even when their implementation differs, and never add a weak bullet merely to fill the page. Do not force a result clause when no outcome is supported, and do not turn a record into a comma-separated inventory. Schema-version 2 records the A-H semantic review and metric decision for every public bullet; the executable validator requires an exact review-to-bullet and review-to-evidence match."
   },
   "number_format": {
     "digits_default": true,
@@ -326,7 +331,8 @@
   },
   "content_density": {
     "single_page_minimum_usable_height_ratio": 0.84,
-    "note": "A one-page resume that uses less than 84 percent of the printable height is underfilled. Restore a strong non-redundant Experience detail first, then add a relevant independent project or compact confirmed section. Do not pad with generic prose, weak skills, or gameable counts."
+    "master_single_page_target_usable_height_ratio": 0.97,
+    "note": "A one-page resume that uses less than 84 percent of the printable height is underfilled. A master resume should normally use at least 97 percent when strong, non-redundant evidence and confirmed compact sections can do so without weakening section rhythm. Restore a strong Experience detail first, then add a relevant independent project or compact confirmed section. Do not pad with generic prose, weak skills, certificates chosen only for length, or gameable counts."
   },
   "requirements": {
     "single_column": true,
@@ -348,8 +354,12 @@
     "role_bullets_max": 4,
     "role_bullets_with_engagements_max": 2,
     "engagements_max": 4,
-    "engagement_bullets_max": 2,
-    "note": "A flat employer block gives every project inside a role the same three or four slots, so a role covering many distinct client deliverables cannot show them. Engagements raise the ceiling for that shape: one or two framing lines plus up to four named projects carrying up to two bullets each. Every added engagement or bullet must pass a resume-wide marginal-value test: keyword repetition already visible in Summary, Skills, Freelance Projects, or another achievement is insufficient. Treat the engagement heading itself as page cost. If removing a one-bullet engagement leaves its capability visible elsewhere, reject it unless the bullet adds a distinct product, ownership, platform, integration, release, scale, measured, or user-workflow signal. Prefer a complementary second achievement under the highest-ranked relevant existing engagement over a weak one-bullet engagement; use a confirmed public link only as a tiebreaker between otherwise comparable evidence. A single-screen repair, isolated widget, local overflow fix, package pin, or narrow bug fix is normally ineligible for a scarce second Experience bullet when broader eligible product-flow, integration, multi-surface, reusable-system, or measured evidence exists. Run a separate career-strength audit so literal requirement coverage does not crowd out a higher-ranked relevant ownership, productization, adoption, scale, or sustained-delivery record. The maxima are editorial targets enforced as warnings, not structural limits; the schema bounds are wider on purpose so a genuinely dense role is not truncated."
+    "engagement_bullets_max": 3,
+    "master_role_bullets_max": 4,
+    "master_role_bullets_with_engagements_max": 4,
+    "master_historical_role_bullets_max": 4,
+    "master_engagement_bullets_max": 3,
+    "note": "A flat employer block gives every project inside a role the same three or four slots, so a role covering many distinct client deliverables cannot show them. Job-targeted resumes use one or two role-framing lines beside engagements. A master resume may use up to four distinct company-level or recurring-responsibility bullets before the named engagements, and up to four bullets for a substantial historical contract, when each adds a separate signal. Role-level bullets describe the experience itself; project achievements stay under their named engagements. Every added engagement or bullet must pass a resume-wide marginal-value test: keyword repetition already visible in Summary, Skills, Freelance Projects, or another achievement is insufficient. Treat the engagement heading itself as page cost. If removing a one-bullet engagement leaves its capability visible elsewhere, reject it unless the bullet adds a distinct product, ownership, platform, integration, release, scale, measured, or user-workflow signal. Prefer complementary achievements under the highest-ranked relevant existing engagement over several weak one-bullet engagements; use a confirmed public link only as a tiebreaker between otherwise comparable evidence. A single-screen repair, isolated widget, local overflow fix, package pin, or narrow bug fix is normally ineligible for a scarce Experience bullet when broader eligible product-flow, integration, multi-surface, reusable-system, measured, or delivery evidence exists. Run a separate career-strength audit so literal requirement coverage does not crowd out a higher-ranked relevant ownership, productization, adoption, scale, or sustained-delivery record. The maxima are editorial targets enforced as warnings, not structural limits; the schema bounds are wider on purpose so a genuinely dense role is not truncated."
   },
   "_readme": "Layout, ATS structure, and writing policy for generated resumes. Every value here is a default you may change. The renderer and the source checker both read this file, so a change takes effect in DOCX, PDF, and validation at once."
 }

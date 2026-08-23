@@ -144,6 +144,17 @@ def links_enabled(model: dict[str, Any]) -> bool:
     return model["layout"].get("hyperlinks", "auto") != "off"
 
 
+def supporting_sections(model: dict[str, Any]) -> tuple[tuple[str, str], ...]:
+    """Supporting-section keys and their visible headings."""
+    activities_heading = str(model["layout"].get("activities_heading", "Activities")).strip()
+    return (
+        ("education", "Education"),
+        ("certifications", "Certificates"),
+        ("awards", "Awards"),
+        ("activities", activities_heading),
+    )
+
+
 def link_of(model: dict[str, Any], value: dict[str, str] | None) -> str:
     """Hyperlink target honoring the document-level hyperlink mode."""
     return url_of(value) if links_enabled(model) else ""
@@ -211,9 +222,15 @@ def experience_items(model: dict[str, Any]) -> list[dict[str, str]]:
     order all need the complete list, not just the top level."""
     items: list[dict[str, str]] = []
     for entry in model.get("experience", []):
-        items.extend(entry.get("bullets", []))
-        for engagement in engagements_of(entry):
-            items.extend(engagement.get("bullets", []))
+        engagements = engagements_of(entry)
+        if entry.get("bullets_position") == "after_engagements":
+            for engagement in engagements:
+                items.extend(engagement.get("bullets", []))
+            items.extend(entry.get("bullets", []))
+        else:
+            items.extend(entry.get("bullets", []))
+            for engagement in engagements:
+                items.extend(engagement.get("bullets", []))
     return items
 
 
@@ -677,7 +694,14 @@ def validate_model(model: dict[str, Any], policy: dict[str, Any] | None = None) 
     }:
         raise ResumeError("target.location_basis is invalid")
     layout = model["layout"]
-    layout_keys = {"page_target", "summary_word_limit", "page_break_before", "hyperlinks", "emphasis"}
+    layout_keys = {
+        "page_target",
+        "summary_word_limit",
+        "page_break_before",
+        "hyperlinks",
+        "emphasis",
+        "activities_heading",
+    }
     if (
         not isinstance(layout, dict)
         or "page_target" not in layout
@@ -689,6 +713,12 @@ def validate_model(model: dict[str, Any], policy: dict[str, Any] | None = None) 
         raise ResumeError("layout.hyperlinks must be auto or off")
     if layout.get("emphasis", "matched-requirements") not in {"matched-requirements", "none"}:
         raise ResumeError("layout.emphasis must be matched-requirements or none")
+    if "activities_heading" in layout and (
+        not isinstance(layout["activities_heading"], str)
+        or not layout["activities_heading"].strip()
+        or len(layout["activities_heading"].strip()) > 40
+    ):
+        raise ResumeError("layout.activities_heading must be a non-empty string of at most 40 characters")
     summary_policy = (policy or {}).get("summary", {})
     minimum_override = int(summary_policy.get("minimum_override", 40))
     maximum_override = int(summary_policy.get("maximum_override", 120))
@@ -802,8 +832,15 @@ def validate_model(model: dict[str, Any], policy: dict[str, Any] | None = None) 
         path = f"experience[{index}]"
         if not isinstance(entry, dict) or not experience_keys <= set(entry):
             raise ResumeError(f"{path} has invalid keys")
-        if set(entry) - experience_keys - {"engagements"}:
+        if set(entry) - experience_keys - {"engagements", "bullets_position"}:
             raise ResumeError(f"{path} has invalid keys")
+        if entry.get("bullets_position", "before_engagements") not in {
+            "before_engagements",
+            "after_engagements",
+        }:
+            raise ResumeError(
+                f"{path}.bullets_position must be before_engagements or after_engagements"
+            )
         for key in ("organization", "title", "start", "end"):
             sourced(entry[key], f"{path}.{key}")
         sourced(entry["location"], f"{path}.location", nullable=True)
@@ -1121,7 +1158,9 @@ def resume_lines(model: dict[str, Any]) -> list[str]:
             if part
         )
         lines.append(date_location)
-        lines.extend(f"• {text_of(item)}" for item in entry["bullets"])
+        role_bullets_after = entry.get("bullets_position") == "after_engagements"
+        if not role_bullets_after:
+            lines.extend(f"• {text_of(item)}" for item in entry["bullets"])
         for engagement in engagements_of(entry):
             lines.append(
                 " | ".join(
@@ -1131,6 +1170,8 @@ def resume_lines(model: dict[str, Any]) -> list[str]:
                 )
             )
             lines.extend(f"• {text_of(item)}" for item in engagement["bullets"])
+        if role_bullets_after:
+            lines.extend(f"• {text_of(item)}" for item in entry["bullets"])
     if model.get("projects"):
         lines.append("FREELANCE PROJECTS")
         for entry in model["projects"]:
@@ -1154,9 +1195,9 @@ def resume_lines(model: dict[str, Any]) -> list[str]:
     if model.get("languages"):
         lines.append("LANGUAGES")
         lines.append(", ".join(text_of(item) for item in model["languages"]))
-    for key, heading in (("education", "EDUCATION"), ("certifications", "CERTIFICATES"), ("awards", "AWARDS"), ("activities", "ACTIVITIES")):
+    for key, heading in supporting_sections(model):
         if model.get(key):
-            lines.append(heading)
+            lines.append(heading.upper())
             for entry in model[key]:
                 main = " | ".join(part for part in (text_of(entry["primary"]), text_of(entry["secondary"]), text_of(entry["date"])) if part)
                 lines.append(main)
@@ -1344,7 +1385,13 @@ def _bottom_border() -> Any:
 
 
 def configure_docx_bullet_marker(document: Document, policy: dict[str, Any]) -> None:
-    """Lower the real List Bullet numbering glyph to the body-text baseline."""
+    """Use a portable round glyph for real Word list numbering.
+
+    The default python-docx template uses a private-use Symbol-font character
+    for List Bullet. Some Word installations cannot map that character and
+    render a hollow rectangle. Keep the list as real numbering, but replace the
+    marker with U+2022 in the document font so it is portable across viewers.
+    """
     layout = bullet_layout(policy)
     numbering = document.part.numbering_part.element
     for abstract_numbering in numbering.findall(qn("w:abstractNum")):
@@ -1359,6 +1406,28 @@ def configure_docx_bullet_marker(document: Document, policy: dict[str, Any]) -> 
             if run_properties is None:
                 run_properties = OxmlElement("w:rPr")
                 level.append(run_properties)
+
+            level_text = level.find(qn("w:lvlText"))
+            if level_text is None:
+                level_text = OxmlElement("w:lvlText")
+                level.append(level_text)
+            level_text.set(qn("w:val"), "•")
+
+            run_fonts = run_properties.find(qn("w:rFonts"))
+            if run_fonts is None:
+                run_fonts = OxmlElement("w:rFonts")
+                run_properties.append(run_fonts)
+            for attribute in ("w:ascii", "w:hAnsi", "w:eastAsia", "w:cs"):
+                run_fonts.set(qn(attribute), policy["fonts"]["primary"])
+
+            marker_size = str(round(layout["marker_font_size_pt"] * 2))
+            for tag in ("w:sz", "w:szCs"):
+                size = run_properties.find(qn(tag))
+                if size is None:
+                    size = OxmlElement(tag)
+                    run_properties.append(size)
+                size.set(qn("w:val"), marker_size)
+
             position = run_properties.find(qn("w:position"))
             if position is None:
                 position = OxmlElement("w:position")
@@ -1380,15 +1449,26 @@ def render_docx(model: dict[str, Any], policy: dict[str, Any], output: Path) -> 
     section.page_width = Inches(width / inch)
     section.page_height = Inches(height / inch)
     margins = policy["margins_inches"]
-    section.top_margin = Inches(margins["top"])
+    section.top_margin = Inches(margins.get("docx_top", margins["top"]))
     section.right_margin = Inches(margins["right"])
-    section.bottom_margin = Inches(margins["bottom"])
+    # LibreOffice paginates the final supporting line more conservatively than
+    # ReportLab.  A format-specific bottom margin keeps the one-page DOCX in
+    # parity with the validated PDF without shrinking the shared type scale.
+    section.bottom_margin = Inches(margins.get("docx_bottom", margins["bottom"]))
     section.left_margin = Inches(margins["left"])
-    section.different_first_page_header_footer = True
-    header = section.header.paragraphs[0]
-    header.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    header.paragraph_format.space_after = Pt(0)
-    set_run_font(header.add_run(continuation_contact(model)), policy["fonts"]["primary"], policy["sizes_pt"]["small"])
+    # A continuation header has no purpose in a one-page resume. Omitting the
+    # header part entirely also prevents Word-compatible viewers and ATS tools
+    # from exposing the contact line twice on page one.
+    if model["layout"]["page_target"] == 2:
+        section.different_first_page_header_footer = True
+        header = section.header.paragraphs[0]
+        header.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        header.paragraph_format.space_after = Pt(0)
+        set_run_font(
+            header.add_run(continuation_contact(model)),
+            policy["fonts"]["primary"],
+            policy["sizes_pt"]["small"],
+        )
 
     normal = document.styles["Normal"]
     normal.font.name = policy["fonts"]["primary"]
@@ -1501,12 +1581,17 @@ def render_docx(model: dict[str, Any], policy: dict[str, Any], output: Path) -> 
             if part
         )
         set_run_font(meta.add_run(date_location), policy["fonts"]["primary"], policy["sizes_pt"]["small"])
-        for item in entry["bullets"]:
-            paragraph = document.add_paragraph(style="List Bullet")
-            paragraph.paragraph_format.left_indent = Pt(bullets["text_indent_pt"])
-            paragraph.paragraph_format.first_line_indent = Pt(-bullets["hanging_pt"])
-            paragraph.paragraph_format.space_after = Pt(policy["spacing_pt"]["bullet_after"])
-            add_docx_sourced_runs(paragraph, model, item, policy, emphasizer)
+        def add_role_bullets() -> None:
+            for item in entry["bullets"]:
+                paragraph = document.add_paragraph(style="List Bullet")
+                paragraph.paragraph_format.left_indent = Pt(bullets["text_indent_pt"])
+                paragraph.paragraph_format.first_line_indent = Pt(-bullets["hanging_pt"])
+                paragraph.paragraph_format.space_after = Pt(policy["spacing_pt"]["bullet_after"])
+                add_docx_sourced_runs(paragraph, model, item, policy, emphasizer)
+
+        role_bullets_after = entry.get("bullets_position") == "after_engagements"
+        if not role_bullets_after:
+            add_role_bullets()
 
         for engagement in engagements_of(entry):
             title = document.add_paragraph()
@@ -1550,6 +1635,9 @@ def render_docx(model: dict[str, Any], policy: dict[str, Any], output: Path) -> 
                 paragraph.paragraph_format.first_line_indent = Pt(-bullets["hanging_pt"])
                 paragraph.paragraph_format.space_after = Pt(policy["spacing_pt"]["bullet_after"])
                 add_docx_sourced_runs(paragraph, model, item, policy, emphasizer)
+
+        if role_bullets_after:
+            add_role_bullets()
 
     if model.get("projects"):
         emphasizer.enter("Freelance Projects")
@@ -1630,18 +1718,31 @@ def render_docx(model: dict[str, Any], policy: dict[str, Any], output: Path) -> 
         add_docx_section_heading(document, "Languages", policy)
         document.add_paragraph(", ".join(text_of(item) for item in model["languages"]))
 
-    for key, heading_label in (("education", "Education"), ("certifications", "Certificates"), ("awards", "Awards"), ("activities", "Activities")):
+    for key, heading_label in supporting_sections(model):
         if not model.get(key):
             continue
         add_docx_section_heading(document, heading_label, policy)
+        if key == "activities":
+            # Keep the gap before Volunteering identical to every other
+            # section. Compact only the heading-to-entry interior so Word and
+            # LibreOffice do not push the complete volunteer block to page 2.
+            activity_heading = document.paragraphs[-1]
+            activity_heading.paragraph_format.space_before = Pt(
+                policy["spacing_pt"]["section_before"]
+            )
+            activity_heading.paragraph_format.space_after = Pt(1)
         for entry in model[key]:
             paragraph = document.add_paragraph()
             paragraph.paragraph_format.keep_with_next = bool(entry["details"])
             paragraph.paragraph_format.space_before = Pt(
-                policy["spacing_pt"].get("supporting_entry_before", 0)
+                0
+                if key == "activities"
+                else policy["spacing_pt"].get("supporting_entry_before", 0)
             )
             paragraph.paragraph_format.space_after = Pt(
-                policy["spacing_pt"].get("paragraph_after", 0)
+                0
+                if key == "activities"
+                else policy["spacing_pt"].get("paragraph_after", 0)
             )
             primary_url = link_of(model, entry["primary"])
             if primary_url:
@@ -1661,9 +1762,21 @@ def render_docx(model: dict[str, Any], policy: dict[str, Any], output: Path) -> 
             if tail:
                 paragraph.add_run(f" | {tail}")
             for detail in entry["details"]:
-                detail_paragraph = document.add_paragraph()
+                detail_paragraph = document.add_paragraph(
+                    style="List Bullet" if key == "activities" else None
+                )
+                if key == "activities":
+                    detail_paragraph.paragraph_format.left_indent = Pt(
+                        bullets["text_indent_pt"]
+                    )
+                    detail_paragraph.paragraph_format.first_line_indent = Pt(
+                        -bullets["hanging_pt"]
+                    )
                 detail_paragraph.paragraph_format.space_after = Pt(
-                    policy["spacing_pt"].get("paragraph_after", 0)
+                    policy["spacing_pt"].get(
+                        "bullet_after" if key == "activities" else "paragraph_after",
+                        0,
+                    )
                 )
                 add_docx_sourced_runs(detail_paragraph, model, detail, policy)
 
@@ -1687,7 +1800,7 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
         rightMargin=margins["right"] * inch,
         leftMargin=margins["left"] * inch,
         topMargin=margins["top"] * inch,
-        bottomMargin=margins["bottom"] * inch,
+        bottomMargin=margins.get("pdf_bottom", margins["bottom"]) * inch,
         title=f"Resume: {text_of(model['basics']['name'])}",
         subject=f"Application for {model['target']['role']} at {model['target']['company']}",
     )
@@ -1801,7 +1914,10 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
             bulletOffsetY=bullet_tokens["marker_vertical_offset_pt"],
             spaceAfter=2,
         )
-        story.extend([heading, paragraph(date_location, "meta"), bullets])
+        role_bullets_after = entry.get("bullets_position") == "after_engagements"
+        story.extend([heading, paragraph(date_location, "meta")])
+        if not role_bullets_after:
+            story.append(bullets)
 
         for engagement in engagements_of(entry):
             name = linked(engagement["name"])
@@ -1827,6 +1943,9 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
                     spaceAfter=2,
                 )
             )
+
+        if role_bullets_after:
+            story.append(bullets)
 
     if model.get("projects"):
         emphasizer.enter("Freelance Projects")
@@ -1884,7 +2003,7 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
         story.extend(section("Languages"))
         story.append(paragraph(", ".join(text_of(item) for item in model["languages"])))
 
-    for key, heading_label in (("education", "Education"), ("certifications", "Certificates"), ("awards", "Awards"), ("activities", "Activities")):
+    for key, heading_label in supporting_sections(model):
         if not model.get(key):
             continue
         story.extend(section(heading_label))
@@ -1896,7 +2015,25 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
             supporting_style = styles["body"].clone("supportingEntry")
             supporting_style.spaceBefore = policy["spacing_pt"].get("supporting_entry_before", 0)
             flowables: list[Any] = [Paragraph(main, supporting_style)]
-            flowables.extend(Paragraph(linked(item), styles["body"]) for item in entry["details"])
+            if key == "activities" and entry["details"]:
+                flowables.append(
+                    ListFlowable(
+                        [ListItem(Paragraph(linked(item), styles["body"])) for item in entry["details"]],
+                        bulletType="bullet",
+                        start="circle",
+                        leftIndent=bullet_tokens["text_indent_pt"],
+                        bulletDedent=bullet_tokens["hanging_pt"],
+                        bulletFontName=font,
+                        bulletFontSize=bullet_tokens["marker_font_size_pt"],
+                        bulletOffsetY=bullet_tokens["marker_vertical_offset_pt"],
+                        spaceAfter=2,
+                    )
+                )
+            else:
+                flowables.extend(
+                    Paragraph(linked(item), styles["body"])
+                    for item in entry["details"]
+                )
             story.append(KeepTogether(flowables))
 
     if model.get("hobbies"):
@@ -1944,11 +2081,15 @@ def extract_docx(path: Path) -> tuple[str, dict[str, Any]]:
 
 
 def pdf_content_fill_ratio(page: Any, policy: dict[str, Any]) -> float:
-    """Measure the vertical span of visible text inside the configured margins."""
+    """Measure visible text against the PDF renderer's actual text frame."""
     height = float(page.mediabox.height)
     margins = policy["margins_inches"]
-    usable_bottom = float(margins["bottom"]) * 72
-    usable_top = height - float(margins["top"]) * 72
+    # ReportLab's Frame reserves six points on every side by default.  The PDF
+    # renderer uses that default, so counting the top and bottom frame padding
+    # as unused document space permanently understates page fill by about 1.6%.
+    frame_padding_pt = 6.0
+    usable_bottom = float(margins.get("pdf_bottom", margins["bottom"])) * 72 + frame_padding_pt
+    usable_top = height - float(margins["top"]) * 72 - frame_padding_pt
     extents: list[tuple[float, float]] = []
 
     def visitor(text: str, cm: list[float], _tm: list[float], _font: Any, font_size: float) -> None:
@@ -1968,7 +2109,35 @@ def pdf_content_fill_ratio(page: Any, policy: dict[str, Any]) -> float:
     return round(max(0.0, min(1.0, (content_top - content_bottom) / (usable_top - usable_bottom))), 3)
 
 
-def extract_pdf(path: Path, policy: dict[str, Any]) -> tuple[str, int, str, list[float]]:
+def pdf_orphaned_wraps(page: Any) -> list[str]:
+    """Return one-word final lines created by PDF paragraph wrapping.
+
+    These are not extraction errors, but they are a frequent visual-quality
+    defect in dense resumes: a short bullet leaves its final noun alone on a
+    second line even though a tighter phrasing would fit cleanly.  Non-breaking
+    spaces remain available for a genuinely inseparable phrase, but rewriting
+    the sentence is the preferred fix.
+    """
+    orphans: list[str] = []
+
+    def visitor(text: str, _cm: list[float], _tm: list[float], _font: Any, _size: float) -> None:
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        if len(lines) < 2:
+            return
+        final_words = re.findall(r"[A-Za-z0-9][A-Za-z0-9'./+-]*", lines[-1])
+        preceding_words = re.findall(
+            r"[A-Za-z0-9][A-Za-z0-9'./+-]*", " ".join(lines[:-1])
+        )
+        if len(final_words) == 1 and len(preceding_words) >= 5:
+            orphans.append(lines[-1])
+
+    page.extract_text(visitor_text=visitor)
+    return orphans
+
+
+def extract_pdf(
+    path: Path, policy: dict[str, Any]
+) -> tuple[str, int, str, list[float], list[list[str]]]:
     reader = PdfReader(str(path))
     if reader.is_encrypted:
         raise ResumeError("PDF is password-protected; application resumes must open without a password")
@@ -1977,7 +2146,8 @@ def extract_pdf(path: Path, policy: dict[str, Any]) -> tuple[str, int, str, list
     width, height = round(float(first.width)), round(float(first.height))
     detected = "A4" if abs(width - 595) <= 2 and abs(height - 842) <= 2 else "LETTER" if (width, height) == (612, 792) else f"{width}x{height}pt"
     fill_ratios = [pdf_content_fill_ratio(page, policy) for page in reader.pages]
-    return "\n".join(pages), len(reader.pages), detected, fill_ratios
+    orphaned_wraps = [pdf_orphaned_wraps(page) for page in reader.pages]
+    return "\n".join(pages), len(reader.pages), detected, fill_ratios, orphaned_wraps
 
 
 def normalize(value: str) -> str:
@@ -2170,9 +2340,37 @@ def application_guidance_warnings(model: dict[str, Any], policy: dict[str, Any])
     return warnings
 
 
-def editorial_warnings(model: dict[str, Any]) -> list[str]:
+def editorial_warnings(model: dict[str, Any], policy: dict[str, Any]) -> list[str]:
     visible = " ".join(resume_lines(model)).casefold()
     warnings: list[str] = []
+    experience_budget = policy.get("experience_budget", {})
+    master = model["target"].get("mode") == "master"
+    role_bullets_max = int(
+        experience_budget.get(
+            "master_role_bullets_max" if master else "role_bullets_max", 4
+        )
+    )
+    role_bullets_with_engagements_max = int(
+        experience_budget.get(
+            "master_role_bullets_with_engagements_max"
+            if master
+            else "role_bullets_with_engagements_max",
+            4 if master else 2,
+        )
+    )
+    historical_role_bullets_max = int(
+        experience_budget.get(
+            "master_historical_role_bullets_max" if master else "historical_role_bullets_max",
+            4 if master else 2,
+        )
+    )
+    engagements_max = int(experience_budget.get("engagements_max", 4))
+    engagement_bullets_max = int(
+        experience_budget.get(
+            "master_engagement_bullets_max" if master else "engagement_bullets_max",
+            3 if master else 2,
+        )
+    )
     for phrase in ("excellent problem solver", "results-driven professional", "proven track record", "dynamic professional", "passionate engineer"):
         if phrase in visible:
             warnings.append(f"Avoid generic resume phrase: {phrase}")
@@ -2186,26 +2384,35 @@ def editorial_warnings(model: dict[str, Any]) -> list[str]:
             # role-level bullets are framing lines and the flat targets do not
             # apply. What matters here is that the framing stays short and the
             # engagements stay readable.
-            if count > 2:
+            if count > role_bullets_with_engagements_max:
                 warnings.append(
                     f"Role {index} has {count} role-level bullets alongside "
-                    f"{len(engagements)} engagements; one or two framing lines is the target"
+                    f"{len(engagements)} engagements; "
+                    f"{role_bullets_with_engagements_max} framing lines is the maximum"
                 )
-            if len(engagements) > 4:
+            if len(engagements) > engagements_max:
                 warnings.append(
-                    f"Role {index} has {len(engagements)} engagements; four is the default maximum"
+                    f"Role {index} has {len(engagements)} engagements; "
+                    f"{engagements_max} is the default maximum"
                 )
             for position, engagement in enumerate(engagements, 1):
-                if len(engagement["bullets"]) > 2:
+                if len(engagement["bullets"]) > engagement_bullets_max:
                     warnings.append(
                         f"Role {index} engagement {position} "
                         f"({text_of(engagement['name'])}) has {len(engagement['bullets'])} "
-                        "bullets; two is the default maximum"
+                        f"bullets; {engagement_bullets_max} is the default maximum"
                     )
-        elif current and count != 3:
+        elif current and master and count > role_bullets_max:
+            warnings.append(
+                f"Current role {index} has {count} bullets; {role_bullets_max} is the master-resume maximum"
+            )
+        elif current and not master and count != 3:
             warnings.append(f"Current role {index} has {count} bullets; three is the default target")
-        elif not current and count > 2:
-            warnings.append(f"Historical role {index} has {count} bullets; one or two is the default target")
+        elif not current and count > historical_role_bullets_max:
+            warnings.append(
+                f"Historical role {index} has {count} bullets; "
+                f"{historical_role_bullets_max} is the maximum"
+            )
     starts = [re.sub(r"^[^a-z]*([a-z]+).*", r"\1", bullet.casefold()) for bullet in all_bullets]
     repeated = sorted({verb for verb in starts if verb and starts.count(verb) > 2})
     if repeated:
@@ -2265,12 +2472,27 @@ def content_density_warnings(
     threshold = float(
         policy.get("content_density", {}).get("single_page_minimum_usable_height_ratio", 0)
     )
+    master_target = float(
+        policy.get("content_density", {}).get(
+            "master_single_page_target_usable_height_ratio", 0
+        )
+    )
     ratio = fill_ratios[0]
     if threshold and ratio < threshold:
         return [
             f"Single-page resume is underfilled: content uses {ratio:.1%} of printable height, "
             f"below the {threshold:.1%} minimum; restore strong non-redundant Experience "
             "evidence or add a relevant independent project"
+        ]
+    if (
+        model["target"].get("mode") == "master"
+        and master_target
+        and ratio < master_target
+    ):
+        return [
+            f"Single-page master resume uses {ratio:.1%} of printable height, below the "
+            f"{master_target:.1%} master target; add only strong non-redundant evidence or a "
+            "confirmed compact section while preserving normal section spacing"
         ]
     return []
 
@@ -2327,12 +2549,20 @@ def render(args: argparse.Namespace) -> int:
 
         expected = resume_lines(model)
         docx_text, docx_structure = extract_docx(docx_path)
-        pdf_text, pdf_pages, detected_page_size, fill_ratios = extract_pdf(pdf_path, policy)
+        pdf_text, pdf_pages, detected_page_size, fill_ratios, orphaned_wraps = extract_pdf(
+            pdf_path, policy
+        )
         errors: list[str] = []
-        warnings = editorial_warnings(model)
+        warnings = editorial_warnings(model, policy)
         warnings.extend(ai_visibility_warnings(model, policy))
         warnings.extend(application_guidance_warnings(model, policy))
         warnings.extend(content_density_warnings(model, policy, pdf_pages, fill_ratios))
+        for page_number, page_orphans in enumerate(orphaned_wraps, 1):
+            for orphan in page_orphans:
+                warnings.append(
+                    f"PDF page {page_number} has a one-word wrapped final line ({orphan}); "
+                    "shorten or rewrite the sentence before using a non-breaking space"
+                )
         warnings.extend(link_warnings(model))
         warnings.extend(emphasis_warnings(model, policy, emphasizer))
         warnings.extend(source_report.get("warnings", []))
@@ -2396,6 +2626,7 @@ def render(args: argparse.Namespace) -> int:
                 "page_size": detected_page_size,
                 "pdf_password_protected": False,
                 "content_fill_ratios": fill_ratios,
+                "orphaned_wraps": orphaned_wraps,
                 "expected_lines": len(expected),
             },
             "outputs": {

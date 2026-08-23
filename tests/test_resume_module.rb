@@ -484,6 +484,8 @@ class ResumeModuleTest < Minitest::Test
       fill_ratios = report.dig("document_validation", "content_fill_ratios")
       assert_equal report.dig("document_validation", "pdf_pages"), fill_ratios.length
       assert fill_ratios.all? { |ratio| ratio.between?(0.0, 1.0) }
+      assert_equal report.dig("document_validation", "pdf_pages"),
+                   report.dig("document_validation", "orphaned_wraps").length
       assert_equal 20.0, report.dig("presentation", "bullet_layout", "text_indent_pt")
       assert_equal 11.0, report.dig("presentation", "bullet_layout", "hanging_pt")
       assert_equal(-1.5, report.dig("presentation", "bullet_layout", "marker_vertical_offset_pt"))
@@ -510,6 +512,17 @@ class ResumeModuleTest < Minitest::Test
         %r{<w:pStyle w:val="ListBullet"/>.*?<w:position w:val="-3"/>}m,
         numbering
       )
+      assert_match(%r{<w:lvlText w:val="•"/>}, numbering)
+      assert_match(%r{<w:rFonts w:ascii="Arial" w:hAnsi="Arial"}, numbering)
+    end
+  end
+
+  def test_one_page_resume_has_no_continuation_header
+    with_model do |model, _path, directory|
+      output, _stdout, stderr, status = render_model(model, directory)
+      assert status.success?, stderr
+      report = JSON.parse(File.read(File.join(output, "validation.json")))
+      assert_empty report.dig("document_validation", "docx_structure", "header_footer_text")
     end
   end
 
@@ -520,13 +533,13 @@ class ResumeModuleTest < Minitest::Test
       assert status.success?, stderr
       report = JSON.parse(File.read(File.join(output, "validation.json")))
       spacing = report.dig("presentation", "spacing_pt")
-      assert_equal 9, spacing["experience_entry_before"]
-      assert_equal 5, spacing["entry_meta_after"]
+      assert_equal 8, spacing["experience_entry_before"]
+      assert_equal 4, spacing["entry_meta_after"]
       assert_equal 5, spacing["project_entry_before"]
       assert_operator spacing["section_before"], :>, spacing["paragraph_after"]
       document = docx_part(File.join(output, "resume.docx"), "word/document.xml")
-      assert_match(%r{<w:spacing w:after="100"/>}, document)
-      assert_match(%r{<w:spacing w:before="180" w:after="20"/>}, document)
+      assert_match(%r{<w:spacing w:after="80"/>}, document)
+      assert_match(%r{<w:spacing w:before="160" w:after="20"/>}, document)
     end
   end
 
@@ -698,7 +711,7 @@ class ResumeModuleTest < Minitest::Test
     end
   end
 
-  def test_summary_defaults_to_ninety_words_and_four_sentences_in_every_market
+  def test_summary_defaults_to_ninety_words_and_accepts_four_sentences_in_every_market
     with_model do |model, path, _directory|
       model["summary"][0]["text"] = summary_text(90)
       _stdout, stderr, status = validate(model, path)
@@ -755,21 +768,21 @@ class ResumeModuleTest < Minitest::Test
     end
   end
 
-  def test_summary_rejects_fewer_than_four_sentences
+  def test_summary_rejects_fewer_than_three_sentences
     with_model do |model, path, _directory|
-      model["summary"][0]["text"] = summary_text(45, sentences: 3)
+      model["summary"][0]["text"] = summary_text(45, sentences: 2)
       _stdout, stderr, status = validate(model, path)
       refute status.success?
-      assert_includes stderr, "4 to 6 complete sentences; found 3"
+      assert_includes stderr, "3 to 5 complete sentences; found 2"
     end
   end
 
-  def test_summary_rejects_more_than_six_sentences
+  def test_summary_rejects_more_than_five_sentences
     with_model do |model, path, _directory|
-      model["summary"][0]["text"] = summary_text(70, sentences: 7)
+      model["summary"][0]["text"] = summary_text(70, sentences: 6)
       _stdout, stderr, status = validate(model, path)
       refute status.success?
-      assert_includes stderr, "4 to 6 complete sentences; found 7"
+      assert_includes stderr, "3 to 5 complete sentences; found 6"
     end
   end
 
@@ -896,6 +909,31 @@ class ResumeModuleTest < Minitest::Test
       File.write(profile_path, YAML.dump(profile))
       write_model(path, model)
       stdout, stderr, status = run_tool("validate", "--model", path, "--profile", profile_path, "--projects", PROJECTS)
+      assert status.success?, stderr
+      refute_includes JSON.parse(stdout)["warnings"].join(" "), "unexplained gap"
+    end
+  end
+
+  def test_year_only_career_break_covers_the_stated_end_year
+    with_model do |model, path, directory|
+      profile = YAML.safe_load(File.read(PROFILE), permitted_classes: [Date])
+      profile["experience"] << {
+        "id" => "profile-experience-002", "organization" => "Earlier Systems",
+        "title" => "Developer", "start" => "2020-01", "end" => "2020-12",
+        "employment_type" => "full-time", "projects" => [], "kind" => "user-stated"
+      }
+      model["summary"][0]["text"] = model["summary"][0]["text"].sub("3+ years", "4+ years")
+      profile["career_breaks"] = [{
+        "id" => "profile-career-break-001", "label" => "Confirmed service",
+        "start" => 2021, "end" => 2021, "precision" => "year",
+        "details" => [], "kind" => "user-stated"
+      }]
+      profile_path = File.join(directory, "profile.yaml")
+      File.write(profile_path, YAML.dump(profile))
+      write_model(path, model)
+      stdout, stderr, status = run_tool(
+        "validate", "--model", path, "--profile", profile_path, "--projects", PROJECTS
+      )
       assert status.success?, stderr
       refute_includes JSON.parse(stdout)["warnings"].join(" "), "unexplained gap"
     end
@@ -1426,6 +1464,48 @@ class ResumeModuleTest < Minitest::Test
     end
   end
 
+  def test_role_bullets_can_render_after_engagements_when_explicitly_requested
+    with_model do |model, _path, directory|
+      model["experience"][0]["engagements"] = [engagement_entry]
+      model["experience"][0]["bullets_position"] = "after_engagements"
+      output, _stdout, stderr, status = render_model(model, directory)
+      assert status.success?, stderr
+      runs = docx_runs(File.join(output, "resume.docx"))
+      assert_operator runs.index("Stronger Client"), :<, runs.index("data import pipeline")
+    end
+  end
+
+  def test_volunteering_heading_and_details_render_as_real_bullets
+    with_model do |model, path, directory|
+      profile = YAML.safe_load(File.read(PROFILE), permitted_classes: [Date])
+      profile["activities"] = [{
+        "id" => "profile-activity-001", "role" => "Technology Instructor",
+        "organization" => "Developer Community", "start" => "2020-09",
+        "end" => "2021-08", "details" => "Delivered technical training.",
+        "kind" => "user-stated"
+      }]
+      model["layout"]["activities_heading"] = "Volunteering"
+      model["activities"] = [{
+        "primary" => {"text" => "Technology Instructor", "source_ref" => "profile-activity-001"},
+        "secondary" => {"text" => "Developer Community", "source_ref" => "profile-activity-001"},
+        "date" => {"text" => "Sep 2020 - Aug 2021", "source_ref" => "profile-activity-001"},
+        "details" => [{"text" => "Delivered technical training.", "source_ref" => "profile-activity-001"}]
+      }]
+      profile_path = File.join(directory, "profile.yaml")
+      File.write(profile_path, YAML.dump(profile))
+      write_model(path, model)
+      output = File.join(directory, "output")
+      _stdout, stderr, status = run_tool(
+        "render", "--model", path, "--profile", profile_path, "--projects", PROJECTS,
+        "--policy", POLICY, "--output-dir", output
+      )
+      assert status.success?, stderr
+      runs = docx_runs(File.join(output, "resume.docx"))
+      assert_includes runs, "VOLUNTEERING"
+      assert_match(%r{<w:pStyle w:val="ListBullet"/>.*?Delivered technical training\.}m, runs)
+    end
+  end
+
   def test_engagement_bullets_are_indented_deeper_than_role_bullets
     with_model do |model, _path, directory|
       model["experience"][0]["engagements"] = [engagement_entry]
@@ -1480,9 +1560,33 @@ class ResumeModuleTest < Minitest::Test
       assert status.success?, stderr
       report = JSON.parse(File.read(File.join(output, "validation.json"), encoding: "UTF-8"))
       assert(
-        report["document_validation"]["warnings"].any? { |warning| warning.include?("framing lines is the target") },
+        report["document_validation"]["warnings"].any? { |warning| warning.include?("framing lines is the maximum") },
         report["document_validation"]["warnings"].inspect
       )
+    end
+  end
+
+  def test_master_resume_allows_four_distinct_role_bullets_beside_engagements
+    with_model do |model, _path, directory|
+      model["target"] = {
+        "mode" => "master", "company" => "General", "role" => "Software Engineer",
+        "market" => "europe", "market_basis" => "profile-default",
+        "job_country" => nil, "job_country_code" => nil,
+        "location_scope" => "unspecified", "location_basis" => "user-request"
+      }
+      model["basics"]["mobility"] = {
+        "text" => "Open to relocation.", "source_ref" => "profile-eligibility-003"
+      }
+      bullet = model["experience"][0]["bullets"][0]
+      model["experience"][0]["bullets"] = Array.new(4) { bullet.dup }
+      model["experience"][0]["engagements"] = [engagement_entry]
+      output, _stdout, stderr, status = render_model(model, directory)
+      assert status.success?, stderr
+      warnings = JSON.parse(
+        File.read(File.join(output, "validation.json"), encoding: "UTF-8")
+      ).dig("document_validation", "warnings").join(" ")
+      refute_includes warnings, "framing lines is the maximum"
+      refute_includes warnings, "Historical role 1 has 4 bullets"
     end
   end
 

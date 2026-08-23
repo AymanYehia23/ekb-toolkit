@@ -2,8 +2,8 @@
 
 Parameters:
 
-- `MODE` — `candidates`, `snapshot`, `artifact`, `profile`, `application`, or
-  `screening`.
+- `MODE` — `candidates`, `snapshot`, `artifact`, `profile`, `application`,
+  `screening`, `policy`, `index`, or `bullet-audit`.
 - `PROJECT` — for project-scoped modes.
 - `KIND` — `interview` or `bullets`, for artifact mode.
 - `APPLICATION_ID` — for application and screening modes.
@@ -21,6 +21,9 @@ scripts/ekb git snapshot    <project>            # after review, candidates dele
 scripts/ekb git artifact    <project> interview  # after generating an artifact
 scripts/ekb git artifact    <project> bullets
 scripts/ekb git profile                          # needs profile consent
+scripts/ekb git policy                           # workspace resume-policy override
+scripts/ekb git index                            # generated evidence index
+scripts/ekb git bullet-audit                     # generated bullet impact audit
 scripts/ekb git application <id>                 # needs application consent
 scripts/ekb git screening   <id>                 # needs application consent
 ```
@@ -62,6 +65,10 @@ shortlist, and the rendered outputs.
 
 **`screening`** — the frozen posting and its screening record only. It requires
 no rendered artifact, so a declined opportunity can be saved without a resume.
+
+**`policy`**, **`index`**, and **`bullet-audit`** — one explicit workspace
+configuration or generated maintenance artifact each. They exist so these files
+can be checkpointed without bypassing the named-path staging rule.
 
 ## If it fails
 

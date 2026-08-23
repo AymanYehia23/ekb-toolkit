@@ -40,7 +40,7 @@ Never read candidate files, generated artifacts, or target repositories.
 
 | Venue | Budget | Voice | Notes |
 |---|---|---|---|
-| `resume` | 4–6 sentences, 90 words maximum | third person, implied subject | The word count is a ceiling. Governed by `prompts/resume-presentation.md`. |
+| `resume` | 3–5 sentences, 90 words maximum | third person, implied subject | The word count is a ceiling. Governed by `prompts/resume-presentation.md`. |
 | `profile-headline` | 15 words | noun phrase | Role identity plus the one specialization the evidence supports. |
 | `profile-about` | 120 words | first person | The only venue where first person reads naturally. |
 | `portfolio` | 80 words | third person | Written for someone who arrived from a project page and wants context. |
@@ -76,10 +76,19 @@ and what it hides or dilutes. Select by information value and evidence weight,
 not by adjective strength. Output the alternatives only when the user asks for
 them; otherwise store only the selected venue artifact.
 
-The first two sentences should establish a technical thesis, not a keyword
+The opening sentence states the confirmed professional identity and years once.
+Every later sentence must add a distinct signal; never restate that identity as
+a framework-specific title such as `Flutter engineer specializing in...`. The
+first two sentences should establish a technical thesis, not a keyword
 inventory. Name a technology when it changes the reader's understanding of the
 engineer's specialization. Group the rest as architecture, integration,
 performance, delivery, or another supported engineering capability.
+
+Prefer product, delivery, performance, reliability, and domain language over
+internal architecture labels in a general resume summary. Avoid audience labels
+such as `customer-facing` when a concrete workflow or product statement is
+clearer. Do not copy low-level platform integration terms into the summary just
+because they are accurate; Skills and Experience can carry them.
 
 When client-facing evidence is confirmed, state what it demonstrates. Replace
 an activity list such as meetings, requirements, and demos with the supported
@@ -88,7 +97,8 @@ or feature decisions, translating needs into technical work, or carrying the
 result through delivery. Never attach a deal, adoption, revenue, satisfaction,
 or formal product title that the sources do not support.
 
-Every summary opens with `N+ years of experience`, using the same conservative
+Every summary opens with the confirmed professional identity followed by
+`N+ years of experience`, using the same conservative
 timeline calculation as `prompts/resume.md`: merge overlapping confirmed roles,
 exclude gaps, count through the venue's as-of date, and round down to completed
 years. For a resume, cite at least one `profile-experience-*` source and let the
