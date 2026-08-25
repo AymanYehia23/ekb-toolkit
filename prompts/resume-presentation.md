@@ -275,14 +275,38 @@ That is a selection decision: go back to `prompts/resume.md`.
 awkward page breaks, broken bullets, and inconsistent spacing before delivery.
 Do not deliver on a failed validation.
 
+No visible word may be divided between lines. The renderers must keep complete
+tokens together, including compounds that contain an ASCII hyphen. Treat any
+line ending in the first half of a word as a document error, not an acceptable
+hyphenation choice. Rewrite the sentence only when keeping the complete token
+together creates an awkward line or overflow.
+
+Run a separate proofreading pass before layout review and repeat it against the
+extracted DOCX and PDF text after rendering. Check spelling, missing or repeated
+words, merged compounds, and lost punctuation. A renderer changing
+`customer-facing` to `customerfacing` is a failed document even when the source
+model is correct. Apply `proofreading.forbidden_typos` mechanically, then read
+the complete public copy once in order; the configured list supplements review
+and does not replace it.
+
+Keep the engineering and product phrases in `line_wrap.protected_phrases` on one
+line, and include short multiword requirement aliases and skill names when the
+policy allows them. Examples include `production support`, `clean architecture`,
+and `permission handling`. Validate the rendered PDF for phrase boundaries and
+inspect the DOCX render for the same breaks. A complete word on the next line is
+still a defect when it is the second half of a protected technical phrase.
+
 After the first render, inspect page count and page use. A single-page resume
 below `content_density.single_page_minimum_usable_height_ratio` is underfilled
 even with no clipping. Resolve empty space in this order:
 
-A master resume should normally reach
-`content_density.master_single_page_target_usable_height_ratio` when strong,
-non-redundant evidence and confirmed compact sections can do so. Page use never
-justifies unequal section gaps, weakened hierarchy, or a low-value bullet.
+Every one-page resume should aim to reach
+`content_density.single_page_minimum_usable_height_ratio`, currently 99 percent,
+when strong, non-redundant evidence and confirmed compact sections can do so. A
+master resume must also meet
+`content_density.master_single_page_target_usable_height_ratio`. Page use never
+justifies clipping, unequal section gaps, weakened hierarchy, or a low-value
+bullet.
 
 Before adding anything, compare it with the whole public resume. Reject an
 Experience or Freelance Projects detail that only repeats a capability already

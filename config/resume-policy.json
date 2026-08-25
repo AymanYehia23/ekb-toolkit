@@ -35,7 +35,8 @@
     "engagement_before": 3,
     "project_entry_before": 5,
     "supporting_entry_before": 2,
-    "line_spacing_multiple": 1.02
+    "line_spacing_multiple": 1.02,
+    "docx_line_spacing_multiple": 0.96
   },
   "bullets": {
     "text_indent_pt": 20,
@@ -329,10 +330,72 @@
     ],
     "note": "Core engineering skills remain primary. Include an AI tool only when confirmed profile or project evidence supports genuine use and the term helps the role. When AI appears in Skills, prefer one supported achievement in Summary, Experience, or Freelance Projects that shows how it contributed to delivery, investigation, prototyping, automation, or another engineering result. The renderer warns when AI is visible only as a skill keyword."
   },
+  "proofreading": {
+    "forbidden_typos": {
+      "customerfacing": "customer-facing",
+      "cleanarchitecture": "clean architecture",
+      "productionsupport": "production support",
+      "softwareengineer": "software engineer"
+    },
+    "note": "Run a dedicated proofreading pass over source text and extracted DOCX/PDF text. Reject known merged-word typos, missing punctuation inside compounds, duplicated words, and rendered word-boundary changes before delivery."
+  },
+  "line_wrap": {
+    "protected_phrases": [
+      "production support",
+      "clean architecture",
+      "automated tests",
+      "solution design",
+      "architecture discussions",
+      "REST and ERPNext/Frappe integration",
+      "B2B commerce",
+      "product line",
+      "tax calculation",
+      "cached item lookups",
+      "delivery requests",
+      "fleet maintenance",
+      "fuel logs",
+      "ERPNext reports",
+      "delivery transitions",
+      "GPS capture",
+      "image-count requirements",
+      "shipped and delivered states",
+      "reusable mobile surface",
+      "server-defined ERPNext reports",
+      "feature modules",
+      "feature-first Clean Architecture",
+      "BFF endpoint",
+      "stock and price requests",
+      "Firebase Cloud Messaging",
+      "Android and iOS",
+      "APNs bridging",
+      "permission handling",
+      "foreground deduplication",
+      "topic registration",
+      "payload persistence",
+      "deep links",
+      "order lifecycle",
+      "customer and store pickup order lifecycle",
+      "WebSocket updates",
+      "status views",
+      "optimistic transitions",
+      "server-deadline countdowns",
+      "Stripe payment handling",
+      "payment-status event",
+      "App Store release",
+      "Fastlane and Shorebird",
+      "automated testing",
+      "AI-assisted development",
+      "open-source agents"
+    ],
+    "alignment_alias_max_words": 4,
+    "skill_item_max_words": 7,
+    "note": "Keep complete technical and product phrases on one rendered line. Add job vocabulary here when a phrase would become ambiguous or look broken if its words wrap separately. Validation rejects a configured phrase that crosses a PDF line boundary."
+  },
+
   "content_density": {
-    "single_page_minimum_usable_height_ratio": 0.84,
-    "master_single_page_target_usable_height_ratio": 0.97,
-    "note": "A one-page resume that uses less than 84 percent of the printable height is underfilled. A master resume should normally use at least 97 percent when strong, non-redundant evidence and confirmed compact sections can do so without weakening section rhythm. Restore a strong Experience detail first, then add a relevant independent project or compact confirmed section. Do not pad with generic prose, weak skills, certificates chosen only for length, or gameable counts."
+    "single_page_minimum_usable_height_ratio": 0.99,
+    "master_single_page_target_usable_height_ratio": 0.99,
+    "note": "A one-page resume that uses less than 99 percent of the printable height is underfilled. Job-targeted and master resumes should both aim to use at least 99 percent when strong, non-redundant evidence and confirmed compact sections can do so without clipping or weakening section rhythm. Restore strong relevant Experience detail first, then add a relevant independent project or compact confirmed section. Do not pad with generic prose, weak skills, certificates chosen only for length, or gameable counts."
   },
   "requirements": {
     "single_column": true,

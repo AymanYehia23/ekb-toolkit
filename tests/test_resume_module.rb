@@ -142,6 +142,18 @@ class ResumeModuleTest < Minitest::Test
     end
   end
 
+  def test_rejects_a_known_merged_word_typo
+    with_model do |model, path, _directory|
+      model["summary"][0]["text"] = model["summary"][0]["text"].sub(
+        "data import systems", "customerfacing data import systems"
+      )
+      _stdout, stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes stderr, "probable typo"
+      assert_includes stderr, "customer-facing"
+    end
+  end
+
   def test_rejects_forbidden_ai_style_wording
     with_model do |model, path, _directory|
       model["experience"][0]["bullets"][0]["text"] =
@@ -486,6 +498,10 @@ class ResumeModuleTest < Minitest::Test
       assert fill_ratios.all? { |ratio| ratio.between?(0.0, 1.0) }
       assert_equal report.dig("document_validation", "pdf_pages"),
                    report.dig("document_validation", "orphaned_wraps").length
+      assert_equal report.dig("document_validation", "pdf_pages"),
+                   report.dig("document_validation", "broken_word_wraps").length
+      assert_equal report.dig("document_validation", "pdf_pages"),
+                   report.dig("document_validation", "protected_phrase_wraps").length
       assert_equal 20.0, report.dig("presentation", "bullet_layout", "text_indent_pt")
       assert_equal 11.0, report.dig("presentation", "bullet_layout", "hanging_pt")
       assert_equal(-1.5, report.dig("presentation", "bullet_layout", "marker_vertical_offset_pt"))
@@ -664,8 +680,26 @@ class ResumeModuleTest < Minitest::Test
       assert status.success?, stderr
       report = JSON.parse(File.read(File.join(output, "validation.json")))
       assert_equal 1, report.dig("document_validation", "pdf_pages")
-      assert_operator report.dig("document_validation", "content_fill_ratios", 0), :<, 0.84
+      assert_operator report.dig("document_validation", "content_fill_ratios", 0), :<, 0.99
       assert_includes report.dig("document_validation", "warnings").join(" "), "underfilled"
+      assert_includes report.dig("document_validation", "warnings").join(" "), "99.0%"
+    end
+  end
+
+  def test_keeps_hyphenated_words_together_in_docx_and_pdf
+    with_model do |model, _path, directory|
+      model["experience"][0]["bullets"][0]["text"] =
+        "Contributed to payment-status handling with clean architecture in a Ruby and PostgreSQL pipeline."
+      output, _stdout, stderr, status = render_model(model, directory)
+      assert status.success?, stderr
+
+      document = docx_part(File.join(output, "resume.docx"), "word/document.xml")
+      assert_includes document, "payment‑status"
+      assert_includes document, "clean architecture"
+
+      report = JSON.parse(File.read(File.join(output, "validation.json")))
+      assert report.dig("document_validation", "broken_word_wraps").all?(&:empty?)
+      assert report.dig("document_validation", "protected_phrase_wraps").all?(&:empty?)
     end
   end
 

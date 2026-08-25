@@ -38,6 +38,9 @@ class ResumeError(Exception):
     pass
 
 
+NO_BREAK_SPACE_MARKER = "\ue000"
+
+
 def load_json(path: Path) -> dict[str, Any]:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -318,13 +321,18 @@ class Emphasizer:
         """Split text into (fragment, bold) pairs in reading order."""
         if not self.active() or not text:
             return [(text, False)]
+        # Protected phrase spaces use a same-width private marker until the
+        # final renderer converts them to non-breaking spaces. Search against
+        # ordinary spaces so emphasis spans remain identical and can still be
+        # applied inside a protected phrase such as "Clean Architecture".
+        search_text = text.replace(NO_BREAK_SPACE_MARKER, " ")
         spans: list[tuple[int, int]] = []
         for term in self.terms:
             key = (self.section, term.casefold())
             remaining = self.limit - self.used.get(key, 0)
             if remaining <= 0:
                 continue
-            for match in re.finditer(rf"(?<![\w.+#-]){re.escape(term)}(?![\w+#-])", text, re.IGNORECASE):
+            for match in re.finditer(rf"(?<![\w.+#-]){re.escape(term)}(?![\w+#-])", search_text, re.IGNORECASE):
                 if any(match.start() < end and start < match.end() for start, end in spans):
                     continue
                 spans.append((match.start(), match.end()))
@@ -350,9 +358,59 @@ class Emphasizer:
     def markup(self, text: str) -> str:
         """The same split expressed as ReportLab inline markup."""
         return "".join(
-            f"<b>{html.escape(fragment)}</b>" if bold else html.escape(fragment)
+            (
+                f"<b>{html.escape(fragment).replace(NO_BREAK_SPACE_MARKER, '&nbsp;')}</b>"
+                if bold
+                else html.escape(fragment).replace(NO_BREAK_SPACE_MARKER, "&nbsp;")
+            )
             for fragment, bold in self.split(text)
         )
+
+
+def protected_line_phrases(model: dict[str, Any], policy: dict[str, Any]) -> list[str]:
+    """Return configured and target-derived phrases that must stay on one line."""
+    wrapping = policy.get("line_wrap", {})
+    configured = wrapping.get("protected_phrases", [])
+    if not isinstance(configured, list) or not all(
+        isinstance(item, str) and item.strip() for item in configured
+    ):
+        raise ResumeError("policy line_wrap.protected_phrases must contain non-empty strings")
+    alias_max = int(wrapping.get("alignment_alias_max_words", 4))
+    skill_max = int(wrapping.get("skill_item_max_words", 4))
+    candidates = list(configured)
+    for requirement in model.get("alignment", {}).get("requirements", []):
+        candidates.extend([requirement.get("term", ""), *requirement.get("aliases", [])])
+    for group in model.get("skills", []):
+        candidates.extend(text_of(item) for item in group.get("items", []))
+
+    phrases: list[str] = []
+    seen: set[str] = set()
+    for candidate in candidates:
+        phrase = re.sub(r"\s+", " ", str(candidate).strip())
+        words = re.findall(r"[A-Za-z0-9][A-Za-z0-9.+#/-]*", phrase)
+        limit = skill_max if candidate not in configured else max(skill_max, alias_max, 12)
+        if not 2 <= len(words) <= limit:
+            continue
+        if any(mark in phrase for mark in (",", ";", ":", "(", ")")):
+            continue
+        folded = phrase.casefold()
+        if folded not in seen:
+            seen.add(folded)
+            phrases.append(phrase)
+    return sorted(phrases, key=lambda item: (-len(item.split()), -len(item), item.casefold()))
+
+
+def protect_phrase_spaces(text: str, phrases: Iterable[str]) -> str:
+    """Replace spaces inside selected phrases with an intermediate marker."""
+    protected = text
+    for phrase in phrases:
+        escaped = re.escape(phrase).replace(r"\ ", r"\s+")
+        pattern = re.compile(rf"(?<!\w){escaped}(?!\w)", re.IGNORECASE)
+        protected = pattern.sub(
+            lambda match: re.sub(r"\s+", NO_BREAK_SPACE_MARKER, match.group(0)),
+            protected,
+        )
+    return protected
 
 
 def sourced_list(value: Any, path: str, minimum: int = 0) -> list[dict[str, str]]:
@@ -427,12 +485,21 @@ def validate_writing_style(model: dict[str, Any], policy: dict[str, Any] | None)
     symbols = style.get("forbidden_symbols", {})
     terms = style.get("forbidden_terms", [])
     phrases = style.get("forbidden_phrases", [])
+    typo_fixes = policy.get("proofreading", {}).get("forbidden_typos", {})
     if not isinstance(symbols, dict):
         raise ResumeError("policy writing_style.forbidden_symbols must be an object")
     if not isinstance(terms, list) or not all(isinstance(item, str) and item for item in terms):
         raise ResumeError("policy writing_style.forbidden_terms must contain non-empty strings")
     if not isinstance(phrases, list) or not all(isinstance(item, str) and item for item in phrases):
         raise ResumeError("policy writing_style.forbidden_phrases must contain non-empty strings")
+    if not isinstance(typo_fixes, dict) or not all(
+        isinstance(typo, str)
+        and typo.strip()
+        and isinstance(replacement, str)
+        and replacement.strip()
+        for typo, replacement in typo_fixes.items()
+    ):
+        raise ResumeError("policy proofreading.forbidden_typos must map typos to replacements")
 
     for path, text in public_resume_text(model):
         for symbol, label in symbols.items():
@@ -441,6 +508,11 @@ def validate_writing_style(model: dict[str, Any], policy: dict[str, Any] | None)
         for phrase in [*terms, *phrases]:
             if re.search(rf"(?<!\w){re.escape(phrase)}(?!\w)", text, flags=re.IGNORECASE):
                 raise ResumeError(f"{path} contains forbidden AI-style wording {phrase!r}")
+        for typo, replacement in typo_fixes.items():
+            if re.search(rf"(?<!\w){re.escape(typo)}(?!\w)", text, flags=re.IGNORECASE):
+                raise ResumeError(
+                    f"{path} contains probable typo {typo!r}; use {replacement!r}"
+                )
 
 
 NUMBER_FORMAT_PATH = re.compile(
@@ -1299,10 +1371,7 @@ def add_docx_hyperlink(
         properties.append(link_underline)
     hyperlink.append(run)
     run.append(properties)
-    node = OxmlElement("w:t")
-    node.text = text
-    node.set(qn("xml:space"), "preserve")
-    run.append(node)
+    append_docx_text(run, text)
     paragraph._p.append(hyperlink)
     # Re-apply every visible property rather than depending on a viewer's
     # Hyperlink style, which is not consistent across Word-compatible apps.
@@ -1330,8 +1399,14 @@ def add_docx_sourced_runs(
     size = policy["sizes_pt"]["body"]
     target = link_of(model, item)
     color, underline = link_appearance(policy)
+    phrases = protected_line_phrases(model, policy)
     for link_fragment, is_linked in link_fragments(item):
-        fragments = emphasizer.split(link_fragment) if emphasizer else [(link_fragment, False)]
+        protected_fragment = protect_phrase_spaces(link_fragment, phrases)
+        fragments = (
+            emphasizer.split(protected_fragment)
+            if emphasizer
+            else [(protected_fragment, False)]
+        )
         for fragment, emphasized in fragments:
             if not fragment:
                 continue
@@ -1351,6 +1426,32 @@ def add_docx_sourced_runs(
                 set_run_font(paragraph.add_run(fragment), font, size, bold=fragment_bold)
 
 
+def append_docx_text(run_element: Any, text: str) -> None:
+    """Append portable non-breaking compounds and protected phrase spaces.
+
+    Some viewers omit OOXML's special ``w:noBreakHyphen`` element entirely,
+    producing visible typos such as ``customerfacing``. A literal non-breaking
+    hyphen is more portable in DOCX; the PDF renderer continues to use the
+    source model's ASCII hyphen.
+    """
+    visible = text.replace(NO_BREAK_SPACE_MARKER, "\u00a0")
+    visible = re.sub(r"(?<=[A-Za-z0-9])-(?=[A-Za-z0-9])", "\u2011", visible)
+    node = OxmlElement("w:t")
+    node.text = visible
+    node.set(qn("xml:space"), "preserve")
+    run_element.append(node)
+
+
+def protect_docx_run_words(run: Any) -> None:
+    text = run.text
+    if NO_BREAK_SPACE_MARKER not in text and not re.search(
+        r"(?<=[A-Za-z0-9])-(?=[A-Za-z0-9])", text
+    ):
+        return
+    run.clear()
+    append_docx_text(run._r, text)
+
+
 def set_run_font(run: Any, name: str, size: float, bold: bool | None = None, color: RGBColor | None = None) -> None:
     run.font.name = name
     run._element.rPr.rFonts.set(qn("w:eastAsia"), name)
@@ -1359,6 +1460,7 @@ def set_run_font(run: Any, name: str, size: float, bold: bool | None = None, col
         run.bold = bold
     if color is not None:
         run.font.color.rgb = color
+    protect_docx_run_words(run)
 
 
 def add_docx_section_heading(document: Document, label: str, policy: dict[str, Any]) -> None:
@@ -1476,7 +1578,10 @@ def render_docx(model: dict[str, Any], policy: dict[str, Any], output: Path) -> 
     normal.font.size = Pt(policy["sizes_pt"]["body"])
     normal.paragraph_format.space_after = Pt(policy["spacing_pt"]["paragraph_after"])
     normal.paragraph_format.line_spacing = float(
-        policy["spacing_pt"].get("line_spacing_multiple", 1.0)
+        policy["spacing_pt"].get(
+            "docx_line_spacing_multiple",
+            policy["spacing_pt"].get("line_spacing_multiple", 1.0),
+        )
     )
     configure_docx_bullet_marker(document, policy)
     bullets = bullet_layout(policy)
@@ -1790,8 +1895,29 @@ def render_docx(model: dict[str, Any], policy: dict[str, Any], output: Path) -> 
     return emphasizer
 
 
+def protect_pdf_markup(markup: str) -> str:
+    """Keep hyphenated compounds intact without altering visible punctuation.
+
+    Phrase spaces have already become ``&nbsp;``. ReportLab can still treat an
+    ASCII hyphen as a wrap opportunity, so wrap only compound tokens in
+    ``nobr`` while leaving inline markup and link attributes untouched.
+    """
+    chunks = re.split(r"(<[^>]+>)", markup)
+    return "".join(
+        chunk
+        if chunk.startswith("<") and chunk.endswith(">")
+        else re.sub(
+            r"(?<![\w])([A-Za-z0-9]+(?:-[A-Za-z0-9]+)+)(?![\w])",
+            lambda match: f"<nobr>{match.group(1)}</nobr>",
+            chunk,
+        )
+        for chunk in chunks
+    )
+
+
 def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> None:
     emphasizer = Emphasizer(emphasis_terms(model, policy), policy)
+    phrases = protected_line_phrases(model, policy)
     hyperlink_color, hyperlink_underline = link_appearance(policy)
     margins = policy["margins_inches"]
     document = SimpleDocTemplate(
@@ -1810,18 +1936,25 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
     bullet_tokens = bullet_layout(policy)
     line_spacing = float(policy["spacing_pt"].get("line_spacing_multiple", 1.12))
     styles = {
-        "name": ParagraphStyle("EKBName", parent=sample["Normal"], fontName=f"{font}-Bold", fontSize=policy["sizes_pt"]["name"], leading=policy["sizes_pt"]["name"] + 2, alignment=TA_CENTER, spaceAfter=1),
-        "title": ParagraphStyle("EKBTitle", parent=sample["Normal"], fontName=font, fontSize=body_size, leading=body_size + 1.5, alignment=TA_CENTER, spaceAfter=2),
-        "contact": ParagraphStyle("EKBContact", parent=sample["Normal"], fontName=font, fontSize=policy["sizes_pt"]["small"], leading=policy["sizes_pt"]["small"] + 1.5, alignment=TA_CENTER, spaceAfter=2),
-        "mobility": ParagraphStyle("EKBMobility", parent=sample["Normal"], fontName=font, fontSize=policy["sizes_pt"]["small"], leading=policy["sizes_pt"]["small"] + 1.5, alignment=TA_CENTER, spaceAfter=5),
-        "section": ParagraphStyle("EKBSection", parent=sample["Normal"], fontName=f"{font}-Bold", fontSize=policy["sizes_pt"]["section"], leading=policy["sizes_pt"]["section"] + 1, spaceBefore=policy["spacing_pt"]["section_before"], spaceAfter=1, borderWidth=0, borderPadding=0, keepWithNext=True),
-        "entry": ParagraphStyle("EKBEntry", parent=sample["Normal"], fontName=font, fontSize=body_size, leading=body_size * line_spacing, spaceAfter=policy["spacing_pt"].get("entry_heading_after", 0), keepWithNext=True),
-        "body": ParagraphStyle("EKBBody", parent=sample["Normal"], fontName=font, fontSize=body_size, leading=body_size * line_spacing, spaceAfter=policy["spacing_pt"]["paragraph_after"]),
-        "meta": ParagraphStyle("EKBMeta", parent=sample["Normal"], fontName=font, fontSize=policy["sizes_pt"]["small"], leading=policy["sizes_pt"]["small"] * line_spacing, spaceAfter=policy["spacing_pt"].get("entry_meta_after", 1), keepWithNext=True),
+        "name": ParagraphStyle("EKBName", parent=sample["Normal"], fontName=f"{font}-Bold", fontSize=policy["sizes_pt"]["name"], leading=policy["sizes_pt"]["name"] + 2, alignment=TA_CENTER, spaceAfter=1, splitLongWords=False, embeddedHyphenation=0),
+        "title": ParagraphStyle("EKBTitle", parent=sample["Normal"], fontName=font, fontSize=body_size, leading=body_size + 1.5, alignment=TA_CENTER, spaceAfter=2, splitLongWords=False, embeddedHyphenation=0),
+        "contact": ParagraphStyle("EKBContact", parent=sample["Normal"], fontName=font, fontSize=policy["sizes_pt"]["small"], leading=policy["sizes_pt"]["small"] + 1.5, alignment=TA_CENTER, spaceAfter=2, splitLongWords=False, embeddedHyphenation=0),
+        "mobility": ParagraphStyle("EKBMobility", parent=sample["Normal"], fontName=font, fontSize=policy["sizes_pt"]["small"], leading=policy["sizes_pt"]["small"] + 1.5, alignment=TA_CENTER, spaceAfter=5, splitLongWords=False, embeddedHyphenation=0),
+        "section": ParagraphStyle("EKBSection", parent=sample["Normal"], fontName=f"{font}-Bold", fontSize=policy["sizes_pt"]["section"], leading=policy["sizes_pt"]["section"] + 1, spaceBefore=policy["spacing_pt"]["section_before"], spaceAfter=1, borderWidth=0, borderPadding=0, keepWithNext=True, splitLongWords=False, embeddedHyphenation=0),
+        "entry": ParagraphStyle("EKBEntry", parent=sample["Normal"], fontName=font, fontSize=body_size, leading=body_size * line_spacing, spaceAfter=policy["spacing_pt"].get("entry_heading_after", 0), keepWithNext=True, splitLongWords=False, embeddedHyphenation=0),
+        "body": ParagraphStyle("EKBBody", parent=sample["Normal"], fontName=font, fontSize=body_size, leading=body_size * line_spacing, spaceAfter=policy["spacing_pt"]["paragraph_after"], splitLongWords=False, embeddedHyphenation=0),
+        "meta": ParagraphStyle("EKBMeta", parent=sample["Normal"], fontName=font, fontSize=policy["sizes_pt"]["small"], leading=policy["sizes_pt"]["small"] * line_spacing, spaceAfter=policy["spacing_pt"].get("entry_meta_after", 1), keepWithNext=True, splitLongWords=False, embeddedHyphenation=0),
     }
 
+    def safe_paragraph(markup: str, style: ParagraphStyle) -> Paragraph:
+        return Paragraph(protect_pdf_markup(markup), style)
+
+    def pdf_text_markup(text: str) -> str:
+        protected = protect_phrase_spaces(text, phrases)
+        return html.escape(protected).replace(NO_BREAK_SPACE_MARKER, "&nbsp;")
+
     def paragraph(text: str, style: str = "body") -> Paragraph:
-        return Paragraph(html.escape(text), styles[style])
+        return safe_paragraph(pdf_text_markup(text), styles[style])
 
     def section(label: str) -> list[Any]:
         rule = HRFlowable(
@@ -1850,27 +1983,29 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
     def linked(item: dict[str, str]) -> str:
         target = link_of(model, item)
         if not target:
-            return html.escape(text_of(item))
+            return pdf_text_markup(text_of(item))
         return "".join(
-            anchor(html.escape(fragment), target) if is_linked else html.escape(fragment)
+            anchor(pdf_text_markup(fragment), target)
+            if is_linked
+            else pdf_text_markup(fragment)
             for fragment, is_linked in link_fragments(item)
         )
 
     def linked_emphasized_markup(item: dict[str, str]) -> str:
         target = link_of(model, item)
         return "".join(
-            anchor(emphasizer.markup(fragment), target)
+            anchor(emphasizer.markup(protect_phrase_spaces(fragment, phrases)), target)
             if target and is_linked
-            else emphasizer.markup(fragment)
+            else emphasizer.markup(protect_phrase_spaces(fragment, phrases))
             for fragment, is_linked in link_fragments(item)
         )
 
     def linked_emphasized(item: dict[str, str], style: str = "body") -> Paragraph:
-        return Paragraph(linked_emphasized_markup(item), styles[style])
+        return safe_paragraph(linked_emphasized_markup(item), styles[style])
 
     contact_items = model["basics"]["contact"] + model["basics"]["links"]
     if contact_items:
-        story.append(Paragraph(" | ".join(linked(item) for item in contact_items), styles["contact"]))
+        story.append(safe_paragraph(" | ".join(linked(item) for item in contact_items), styles["contact"]))
     mobility = model["basics"]["mobility"]
     if mobility is not None:
         story.append(paragraph(text_of(mobility), "mobility"))
@@ -1880,7 +2015,7 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
         emphasizer.enter("Summary")
         story.extend(section("Summary"))
         story.append(
-            Paragraph(
+            safe_paragraph(
                 " ".join(linked_emphasized_markup(item) for item in summary),
                 styles["body"],
             )
@@ -1894,8 +2029,8 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
         entry_style.spaceBefore = (
             policy["spacing_pt"].get("experience_entry_before", 0) if entry_index else 0
         )
-        heading = Paragraph(
-            f"<b>{organization} | {html.escape(text_of(entry['title']))}</b>",
+        heading = safe_paragraph(
+            f"<b>{organization} | {pdf_text_markup(text_of(entry['title']))}</b>",
             entry_style,
         )
         date_location = " | ".join(
@@ -1924,8 +2059,8 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
             context = text_of(engagement.get("context"))
             label = f"<b>{name}</b>"
             if context:
-                label += f" | {html.escape(context)}"
-            engagement_heading = Paragraph(label, styles["entry"])
+                label += f" | {pdf_text_markup(context)}"
+            engagement_heading = safe_paragraph(label, styles["entry"])
             engagement_heading.style = styles["entry"].clone("engagementEntry")
             engagement_heading.style.leftIndent = bullet_tokens["engagement_title_indent_pt"]
             engagement_heading.style.spaceBefore = policy["spacing_pt"].get("engagement_before", 1)
@@ -1959,11 +2094,11 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
             )
             main = f"<b>{primary}</b>"
             if tail:
-                main += f" | {html.escape(tail)}"
+                main += f" | {pdf_text_markup(tail)}"
             project_style = styles["entry"].clone("freelanceProjectEntry")
             project_style.spaceBefore = policy["spacing_pt"].get("project_entry_before", 0)
             project_style.spaceAfter = policy["spacing_pt"].get("entry_meta_after", 1)
-            flowables: list[Any] = [Paragraph(main, project_style)]
+            flowables: list[Any] = [safe_paragraph(main, project_style)]
             if entry["details"]:
                 flowables.append(
                     ListFlowable(
@@ -1984,7 +2119,7 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
         story.extend(section("Career Breaks"))
         for entry in model["career_breaks"]:
             story.extend([
-                Paragraph(f"<b>{html.escape(text_of(entry['label']))}</b>", styles["entry"]),
+                safe_paragraph(f"<b>{pdf_text_markup(text_of(entry['label']))}</b>", styles["entry"]),
                 paragraph(f"{text_of(entry['start'])} - {text_of(entry['end'])}", "meta"),
             ])
             story.extend(paragraph(text_of(item)) for item in entry["details"])
@@ -1997,7 +2132,7 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
             items = ", ".join(
                 linked_emphasized_markup(item) for item in group["items"]
             )
-            story.append(Paragraph(f"<b>{html.escape(group['name'])}:</b> {items}", styles["body"]))
+            story.append(safe_paragraph(f"<b>{pdf_text_markup(group['name'])}:</b> {items}", styles["body"]))
 
     if model.get("languages"):
         story.extend(section("Languages"))
@@ -2011,14 +2146,14 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
             tail = " | ".join(part for part in (text_of(entry["secondary"]), text_of(entry["date"])) if part)
             main = f"<b>{linked(entry['primary'])}</b>"
             if tail:
-                main += f" | {html.escape(tail)}"
+                main += f" | {pdf_text_markup(tail)}"
             supporting_style = styles["body"].clone("supportingEntry")
             supporting_style.spaceBefore = policy["spacing_pt"].get("supporting_entry_before", 0)
-            flowables: list[Any] = [Paragraph(main, supporting_style)]
+            flowables: list[Any] = [safe_paragraph(main, supporting_style)]
             if key == "activities" and entry["details"]:
                 flowables.append(
                     ListFlowable(
-                        [ListItem(Paragraph(linked(item), styles["body"])) for item in entry["details"]],
+                        [ListItem(safe_paragraph(linked(item), styles["body"])) for item in entry["details"]],
                         bulletType="bullet",
                         start="circle",
                         leftIndent=bullet_tokens["text_indent_pt"],
@@ -2031,7 +2166,7 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
                 )
             else:
                 flowables.extend(
-                    Paragraph(linked(item), styles["body"])
+                    safe_paragraph(linked(item), styles["body"])
                     for item in entry["details"]
                 )
             story.append(KeepTogether(flowables))
@@ -2050,7 +2185,7 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
             leading=policy["sizes_pt"]["small"] + 1,
             alignment=TA_CENTER,
         )
-        header = Paragraph(html.escape(continuation_contact(model)), header_style)
+        header = safe_paragraph(pdf_text_markup(continuation_contact(model)), header_style)
         available_width = page_size(model, policy)[0] - (margins["left"] + margins["right"]) * inch
         _, header_height = header.wrap(available_width, 0.45 * inch)
         header.drawOn(
@@ -2063,13 +2198,40 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
     document.build(story, onFirstPage=lambda _canvas, _document: None, onLaterPages=later_page)
 
 
+def docx_paragraph_text(paragraph: Any) -> str:
+    """Extract visible paragraph text, including OOXML no-break hyphens."""
+    parts: list[str] = []
+    for node in paragraph._p.iter():
+        if node.tag == qn("w:t"):
+            parts.append(node.text or "")
+        elif node.tag == qn("w:noBreakHyphen"):
+            parts.append("-")
+        elif node.tag == qn("w:tab"):
+            parts.append("\t")
+        elif node.tag in {qn("w:br"), qn("w:cr")}:
+            parts.append("\n")
+    return "".join(parts)
+
+
 def extract_docx(path: Path) -> tuple[str, dict[str, Any]]:
     document = Document(path)
-    paragraphs = [paragraph.text for paragraph in document.paragraphs if paragraph.text.strip()]
+    paragraphs = [
+        docx_paragraph_text(paragraph)
+        for paragraph in document.paragraphs
+        if docx_paragraph_text(paragraph).strip()
+    ]
     header_footer_text: list[str] = []
     for section in document.sections:
-        header_footer_text.extend(p.text for p in section.header.paragraphs if p.text.strip())
-        header_footer_text.extend(p.text for p in section.footer.paragraphs if p.text.strip())
+        header_footer_text.extend(
+            docx_paragraph_text(p)
+            for p in section.header.paragraphs
+            if docx_paragraph_text(p).strip()
+        )
+        header_footer_text.extend(
+            docx_paragraph_text(p)
+            for p in section.footer.paragraphs
+            if docx_paragraph_text(p).strip()
+        )
     structure = {
         "tables": len(document.tables),
         "inline_shapes": len(document.inline_shapes),
@@ -2135,9 +2297,52 @@ def pdf_orphaned_wraps(page: Any) -> list[str]:
     return orphans
 
 
+def pdf_broken_word_wraps(page: Any) -> list[str]:
+    """Return compounds split after an internal hyphen at a rendered line end."""
+    broken: list[str] = []
+
+    def visitor(text: str, _cm: list[float], _tm: list[float], _font: Any, _size: float) -> None:
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        for previous, following in zip(lines, lines[1:]):
+            left = re.search(r"([A-Za-z0-9]+)-$", previous)
+            right = re.match(r"([A-Za-z0-9]+)", following)
+            if left and right:
+                broken.append(f"{left.group(1)}-{right.group(1)}")
+
+    page.extract_text(visitor_text=visitor)
+    return broken
+
+
+def pdf_protected_phrase_wraps(page: Any, phrases: Iterable[str]) -> list[str]:
+    """Return configured phrases whose words cross a rendered PDF line."""
+    try:
+        layout_text = page.extract_text(extraction_mode="layout") or ""
+    except TypeError:
+        layout_text = page.extract_text() or ""
+    lines = [line.strip() for line in layout_text.splitlines() if line.strip()]
+    broken: list[str] = []
+    for previous, following in zip(lines, lines[1:]):
+        left = normalize(previous)
+        right = normalize(following)
+        combined = f"{left} {right}"
+        for phrase in phrases:
+            needle = normalize(phrase)
+            if needle in combined and needle not in left and needle not in right:
+                broken.append(phrase)
+    return sorted(set(broken), key=str.casefold)
+
+
 def extract_pdf(
-    path: Path, policy: dict[str, Any]
-) -> tuple[str, int, str, list[float], list[list[str]]]:
+    path: Path, policy: dict[str, Any], protected_phrases: Iterable[str]
+) -> tuple[
+    str,
+    int,
+    str,
+    list[float],
+    list[list[str]],
+    list[list[str]],
+    list[list[str]],
+]:
     reader = PdfReader(str(path))
     if reader.is_encrypted:
         raise ResumeError("PDF is password-protected; application resumes must open without a password")
@@ -2147,11 +2352,28 @@ def extract_pdf(
     detected = "A4" if abs(width - 595) <= 2 and abs(height - 842) <= 2 else "LETTER" if (width, height) == (612, 792) else f"{width}x{height}pt"
     fill_ratios = [pdf_content_fill_ratio(page, policy) for page in reader.pages]
     orphaned_wraps = [pdf_orphaned_wraps(page) for page in reader.pages]
-    return "\n".join(pages), len(reader.pages), detected, fill_ratios, orphaned_wraps
+    broken_word_wraps = [pdf_broken_word_wraps(page) for page in reader.pages]
+    protected_phrase_wraps = [
+        pdf_protected_phrase_wraps(page, protected_phrases) for page in reader.pages
+    ]
+    return (
+        "\n".join(pages),
+        len(reader.pages),
+        detected,
+        fill_ratios,
+        orphaned_wraps,
+        broken_word_wraps,
+        protected_phrase_wraps,
+    )
 
 
 def normalize(value: str) -> str:
-    value = value.replace("•", " ").replace("–", "-").replace("—", "-")
+    value = (
+        value.replace("•", " ")
+        .replace("–", "-")
+        .replace("—", "-")
+        .replace("‑", "-")
+    )
     return re.sub(r"\s+", " ", value).strip().casefold()
 
 
@@ -2166,6 +2388,35 @@ def verify_order(expected: Iterable[str], extracted: str, label: str) -> list[st
             errors.append(f"{label} is missing or reorders: {fragment}")
         else:
             cursor = position + len(needle)
+    return errors
+
+
+def rendered_typography_errors(
+    expected: Iterable[str],
+    extracted: str,
+    label: str,
+    policy: dict[str, Any],
+) -> list[str]:
+    """Flag known typos or duplicated words introduced in rendered output."""
+    expected_text = normalize(" ".join(expected))
+    rendered_text = normalize(extracted)
+    errors: list[str] = []
+    typo_fixes = policy.get("proofreading", {}).get("forbidden_typos", {})
+    for typo, replacement in typo_fixes.items():
+        if (
+            re.search(rf"(?<!\w){re.escape(typo.casefold())}(?!\w)", rendered_text)
+            and normalize(replacement) in expected_text
+        ):
+            errors.append(
+                f"{label} rendered probable typo {typo!r}; expected {replacement!r}"
+            )
+    for match in re.finditer(r"(?<!\w)([a-z][a-z0-9'+./-]*)\s+\1(?!\w)", rendered_text):
+        repeated = match.group(1)
+        if not re.search(
+            rf"(?<!\w){re.escape(repeated)}\s+{re.escape(repeated)}(?!\w)",
+            expected_text,
+        ):
+            errors.append(f"{label} duplicates the word {repeated!r}")
     return errors
 
 
@@ -2548,10 +2799,17 @@ def render(args: argparse.Namespace) -> int:
         render_pdf(model, policy, pdf_path)
 
         expected = resume_lines(model)
+        phrases = protected_line_phrases(model, policy)
         docx_text, docx_structure = extract_docx(docx_path)
-        pdf_text, pdf_pages, detected_page_size, fill_ratios, orphaned_wraps = extract_pdf(
-            pdf_path, policy
-        )
+        (
+            pdf_text,
+            pdf_pages,
+            detected_page_size,
+            fill_ratios,
+            orphaned_wraps,
+            broken_word_wraps,
+            protected_phrase_wraps,
+        ) = extract_pdf(pdf_path, policy, phrases)
         errors: list[str] = []
         warnings = editorial_warnings(model, policy)
         warnings.extend(ai_visibility_warnings(model, policy))
@@ -2563,11 +2821,25 @@ def render(args: argparse.Namespace) -> int:
                     f"PDF page {page_number} has a one-word wrapped final line ({orphan}); "
                     "shorten or rewrite the sentence before using a non-breaking space"
                 )
+        for page_number, page_breaks in enumerate(broken_word_wraps, 1):
+            for word in page_breaks:
+                errors.append(
+                    f"PDF page {page_number} splits the word {word} across lines; "
+                    "rewrite the line or fix the renderer before delivery"
+                )
+        for page_number, page_breaks in enumerate(protected_phrase_wraps, 1):
+            for phrase in page_breaks:
+                errors.append(
+                    f"PDF page {page_number} splits the protected phrase {phrase!r} "
+                    "across lines; keep the complete phrase together"
+                )
         warnings.extend(link_warnings(model))
         warnings.extend(emphasis_warnings(model, policy, emphasizer))
         warnings.extend(source_report.get("warnings", []))
         errors.extend(verify_order(expected, docx_text, "DOCX"))
         errors.extend(verify_order(expected, pdf_text, "PDF"))
+        errors.extend(rendered_typography_errors(expected, docx_text, "DOCX", policy))
+        errors.extend(rendered_typography_errors(expected, pdf_text, "PDF", policy))
         if docx_structure["tables"]:
             errors.append("DOCX contains tables")
         if docx_structure["inline_shapes"]:
@@ -2627,6 +2899,8 @@ def render(args: argparse.Namespace) -> int:
                 "pdf_password_protected": False,
                 "content_fill_ratios": fill_ratios,
                 "orphaned_wraps": orphaned_wraps,
+                "broken_word_wraps": broken_word_wraps,
+                "protected_phrase_wraps": protected_phrase_wraps,
                 "expected_lines": len(expected),
             },
             "outputs": {
