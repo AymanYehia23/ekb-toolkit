@@ -7,7 +7,11 @@ on:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
@@ -20,58 +24,9 @@ jobs:
           ruby-version: "3.2"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Python syntax
-        run: python3 -m compileall -q scripts/
-
-      - name: Bullet quality tests
-        run: python3 -m unittest tests.test_bullet_quality tests.test_bullet_audit
-
-      - name: Ruby syntax
-        run: ruby -c scripts/resume_source_check.rb
-
-      - name: Shell syntax
-        run: bash -n scripts/ekb && bash -n scripts/ekb_git.sh
-
-      - name: Every YAML and JSON file parses
         run: |
-          python3 - <<'PY'
-          import glob, json, sys, yaml
-          bad = []
-          for path in glob.glob("**/*.yaml", recursive=True) + glob.glob("**/*.yml", recursive=True):
-              try:
-                  yaml.safe_load(open(path, encoding="utf-8"))
-              except Exception as exc:
-                  bad.append(f"{path}: {exc}")
-          for path in glob.glob("**/*.json", recursive=True):
-              try:
-                  json.load(open(path, encoding="utf-8"))
-              except Exception as exc:
-                  bad.append(f"{path}: {exc}")
-          if bad:
-              print("\n".join(bad)); sys.exit(1)
-          print("all YAML and JSON files parse")
-          PY
+          python3 -m pip install -r requirements.txt
+          gem install minitest --version '~> 5.0' --no-document
 
-      - name: No personal data in the repository
-        run: python3 tests/test_no_personal_data.py
-
-      - name: Toolkit runs against the example workspace
-        env:
-          EKB_WORKSPACE: ${{ github.workspace }}/examples/sample-workspace
-        run: |
-          scripts/ekb index
-          scripts/ekb check
-          scripts/ekb shortlist 2026-03-14-northwind-flutter-engineer --refresh
-          scripts/ekb validate 2026-03-14-northwind-flutter-engineer
-
-      - name: The example resume renders
-        env:
-          EKB_WORKSPACE: ${{ github.workspace }}/examples/sample-workspace
-        run: scripts/ekb render 2026-03-14-northwind-flutter-engineer
-
-      - name: Resume module tests
-        run: |
-          ruby tests/test_resume_module.rb
-          ruby tests/test_resume_coverage.rb
+      - name: Verify the toolkit and fictional application bundles
+        run: scripts/verify

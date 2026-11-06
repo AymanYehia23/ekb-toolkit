@@ -56,29 +56,22 @@ The example workspace is entirely fictional and every address in it points at
 
 ```bash
 git clone <your-fork> && cd ekb-toolkit
-pip install -r requirements.txt
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
 scripts/ekb doctor
 ```
 
-Run everything against the shipped example rather than your own data:
+The verification gate uses fictional applications in temporary workspaces.
+With Ruby 3.2 available, run the same gate as CI.
 
 ```bash
-export EKB_WORKSPACE=$PWD/examples/sample-workspace
-scripts/ekb index
-scripts/ekb check
-scripts/ekb validate 2026-03-14-northwind-flutter-engineer
+gem install minitest --version '~> 5.0' --no-document
+scripts/verify
 ```
 
-## Tests
-
-```bash
-python3 -m pytest tests/            # if pytest is available
-ruby tests/test_resume_module.rb
-ruby tests/test_resume_coverage.rb
-```
-
-CI runs these plus a syntax check on every script and a YAML/JSON parse of every
-config, template, and example file.
+The gate runs Python and Ruby tests, checks for personal data, and parses
+scripts and fixture configuration. GitHub Actions runs it on Linux and macOS.
 
 If you change the source checker or the renderer, add a test. If you change a
 prompt, say in the pull request what output you compared before and after — a

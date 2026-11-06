@@ -26,12 +26,25 @@ commands, such as Codex, Claude Code, Gemini CLI, or Cursor.
 ```bash
 git clone https://github.com/AymanYehia23/ekb-toolkit.git
 cd ekb-toolkit
-pip install -r requirements.txt
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
 scripts/ekb doctor
 ```
 
 `ekb doctor` reports any missing dependencies. Ruby 3.0+ is also needed for
-resume source validation and rendering.
+resume source validation and rendering. The full verification suite uses Git,
+Bash, Python 3.12, Ruby 3.2, Minitest 5 and `unzip` in CI. Run the same gate
+from a clean checkout on Linux or macOS.
+
+```bash
+gem install minitest --version '~> 5.0' --no-document
+scripts/verify
+```
+
+The suite builds its fictional applications in temporary workspaces and
+exercises both first publication and atomic replacement. Use a local volume
+that supports the directory exchange operation for the update tests.
 
 ### 2. Create your private workspace
 
@@ -105,7 +118,10 @@ The usual workflow is:
 The job-screening step always stops for your `proceed`, `declined`, or
 `deferred` decision, even when it finds no blockers.
 
-For a complete walkthrough, see [`docs/workflow.md`](docs/workflow.md).
+After screening, whole-candidate matching brings together project examples,
+employment responsibilities and confirmed skills at their actual proficiency.
+See the [workflow](docs/workflow.md) and
+[controlled-use policy for capabilities](docs/controlled-use-capabilities.md).
 
 ## What the toolkit creates
 
@@ -174,12 +190,16 @@ scripts/ekb init                    create a workspace
 scripts/ekb doctor                  check dependencies and setup
 scripts/ekb status                  show workspace state
 scripts/ekb index [--check]         rebuild the evidence index
+scripts/ekb candidate              read the private capability and profile view
+scripts/ekb requirement-map <id>   read a reviewed map or print its skeleton
+scripts/ekb verify-review <id>     check a human receipt for the exact published PDF
 scripts/ekb shortlist <app-id>      build an application evidence shortlist
 scripts/ekb check                   check cross-file consistency
 scripts/ekb bullet-audit            audit rendered bullets against ranked banks
 scripts/ekb skills [--tags]         check the evidence behind profile skills
 scripts/ekb validate <app-id>       validate sources without rendering
-scripts/ekb render <app-id>         validate and create DOCX and PDF files
+scripts/ekb screening-basis <id>    print the frozen posting digest for screening
+scripts/ekb render <id> --draft FILE  publish the validated model, PDF, and reports
 scripts/ekb compare a.json b.json   compare two resume drafts
 scripts/ekb git <mode> [...]        create a local workspace checkpoint
 ```
