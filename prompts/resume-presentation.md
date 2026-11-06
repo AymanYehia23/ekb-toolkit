@@ -68,7 +68,9 @@ visual noise to the header.
   values such as location may also remain literal text.
 - `profile_links` — use the recorded service or purpose label, such as
   `LinkedIn`, `GitHub`, or `Portfolio`. Never expose the raw address as visible
-  text.
+  text. Include every confirmed entry in `profile.links` when hyperlinks are
+  enabled. Resolve a missing status through the profile procedure before
+  rendering.
 - `project_links`, `organization_links`, `certification_links` — a hyperlink
   behind the name is correct. The name carries the meaning on its own, so
   nothing is lost if the annotation is dropped. Never link an entry that is
@@ -111,10 +113,13 @@ coverage, but bolding them adds no meaning and makes ordinary prose look noisy.
 Use a more specific phrase such as `Clean Architecture`, `Riverpod`, `REST API`,
 or a named integration when emphasis is useful.
 
-The policy bolds each term at most once per section and caps highlighted
-requirements at twelve, choosing required-and-critical first. Overflow is
-reported, never silently dropped, and never blocks rendering. Past about a dozen
-terms nothing stands out. Set `layout.emphasis` to `none` for no bolding.
+For a reviewed application, the renderer chooses one phrase per matched
+requirement. It tries the requirement term first, then its aliases in order,
+and skips phrases absent from the rendered text. A phrase shared by multiple
+requirements uses one slot. The renderer highlights its first occurrence
+across the document and caps the selection at twelve, with required-and-critical
+requirements first. Check the bold spans in the PDF. Keep emphasis enabled
+unless the user explicitly asks for an unhighlighted copy.
 
 ## 3. The direct-language gate
 
@@ -313,11 +318,12 @@ If a legacy DOCX was requested, inspect its render for the same breaks. A
 complete word on the next line is still a defect when it is the second half of
 a protected technical phrase.
 
-After the first render, inspect page count and page use. The report measures
-page fill. A positive effective `content_density.single_page_minimum_usable_height_ratio`
-or `content_density.master_single_page_target_usable_height_ratio` can emit an
-advisory warning. A zero value disables that warning. Evaluate the page
-against the confirmed page preference and the readability of its layout.
+Inspect page count and page use. A new one-page résumé below the effective
+`content_density.single_page_minimum_usable_height_ratio` fails publication
+and reports the measured fill. Add strong evidence to the draft and render
+again. The separate master target is advisory. A zero in the workspace policy
+disables the corresponding check. Evaluate the page against the confirmed
+page preference and the readability of its layout.
 
 Before adding anything, compare it with the whole public resume. Reject an
 Experience or Freelance Projects detail that only repeats a capability already

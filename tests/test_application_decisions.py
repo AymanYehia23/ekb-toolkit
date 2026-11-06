@@ -15,6 +15,7 @@ import yaml
 from test_capability_matching import declaration
 from test_resume_workflow import SCRIPTS
 from ekb_screening import posting_digest
+from resume_render import Emphasizer
 
 EXAMPLE = SCRIPTS.parent / "examples/sample-workspace"
 SAMPLE_ID = "2026-03-14-northwind-flutter-engineer"
@@ -65,6 +66,12 @@ class ApplicationDecisionsTest(unittest.TestCase):
             declaration("working-knowledge", name="Rust", confirmation_required=True),
         ]
         write_yaml(self.profile_path, self.profile)
+        self.policy_path = self.root / "config/resume-policy.json"
+        self.policy_path.parent.mkdir()
+        policy = read_json(SCRIPTS.parent / "config/resume-policy.json")
+        # Most tests use deliberately sparse copy to isolate source and receipt checks.
+        policy["content_density"]["single_page_minimum_usable_height_ratio"] = 0
+        write_json(self.policy_path, policy)
         mealmate = self.root / "projects/mealmate.yaml"
         older = yaml.safe_load(mealmate.read_text())
         older["records"].append({
@@ -366,6 +373,53 @@ class ApplicationDecisionsTest(unittest.TestCase):
         report = read_json(out / "validation.json")
         self.assertEqual(report["document_validation"]["errors"], [])
         self.assertEqual(len(PdfReader(out / "resume.pdf").pages), 1)
+
+    def test_underfilled_current_draft_cannot_replace_an_existing_bundle(self):
+        model, app_path = self.application()
+        draft = self.root / "reviewed.json"
+        out = self.render(model, draft)
+        before = {path.name: sha(path) for path in out.iterdir() if path.is_file()}
+        report = read_json(out / "validation.json")
+        self.assertLess(report["document_validation"]["content_fill_ratios"][0], 0.90)
+
+        shutil.copyfile(SCRIPTS.parent / "config/resume-policy.json", self.policy_path)
+        review_path = app_path.with_suffix(".requirements.yaml")
+        review = yaml.safe_load(review_path.read_text())
+        skeleton = yaml.safe_load(self.run_ekb("requirement-map", HARDWARE, "--skeleton"))
+        review["basis_sha256"] = skeleton["basis_sha256"]
+        write_yaml(review_path, review)
+        model["alignment"] = json.loads(self.run_ekb("requirement-map", HARDWARE, "--alignment"))
+        write_json(draft, model)
+        model["claim_reviews"] = sign_fixture_claims(json.loads(self.run_ekb("validate", HARDWARE, "--draft", draft)))
+        write_json(draft, model)
+        self.run_ekb("render", HARDWARE, "--draft", draft, "--base-generation", report["generation"],
+                     error="Single-page resume is underfilled")
+        self.assertEqual(before, {path.name: sha(path) for path in out.iterdir() if path.is_file()})
+
+    def test_reviewed_emphasis_spends_slots_on_visible_distinct_phrases(self):
+        model, _ = self.application()
+        def matched(term, aliases, *, critical=False, priority="required"):
+            return {"term": term, "aliases": aliases, "status": "matched",
+                    "critical": critical, "priority": priority}
+
+        model["alignment"]["requirements"] = [
+            matched("checkout", [], priority="preferred"),
+            matched("Absent term", ["not in the résumé"], critical=True),
+            matched("Mobile development", ["Flutter", "Mobile Engineer"], critical=True),
+            matched("Framework", ["Flutter"], critical=True),
+            matched("Offline tracking", ["tracking"]),
+        ]
+        policy = read_json(self.policy_path)
+        policy["emphasis"]["max_terms"] = 2
+        emphasis = Emphasizer(model, policy)
+        self.assertEqual(emphasis.terms, ["Offline tracking", "Flutter"])
+        self.assertEqual(emphasis.dropped, ["checkout"])
+        emphasis.enter("Summary")
+        self.assertEqual(emphasis.split("Flutter Mobile Engineer with offline tracking."),
+                         [("Flutter", True), (" Mobile Engineer with ", False),
+                          ("offline tracking", True), (".", False)])
+        emphasis.enter("Skills")
+        self.assertEqual(emphasis.split("Flutter and Dart"), [("Flutter and Dart", False)])
 
     def test_exact_receipt_and_tampered_pdf_report_or_missing_generation(self):
         model, _ = self.application()

@@ -56,6 +56,9 @@ site, or portfolio page, ask once for its public address and record it under
 
 For every email or profile entry that carries a `url`, keep the literal address
 in `value` and `url`, and set `label` to the short text a document will show.
+Record an explicit `link_status` on each URL. For an older entry with missing
+status, reconcile it against the original user confirmation and record the
+status here before drafting. Use `unconfirmed` if the destination is unresolved.
 Use `Email`, `LinkedIn`, `GitHub`, `Portfolio`, or the equivalent service name.
 A custom `other` link needs a concise descriptive label. Never put an email
 address, domain, or URL in a hyperlinked `label`.

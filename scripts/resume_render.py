@@ -242,6 +242,26 @@ def experience_items(model: dict[str, Any]) -> list[dict[str, str]]:
     return items
 
 
+def emphasis_pattern(term: str) -> re.Pattern[str]:
+    return re.compile(rf"(?<![\w.+#-]){re.escape(term)}(?![\w+#-])", re.IGNORECASE)
+
+
+def visible_emphasis_fragments(model: dict[str, Any], sections: Iterable[str]) -> list[str]:
+    items_by_section = {
+        "Summary": model.get("summary", []),
+        "Experience": experience_items(model),
+        "Freelance Projects": [item for entry in model.get("projects", []) for item in entry["details"]],
+        "Skills": [item for group in model.get("skills", []) for item in group["items"]],
+    }
+    return [
+        fragment
+        for section in sections
+        for item in items_by_section.get(section, [])
+        for fragment, _ in link_fragments(item)
+        if fragment
+    ]
+
+
 def emphasis_plan(model: dict[str, Any], policy: dict[str, Any]) -> tuple[list[str], list[str]]:
     """Terms to bold, derived from the requirements the resume actually matched.
 
@@ -250,12 +270,9 @@ def emphasis_plan(model: dict[str, Any], policy: dict[str, Any]) -> tuple[list[s
     selected evidence behind it — the source checker already refuses a `matched`
     requirement without both.
 
-    The policy caps how many requirements may be highlighted, because past
-    roughly a dozen nothing stands out any more. The cap selects the most
-    important requirements rather than failing the render: emphasis is
-    presentation, and no document should be blocked by a formatting preference.
-    Returns the selected terms and the requirement terms the cap dropped, which
-    are reported rather than silently discarded.
+    Current reviewed applications select one visible phrase per matched
+    requirement. Older alignment records retain their per-section alias behavior.
+    Returns the selected phrases and the requirements dropped by the cap.
     """
     if model["layout"].get("emphasis", "matched-requirements") == "none":
         return [], []
@@ -272,17 +289,37 @@ def emphasis_plan(model: dict[str, Any], policy: dict[str, Any]) -> tuple[list[s
             else 2
         )
     )
-    maximum = policy.get("emphasis", {}).get("max_terms")
-    kept = candidates[:maximum] if maximum else candidates
-    dropped = [requirement["term"] for requirement in candidates[len(kept):]]
-
-    terms: list[str] = []
-    seen: set[str] = set()
+    emphasis = policy.get("emphasis", {})
+    maximum = emphasis.get("max_terms")
     excluded = {
         str(term).strip().casefold()
-        for term in policy.get("emphasis", {}).get("excluded_terms", [])
+        for term in emphasis.get("excluded_terms", [])
         if str(term).strip()
     }
+    terms: list[str] = []
+    seen: set[str] = set()
+    dropped: list[str] = []
+    if "requirement_map_sha256" in model["alignment"]:
+        fragments = visible_emphasis_fragments(model, emphasis.get("sections", []))
+        for requirement in candidates:
+            for raw in (requirement["term"], *requirement["aliases"]):
+                term = raw.strip()
+                if not term or term.casefold() in excluded:
+                    continue
+                pattern = emphasis_pattern(term)
+                if not any(pattern.search(fragment) for fragment in fragments):
+                    continue
+                if term.casefold() not in seen:
+                    seen.add(term.casefold())
+                    if maximum and len(terms) >= maximum:
+                        dropped.append(requirement["term"])
+                    else:
+                        terms.append(term)
+                break
+        return sorted(terms, key=len, reverse=True), dropped
+
+    kept = candidates[:maximum] if maximum else candidates
+    dropped = [requirement["term"] for requirement in candidates[len(kept):]]
     for requirement in kept:
         for term in [requirement["term"], *requirement["aliases"]]:
             cleaned = term.strip()
@@ -294,22 +331,14 @@ def emphasis_plan(model: dict[str, Any], policy: dict[str, Any]) -> tuple[list[s
     return sorted(terms, key=len, reverse=True), dropped
 
 
-def emphasis_terms(model: dict[str, Any], policy: dict[str, Any]) -> list[str]:
-    return emphasis_plan(model, policy)[0]
-
-
 class Emphasizer:
-    """Bolds each term at most once per section, per the ATS policy.
+    """Highlight the first occurrence of each selected phrase in reading order."""
 
-    Highlighting runs after the prose exists, never during drafting: it is a
-    reading aid layered onto unchanged words. Bolding every occurrence would
-    defeat its own purpose, so the first occurrence in each section wins and the
-    rest render normally.
-    """
-
-    def __init__(self, terms: Iterable[str], policy: dict[str, Any]) -> None:
-        self.terms = list(terms)
-        self.limit = int(policy.get("emphasis", {}).get("occurrences_per_term_per_section", 1))
+    def __init__(self, model: dict[str, Any], policy: dict[str, Any]) -> None:
+        self.terms, self.dropped = emphasis_plan(model, policy)
+        self.patterns = [(term, emphasis_pattern(term)) for term in self.terms]
+        self.reviewed = "requirement_map_sha256" in model["alignment"]
+        self.limit = 1 if self.reviewed else int(policy.get("emphasis", {}).get("occurrences_per_term_per_section", 1))
         self.sections = set(policy.get("emphasis", {}).get("sections", []))
         self.used: dict[tuple[str, str], int] = {}
         self.per_section: dict[str, int] = {}
@@ -332,12 +361,12 @@ class Emphasizer:
         # applied inside a protected phrase such as "Clean Architecture".
         search_text = text.replace(NO_BREAK_SPACE_MARKER, " ")
         spans: list[tuple[int, int]] = []
-        for term in self.terms:
-            key = (self.section, term.casefold())
+        for term, pattern in self.patterns:
+            key = ("" if self.reviewed else self.section, term.casefold())
             remaining = self.limit - self.used.get(key, 0)
             if remaining <= 0:
                 continue
-            for match in re.finditer(rf"(?<![\w.+#-]){re.escape(term)}(?![\w+#-])", search_text, re.IGNORECASE):
+            for match in pattern.finditer(search_text):
                 if any(match.start() < end and start < match.end() for start, end in spans):
                     continue
                 spans.append((match.start(), match.end()))
@@ -1573,7 +1602,7 @@ def configure_docx_bullet_marker(document: Document, policy: dict[str, Any]) -> 
 
 
 def render_docx(model: dict[str, Any], policy: dict[str, Any], output: Path) -> Emphasizer:
-    emphasizer = Emphasizer(emphasis_terms(model, policy), policy)
+    emphasizer = Emphasizer(model, policy)
     hyperlink_color, hyperlink_underline = link_appearance(policy)
     document = Document()
     section = document.sections[0]
@@ -1843,7 +1872,8 @@ def render_docx(model: dict[str, Any], policy: dict[str, Any], output: Path) -> 
             # The group label is already bold, so spend each term's one
             # occurrence on it rather than repeating the same word two words
             # later ("Flutter and Dart: Flutter, Dart").
-            emphasizer.split(group["name"])
+            if not emphasizer.reviewed:
+                emphasizer.split(group["name"])
             for index, item in enumerate(group["items"]):
                 if index:
                     set_run_font(paragraph.add_run(", "), policy["fonts"]["primary"], policy["sizes_pt"]["body"])
@@ -1946,7 +1976,7 @@ def protect_pdf_markup(markup: str) -> str:
 
 
 def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> Emphasizer:
-    emphasizer = Emphasizer(emphasis_terms(model, policy), policy)
+    emphasizer = Emphasizer(model, policy)
     phrases = protected_line_phrases(model, policy)
     hyperlink_color, hyperlink_underline = link_appearance(policy)
     margins = policy["margins_inches"]
@@ -2158,7 +2188,8 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> E
         emphasizer.enter("Skills")
         story.extend(section("Skills"))
         for group in model["skills"]:
-            emphasizer.split(group["name"])  # see the DOCX renderer for why
+            if not emphasizer.reviewed:
+                emphasizer.split(group["name"])  # see the DOCX renderer for why
             items = ", ".join(
                 linked_emphasized_markup(item) for item in group["items"]
             )
@@ -2548,15 +2579,14 @@ def emphasis_warnings(model: dict[str, Any], policy: dict[str, Any], emphasizer:
         if matched:
             warnings.append(f"Keyword emphasis is off while {len(matched)} requirements are matched")
         return warnings
-    if matched and not emphasizer.terms:
+    if matched and not any(requirement.get("emphasize", True) for requirement in matched):
         warnings.append("Every matched requirement has emphasize=false, so nothing is highlighted")
-    if emphasizer.terms and emphasizer.count == 0:
+    elif matched and emphasizer.count == 0:
         warnings.append("No emphasis term was found in the emphasized sections; check the aliases")
-    dropped = emphasis_plan(model, policy)[1]
-    if dropped:
+    if emphasizer.dropped:
         warnings.append(
             f"Emphasis capped at {policy['emphasis']['max_terms']} requirements; not highlighted: "
-            + ", ".join(dropped)
+            + ", ".join(emphasizer.dropped)
         )
     # Skills is a list of terms, so bolding there is inherently dense and says
     # nothing about readability. Judge density on the prose sections only.
@@ -2743,14 +2773,16 @@ def ai_visibility_warnings(model: dict[str, Any], policy: dict[str, Any]) -> lis
     ]
 
 
-def content_density_warnings(
+def content_density_findings(
     model: dict[str, Any],
     policy: dict[str, Any],
     pdf_pages: int,
     fill_ratios: list[float],
-) -> list[str]:
+    *,
+    enforce_minimum: bool,
+) -> tuple[list[str], list[str]]:
     if pdf_pages != 1 or not fill_ratios:
-        return []
+        return [], []
     threshold = float(
         policy.get("content_density", {}).get("single_page_minimum_usable_height_ratio", 0)
     )
@@ -2761,22 +2793,23 @@ def content_density_warnings(
     )
     ratio = fill_ratios[0]
     if threshold and ratio < threshold:
-        return [
+        finding = [
             f"Single-page resume is underfilled: content uses {ratio:.1%} of printable height, "
             f"below the {threshold:.1%} minimum; restore strong non-redundant Experience "
             "evidence or add a relevant independent project"
         ]
+        return (finding, []) if enforce_minimum else ([], finding)
     if (
         model["target"].get("mode") == "master"
         and master_target
         and ratio < master_target
     ):
-        return [
+        return [], [
             f"Single-page master resume uses {ratio:.1%} of printable height, below the "
             f"{master_target:.1%} master target; add only strong non-redundant evidence or a "
             "confirmed compact section while preserving normal section spacing"
         ]
-    return []
+    return [], []
 
 
 def allowed_continuation_header(model: dict[str, Any], texts: list[str]) -> bool:
@@ -2893,7 +2926,16 @@ def render_locked(args: argparse.Namespace, output_dir: Path) -> int:
         warnings = editorial_warnings(model, policy)
         warnings.extend(ai_visibility_warnings(model, policy))
         warnings.extend(application_guidance_warnings(model, policy))
-        warnings.extend(content_density_warnings(model, policy, pdf_pages, fill_ratios))
+        current_workflow = decisions is not None or (
+            model["schema_version"] == 2 and model["target"]["mode"] == "master"
+            and (posting.get("schema_version", 1) == 2 or not args.legacy_replay)
+        )
+        density_errors, density_warnings = content_density_findings(
+            model, policy, pdf_pages, fill_ratios,
+            enforce_minimum=current_workflow,
+        )
+        errors.extend(density_errors)
+        warnings.extend(density_warnings)
         for page_number, page_orphans in enumerate(orphaned_wraps, 1):
             for orphan in page_orphans:
                 warnings.append(

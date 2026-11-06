@@ -938,9 +938,9 @@ class ResumeModuleTest < Minitest::Test
       assert status.success?, stderr
       report = JSON.parse(File.read(File.join(output, "validation.json")))
       assert_equal 1, report.dig("document_validation", "pdf_pages")
-      assert_operator report.dig("document_validation", "content_fill_ratios", 0), :<, 0.99
+      assert_operator report.dig("document_validation", "content_fill_ratios", 0), :<, 0.90
       assert_includes report.dig("document_validation", "warnings").join(" "), "underfilled"
-      assert_includes report.dig("document_validation", "warnings").join(" "), "99.0%"
+      assert_includes report.dig("document_validation", "warnings").join(" "), "90.0%"
     end
   end
 
@@ -1417,6 +1417,33 @@ class ResumeModuleTest < Minitest::Test
       stdout, _stderr, status = validate(model, path)
       refute status.success?
       assert_includes JSON.parse(stdout)["errors"].join(" "), "link_status \"unconfirmed\""
+    end
+  end
+
+  def test_requires_confirmed_profile_links_and_reports_unmigrated_entries
+    with_model do |model, path, directory|
+      model["schema_version"] = 2
+      model["basics"]["links"].clear
+      write_model(path, model)
+      profile_path = File.join(directory, "profile.yaml")
+      FileUtils.cp(PROFILE, profile_path)
+      checker = File.join(ROOT, "scripts", "resume_source_check.rb")
+      check = -> { Open3.capture3("ruby", checker, "--model", path, "--profile", profile_path, "--projects", PROJECTS) }
+      stdout, _stderr, status = check.call
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "), "omits confirmed profile link profile-link-001"
+
+      profile = YAML.safe_load(File.read(PROFILE), permitted_classes: [Date])
+      profile["links"].first.delete("link_status")
+      File.write(profile_path, YAML.dump(profile))
+      stdout, _stderr, status = check.call
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "), "profile-link-001 needs an explicit link_status"
+
+      profile["links"].first["link_status"] = "unconfirmed"
+      File.write(profile_path, YAML.dump(profile))
+      stdout, stderr, status = check.call
+      assert status.success?, stdout + stderr
     end
   end
 

@@ -387,9 +387,9 @@
   },
 
   "content_density": {
-    "single_page_minimum_usable_height_ratio": 0.99,
+    "single_page_minimum_usable_height_ratio": 0.90,
     "master_single_page_target_usable_height_ratio": 0.99,
-    "note": "A one-page resume that uses less than 99 percent of the printable height is underfilled. Job-targeted and master resumes should both aim to use at least 99 percent when strong, non-redundant evidence and confirmed compact sections can do so without clipping or weakening section rhythm. Restore strong relevant Experience detail first, then add a relevant independent project or compact confirmed section. Do not pad with generic prose, weak skills, certificates chosen only for length, or gameable counts."
+    "note": "New one-page resumes must use at least 90 percent of printable height before publication. Aim for a fuller page when strong non-redundant evidence is available. Restore relevant Experience detail first, then consider a relevant independent project or compact confirmed section."
   },
   "requirements": {
     "single_column": true,

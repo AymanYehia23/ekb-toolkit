@@ -193,8 +193,8 @@ end
 #
 # Automatic hyperlinking is the default, which makes the opposite risk the real
 # one: a plausible-looking address that nobody confirmed. Every url a document
-# renders must appear in profile.yaml, and every project or organization link
-# must be marked `link_status: confirmed` there. A caveat recorded only in prose
+# renders must appear in profile.yaml with `link_status: confirmed`.
+# A caveat recorded only in prose
 # cannot be enforced, so the status field is what this check reads.
 
 def normalize_url(value)
@@ -303,6 +303,21 @@ end
 def check_header_link_labels(visible_items, sources, model, profile, errors)
   require_links = model.dig("layout", "hyperlinks") != "off" &&
                   profile.dig("preferences", "link_style", "auto_hyperlink").to_s != "off"
+
+  if require_links && model["schema_version"] == 2
+    included = Array(model.dig("basics", "links")).map { |item| item["source_ref"] }
+    Array(profile["links"]).each do |entry|
+      next unless entry.is_a?(Hash) && !normalize_url(entry["url"]).empty?
+
+      id = entry["id"]
+      status = entry["link_status"]
+      if !%w[confirmed unconfirmed uncurated].include?(status)
+        errors << "profile.links entry #{id} needs an explicit link_status; reconcile it through prompts/profile.md"
+      elsif status == "confirmed" && !included.include?(id)
+        errors << "resume.basics.links omits confirmed profile link #{id}; include its recorded label and URL"
+      end
+    end
+  end
 
   visible_items.each do |item|
     next unless item["path"].match?(/\Aresume\.basics\.(?:contact|links)\[\d+\]\z/)
