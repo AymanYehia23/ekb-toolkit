@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  check:
+  verify:
     strategy:
       fail-fast: false
       matrix:
@@ -30,3 +30,13 @@ jobs:
 
       - name: Verify the toolkit and fictional application bundles
         run: scripts/verify
+
+  check:
+    if: ${{ always() }}
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require successful Linux and macOS verification
+        env:
+          VERIFY_RESULT: ${{ needs.verify.result }}
+        run: test "$VERIFY_RESULT" = success
