@@ -4,6 +4,9 @@ __pycache__/
 .venv/
 venv/
 
+# Local résumé previews and QA scratch work.
+/tmp/
+
 # YOUR knowledge base. The default workspace lives inside the clone for a
 # frictionless first run, and it is ignored so a `git push` of the toolkit can
 # never carry your career data with it. Give it its own Git repository:
