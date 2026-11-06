@@ -19,7 +19,7 @@ builds a shortlist, drafts, renders, and validates. Discovering afterwards that
 the posting says "no sponsorship" wastes all of it. This gate reads the posting,
 the profile, and a policy file, and then stops.
 
-Disable it by setting `screening.enabled: false` in `config/toolkit.yaml`.
+The gate is mandatory. A favorable verdict does not authorize generation.
 
 ---
 
@@ -44,8 +44,8 @@ Create the ID `YYYY-MM-DD-company-role`, adding `-2`, `-3` if needed. Lowercase
 letters, digits, and hyphens only. When the employer is hidden, use the platform
 or the role alone and set `company_known: false`.
 
-Write `applications/<id>.yaml` from `templates/application.yaml` with the intake
-fields only: `id`, `created_at`, `company`, `role`, `company_website`,
+Create `applications/<id>.yaml` exclusively. Reuse a matching frozen posting or choose a fresh suffixed ID if the path exists. Preserve any prior posting and decision. Start from `templates/application.yaml` with the intake
+fields only, with `schema_version: 2`: `id`, `created_at`, `company`, `role`, `company_website`,
 `posting_url`, `job_description`, `additional_notes`. Preserve the supplied text
 exactly.
 
@@ -134,7 +134,13 @@ generation, proposal drafting, or any other tailoring work in the same turn as
 the report. `gate.auto_proceed_on_clean_report` is `false` and is not a default
 to reason around: the confirmation is the feature.
 
-Record the answer in `decision`. On `proceed`, return to the calling procedure.
+Record the answer and date in `decision`. On an explicit `proceed`, run
+`scripts/ekb screening-basis <id>` and store its output in
+`decision.posting_sha256` before returning to the calling procedure. This binds
+the authorization to the frozen intake fields. A changed posting uses a new
+snapshot and a new decision. An older proceed entry without a digest must be
+confirmed for the exact frozen intake before it can authorize a new render.
+Leave declined or deferred decisions in their historical records.
 On `declined` or `deferred`, keep both files. The record of a rejected
 opportunity is worth as much as the record of a pursued one, and it stops the
 same posting being screened twice.

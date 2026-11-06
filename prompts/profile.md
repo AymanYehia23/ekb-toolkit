@@ -160,3 +160,33 @@ Store each answer explicitly as `granted` or `declined`. A missing answer
 behaves as declined. Generation continues either way; only the checkpoint stops.
 
 If profile consent is granted, run `scripts/ekb git profile`. Never push.
+
+## Whole-candidate capability declarations
+
+Use `profile.capabilities` for genuine knowledge and experience that merits
+its own declaration alongside project records and legacy skills. Follow the
+fields and example in `templates/profile.yaml` and
+`config/capabilities.json`. Keep source type, context, proficiency and
+interview readiness separate. Record a dated user confirmation and its
+locator in `basis.detail`, and preserve the actual answer in
+`profile/profile-context.md`. For professional use, capture where and how
+the candidate used the capability. For study or independent practice,
+capture what they can explain or do. Confidence and readiness are private.
+
+A proposed capability can stay in the opportunity discovery notes or be
+recorded as `inferred` with `confirmation_required: true`. Only the user's
+explicit answer can make a declaration `user-stated` and clear that flag.
+Keep aliases faithful to the same skill. Put adjacent technologies in
+private transfer notes. Add concrete examples and limitations when known.
+Use stable IDs. Revalidate drafts that cite a changed declaration.
+
+
+Use `ekb candidate` to reconcile a proposed declaration with existing answers,
+education, responsibilities, interview notes and curated proof. Legacy
+`core / working / exposure` flags describe evidence inventory and must not be
+converted into proficiency. Date confirmations at the time of the candidate's
+actual confirmation. Keep prior declarations. For a confirmed progression or
+correction, give the new declaration its own ID and list the earlier same-skill
+IDs in `supersedes`. State why the scope or level changed in the basis.
+A conflict remains unresolved until confirmed. Confirm an absence explicitly
+before recording `gap_confirmed: true` on a learning target.

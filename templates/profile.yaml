@@ -242,3 +242,22 @@ preferences:
 privacy:
   profile_git: declined # granted | declined
   application_history_git: declined # granted | declined
+
+# Optional user-confirmed capabilities beyond project-derived skill groups.
+# A declaration has its own source ID and may be cited only at its stated level.
+# Example fields (fictional; replace only with the user's confirmed facts):
+# - id: profile-capability-example
+#   name: Ruby
+#   category: technical # technical | engineering | professional | domain
+#   proficiency: working-knowledge # see config/capabilities.json
+#   context: non-professional # professional | non-professional | mixed | unknown
+#   kind: user-stated # inferred requires confirmation_required: true
+#   basis: {type: study, detail: "Confirmation in profile-context.md under Ruby study"}
+#   last_confirmed: "2026-01-01"
+#   aliases: []
+#   examples: ["Wrote scripts to parse and validate local text files."]
+#   confidence: high
+#   limitations: ["Independent study."]
+#   interview_readiness: ready
+#   confirmation_required: false
+capabilities: []

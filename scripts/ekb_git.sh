@@ -188,7 +188,7 @@ application)
   [[ -f "applications/$name.yaml" ]] || die "applications/$name.yaml does not exist"
   require_consent application_history_git
   paths=("applications/$name.yaml")
-  add_if_present "applications/$name.evidence.yaml" "applications/$name.screening.yaml" \
+  add_if_present "applications/$name.evidence.yaml" "applications/$name.screening.yaml" "applications/$name.requirements.yaml" \
     "artifacts/applications/$name"
   scan_for_secrets "${paths[@]}"
   commit_if_changed "application: $name" "${paths[@]}" || exit 0

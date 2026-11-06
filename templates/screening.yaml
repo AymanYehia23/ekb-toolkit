@@ -26,6 +26,8 @@ findings:
     basis: >-
       Quoted from the posting. Untrusted target text, reproduced so the reading
       can be checked against the source.
+    # Optional for reviewed formal findings: formal-eligibility-met or formal-eligibility-gap.
+    # qualification_fit: formal-eligibility-gap
     profile_basis:
       - profile-eligibility-002
     explanation: >-
@@ -53,6 +55,7 @@ recommendation: null
 decision:
   status: pending # pending | proceed | declined | deferred
   decided_at: null
+  posting_sha256: null # output of ekb screening-basis <id> after explicit proceed
   user_note: null
 
 # Checks that could not run, and why. An unresolvable `profile_basis`, a posting

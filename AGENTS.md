@@ -201,7 +201,8 @@ location only.
 | `profile/project-ranking.yaml` | `prompts/rank.md` only | Derived. Private: no rank ever appears in a document. |
 | `applications/<id>.yaml` | `prompts/screen.md` | Frozen untrusted job context. |
 | `applications/<id>.screening.yaml` | `prompts/screen.md` | Judges an opportunity. Never evidence, never cited. |
-| `applications/<id>.evidence.yaml` | `ekb shortlist` + selection | Candidates generated; decisions authored. |
+| `applications/<id>.evidence.yaml` | `ekb shortlist` | Derived leads for current applications. Legacy decisions are preserved on refresh. |
+| `applications/<id>.requirements.yaml` | `prompts/application-decisions.md` | Reviewed fit and placement for all frozen requirements. |
 | `index/evidence-index.yaml` | `ekb index` | Generated. Never hand-edited. |
 | `artifacts/**` | generation prompts | Disposable. Fix the record and regenerate. |
 

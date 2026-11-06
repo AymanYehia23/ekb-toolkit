@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 id: 2026-07-21-example-company-software-engineer
 created_at: 2026-07-21
 company: Example Company
@@ -23,7 +23,12 @@ targeting:
   # One entry per explicit technical responsibility or evaluation point.
   # Include documentation, code reviews, collaboration, troubleshooting,
   # production support, testing, release work, and process improvement when the
-  # posting names them. A supported required omission needs selection_reason.
-  requirements: [] # term, aliases, priority, critical, status, evidence_refs, optional selection_reason
+  # posting names them. Record the reason for any omission in the reviewed map.
+  # Each entry has term, aliases, priority, critical, category, posting_excerpt
+  # and why_it_matters. Use an exact excerpt from job_description. Category is technical, engineering, professional,
+  # domain or qualification. Optional fields include minimum_proficiency (see
+  # config/capabilities.json) and a preliminary assessment with status and basis.
+  # Record authoritative fit in the reviewed requirement map.
+  requirements: []
   uncertainty: []
 policy_version: 1

@@ -41,7 +41,9 @@ from bullet_quality import (  # noqa: E402
     parse_bullet_bank,
     semantic_review_findings,
 )
-from ekb_paths import load_config, workspace_root  # noqa: E402
+from ekb_paths import evidence_policy, load_config, workspace_root  # noqa: E402
+from ekb_capabilities import read_capabilities  # noqa: E402
+from ekb_index import normalize_involvement  # noqa: E402
 
 FAIL = []
 WARN = []
@@ -72,9 +74,15 @@ def address_like_label(label):
 
 
 def main():
-    os.chdir(workspace_root())
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--root", default=workspace_root())
+    root = os.path.abspath(parser.parse_args().root)
+    policy = evidence_policy(root)
+    os.chdir(root)
     if not os.path.isdir("projects"):
-        print(f"no projects/ directory in workspace {workspace_root()}", file=sys.stderr)
+        print(f"no projects/ directory in workspace {root}", file=sys.stderr)
         return 2
 
     # ---- load curated knowledge -------------------------------------------
@@ -96,7 +104,7 @@ def main():
             if record.get("id"):
                 record_meta[record["id"]] = {
                     "kind": record.get("kind"),
-                    "involvement": record.get("involvement"),
+                    "involvement": normalize_involvement(record),
                     "resume_eligible": record.get("resume_eligible", True) is not False,
                 }
         for r in records:
@@ -113,6 +121,10 @@ def main():
             fail(f"superseded record {old} is still present (replaced by {new})")
 
     profile = load("profile/profile.yaml") or {}
+    try:
+        read_capabilities(profile)
+    except ValueError as exc:
+        fail(str(exc))
     pro = load("profile/professional-profile.yaml") or {}
 
     # ---- 1 + 2: career_map vs experience ----------------------------------
@@ -334,8 +346,8 @@ def main():
     # A final resume has its own source checker, but weak generated wording should
     # not enter the retrieval index in the first place. Apply the same objective
     # bullet policy here for every development stack; the prompt remains
-    # responsible for the semantic Outcome > Impact > Scope > Activity judgement.
-    resume_policy = load_config("resume-policy.json")
+    # responsible for the semantic and editorial judgement.
+    resume_policy = load_config("resume-policy.json", root)
     bullet_policy = resume_policy.get("bullet_quality") or {}
     maximum_bullets = int(bullet_policy.get("maximum_selected_per_project", 5))
     maximum_sources = int(bullet_policy.get("maximum_sources", 4))
@@ -403,12 +415,12 @@ def main():
                     meta = record_meta.get(source)
                     if meta is None:
                         continue
-                    if meta.get("kind") not in {"repo-verified", "user-stated"}:
+                    if meta.get("kind") not in policy["eligible_kinds"]:
                         fail(
                             f"{location} cites ineligible kind {meta.get('kind')!r} "
                             f"from {source}"
                         )
-                    if meta.get("involvement") not in {"led", "implemented", "contributed"}:
+                    if meta.get("involvement") not in policy["eligible_involvement"]:
                         fail(
                             f"{location} cites ineligible involvement "
                             f"{meta.get('involvement')!r} from {source}"

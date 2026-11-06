@@ -32,7 +32,10 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import json
+import tempfile
 import os
+from pathlib import Path
 import re
 import sys
 
@@ -42,7 +45,11 @@ except ImportError:  # pragma: no cover
     sys.exit("PyYAML is required: pip install pyyaml")
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from ekb_paths import workspace_root, load_config  # noqa: E402
+from ekb_paths import workspace_root, evidence_policy  # noqa: E402
+from ekb_capabilities import MEETS_MINIMUM, capability_matches, read_capabilities  # noqa: E402
+from ekb_index import build as build_index  # noqa: E402
+from ekb_requirements import decision_basis, frozen_requirements  # noqa: E402
+from ekb_screening import ScreeningError, posting_digest, require_screening  # noqa: E402
 
 ROOT = workspace_root()
 
@@ -80,7 +87,7 @@ def load_yaml(path: str) -> dict:
 
 def usable_alias(value: str) -> bool:
     text = str(value or "").strip().lower()
-    if len(text) < 3:
+    if len(text) < 3 and text not in {"c", "r", "go", "c#"}:
         return False
     if re.fullmatch(r"[\d\s+.]+", text):
         return False
@@ -88,107 +95,236 @@ def usable_alias(value: str) -> bool:
 
 
 def term_present(haystack: str, term: str) -> bool:
-    return re.search(rf"(?<![a-z0-9]){re.escape(term)}(?![a-z0-9])", haystack, re.I) is not None
+    return re.search(rf"(?<![\w+#]){re.escape(term)}(?![\w+#])", haystack, re.I) is not None
 
 
-def candidates_for(index: dict, aliases: list, limit: int) -> list:
-    terms = [str(a).strip().lower() for a in aliases if usable_alias(a)]
+RETRIEVAL = json.loads(
+    (Path(__file__).resolve().parent.parent / "config" / "retrieval.json").read_text(encoding="utf-8")
+)
+GENERIC_TERMS = set(RETRIEVAL["generic_terms"])
+
+
+def requirement_terms(requirement, aliases):
+    exact = {str(value).strip().lower() for value in [requirement, *aliases] if usable_alias(value)}
+    return exact | {
+        term for group in RETRIEVAL["equivalent_terms"] if exact.intersection(group)
+        for term in group
+    }
+
+
+def candidates_for(index: dict, aliases: list, limit: int, *, requirement: str = "", role: str = "") -> list:
+    terms = requirement_terms(requirement, aliases)
     if not terms:
         return []
+    focus = {
+        term for focus_rule in RETRIEVAL["role_focus"]
+        if requirement.lower() in focus_rule["requirements"] and
+        any(term_present(role, term) for term in focus_rule["role_terms"])
+        for term in focus_rule["evidence_terms"]
+    }
     capabilities = index.get("capabilities") or {}
-    tagged = set()
-    for term in terms:
-        tagged.update(capabilities.get(term) or [])
-    bridged = set()
     bridge_details = {}
     for bridge in index.get("evidence_bridges") or []:
         bridge_text = " ".join(str(value) for value in (bridge.get("aliases") or []))
-        if any(term_present(bridge_text, term) for term in terms):
-            for value in bridge.get("records") or []:
-                record_id = str(value)
-                bridged.add(record_id)
-                bridge_details.setdefault(record_id, []).append(
-                    {
-                        "profile_ref": bridge.get("profile_ref"),
-                        "required_public_phrases": bridge.get("required_public_phrases") or [],
-                        "cap": bridge.get("cap"),
-                    }
-                )
+        matched = {term for term in terms if term_present(bridge_text, term)}
+        if not matched:
+            continue
+        for record_id in bridge.get("records") or []:
+            bridge_details.setdefault(record_id, []).append({
+                "profile_ref": bridge.get("profile_ref"),
+                "required_public_phrases": bridge.get("required_public_phrases") or [],
+                "cap": bridge.get("cap"),
+                "terms": sorted(matched),
+            })
 
     rows = []
     for row in index.get("records") or []:
         if not row.get("eligible"):
             continue
-        if (
-            row["id"] in tagged
-            or row["id"] in bridged
-            or any(term_present(row.get("claim", ""), t) for t in terms)
-        ):
-            candidate = dict(row)
-            if row["id"] in bridge_details:
-                candidate["profile_bridges"] = bridge_details[row["id"]]
-            rows.append(candidate)
-    # An explicit profile bridge is target-specific retrieval evidence. Surface
-    # it before generic alias/tag matches so a low global project score cannot
-    # push the very records named by the confirmed fact beyond the shortlist
-    # limit.
-    rows.sort(
-        key=lambda r: (
-            0 if r["id"] in bridged else 1,
-            -float(r.get("strength") or 0),
-            r.get("project_rank") or 999,
-            r["id"],
-        )
-    )
+        statement = row.get("statement") or row.get("claim", "")
+        tags = row.get("tags") or []
+        matches = {
+            term for term in terms | focus
+            if term in tags or row["id"] in (capabilities.get(term) or []) or term_present(statement, term)
+        }
+        bridges = bridge_details.get(row["id"], [])
+        if not matches and not bridges:
+            continue
+        specific = (matches | {term for bridge in bridges for term in bridge["terms"]}) - GENERIC_TERMS
+        # Count fit by level, not by keyword volume. A specific evidence bridge
+        # is stronger than a generic bridge, and a role-specific hit beats both
+        # a generic framework match and any global rank bonus.
+        tier = 3 if matches & focus else 2 if specific else 1
+        rows.append({
+            **row,
+            "profile_bridges": bridges,
+            "match_terms": sorted(matches),
+            "match_tier": tier,
+            "match_reason": {3: "role-specific evidence", 2: "specific requirement evidence", 1: "general stack evidence"}[tier],
+        })
+
+    rows.sort(key=lambda row: (
+        -row["match_tier"],
+        not bool(row["profile_bridges"]),
+        -float(row.get("strength") or 0),
+        row.get("project_rank") or 999,
+        row["id"],
+    ))
+    # Give different projects a chance to demonstrate a broad requirement
+    # before spending every slot on one project. Never mix specificity tiers.
+    positions = {}
+    for row in rows:
+        bucket = (row["match_tier"], row["project"])
+        row["_project_position"] = positions.get(bucket, 0)
+        positions[bucket] = row["_project_position"] + 1
+    rows.sort(key=lambda row: (-row["match_tier"], row["_project_position"]))
     return rows[:limit]
 
 
-def profile_candidates_for(index: dict, aliases: list) -> list:
-    """Profile responsibilities and skill groups whose text an alias matches.
-
-    Listed separately from project candidates because they answer a requirement
-    differently: a project record DEMONSTRATES a capability, a profile entry only
-    STATES it. Without this section a requirement that
-    profile-responsibility-004 answers well showed as "no eligible evidence",
-    which reads as a portfolio gap rather than the indexing gap it was.
-    """
-    terms = [str(a).strip().lower() for a in aliases if usable_alias(a)]
-    if not terms:
-        return []
+def profile_candidates_for(index: dict, terms: list) -> list:
+    """Retrieve confirmed responsibilities and legacy skills at their stated scope."""
     out = []
     for entry in index.get("profile_sources") or []:
-        haystack = " ".join(
-            [entry.get("label", ""), entry.get("covers", "")] + (entry.get("phrasings") or [])
-        )
-        if any(term_present(haystack, t) for t in terms):
-            out.append(
-                {
-                    "ref": entry["id"],
-                    "origin": entry["origin"],
-                    "label": entry.get("label", ""),
-                    "cap": entry.get("cap"),
-                }
-            )
+        values = [entry.get("label", ""), entry.get("covers", ""), *entry.get("phrasings", [])]
+        items = [
+            item for item in entry.get("items", [])
+            if any(term_present(str(item.get("name", "")), term) for term in terms)
+        ]
+        if items or any(term_present(value, term) for value in values for term in terms):
+            out.append({
+                "ref": entry["id"],
+                "origin": entry["origin"],
+                "kind": entry["kind"],
+                "label": entry.get("label", ""),
+                "basis": items or entry.get("covers", ""),
+                "cap": entry.get("cap"),
+            })
     return out
 
 
-def build(root: str, application_id: str, limit: int) -> dict:
-    app_path = os.path.join(root, "applications", f"{application_id}.yaml")
-    if not os.path.isfile(app_path):
-        sys.exit(f"no frozen application at {app_path}")
-    index_path = os.path.join(root, "index", "evidence-index.yaml")
-    if not os.path.isfile(index_path):
-        sys.exit("no evidence index; run ekb index first")
+def requirement_mapping(requirement, direct, profile_rows, capabilities, index, limit, policy, employers):
+    term = requirement.get("term") or ""
+    category = requirement.get("category") or "unclassified"
+    assessment = requirement.get("assessment") or {}
+    formal = category == "qualification"
+    if formal:
+        status = assessment.get("status")
+        if status not in ("qualification supported", "formal eligibility gap") or not assessment.get("basis"):
+            status = "needs confirmation"
+        return {
+            "classification": status,
+            "why_it_matters": requirement.get("why_it_matters"),
+            "posting_excerpt": requirement.get("posting_excerpt"),
+            "assessment_basis": assessment.get("basis"),
+            "matches": [],
+            "discovery": "Use the frozen screening findings and confirmed qualification facts.",
+        }
 
-    application = load_yaml(app_path)
-    index = load_yaml(index_path)
+    minimum = requirement.get("minimum_proficiency")
+    if minimum is not None and (not isinstance(minimum, str) or minimum not in MEETS_MINIMUM):
+        raise ValueError(f"{term}: invalid minimum proficiency")
+    terms = requirement_terms(term, requirement.get("aliases") or [])
+    related = [rule for rule in RETRIEVAL["related_requirements"] if terms.intersection(rule["requirements"])]
+    examples = {value for rule in related for value in rule.get("example_terms", [])}
+    transfer = {value for rule in related for value in rule.get("transfer_terms", [])}
+    matches = [
+        {
+            "ref": row["id"],
+            "classification": "direct professional evidence" if row["project"] in employers else "direct project evidence",
+            "label": row["project"],
+            "kind": row["kind"],
+            "involvement": row["involvement"],
+            "basis": row["statement"],
+            "matched_terms": row["match_terms"],
+            "limitations": row.get("cautions") or [],
+            "confidence": "verify relevance",
+            "needs_confirmation": False,
+            "resume_use": "Use a concrete accomplishment if the curated record supports this requirement.",
+        }
+        for row in direct
+    ]
+    matches.extend({
+        **row,
+        "classification": "broader professional capability" if row["origin"] == "responsibility" else "profile skill (proficiency unspecified)",
+        "confidence": "verify relevance",
+        "needs_confirmation": False,
+        "resume_use": "Use supported profile wording and retain its limitations.",
+    } for row in profile_rows)
+    matches.extend(capability_matches(capabilities, terms, transfer, policy, term_present, minimum))
+
+    # Directional cues identify examples worth reading. They do not make a
+    # related technology an alias or force the understatement gate to count it.
+    direct_refs = {row["id"] for row in direct}
+    related_rows = candidates_for(index, sorted(examples | transfer), limit + len(direct_refs))
+    matches.extend({
+        "ref": row["id"],
+        "label": row["project"],
+        "classification": "transferable experience" if set(row["match_terms"]) & transfer else "related engineering example",
+        "kind": row["kind"],
+        "involvement": row["involvement"],
+        "basis": row["statement"],
+        "matched_terms": row["match_terms"],
+        "limitations": row.get("cautions") or [],
+        "confidence": "verify relevance",
+        "needs_confirmation": False,
+        "resume_use": "Describe the evidenced work and explain the connection privately.",
+    } for row in [item for item in related_rows if item["id"] not in direct_refs][:limit])
+
+    supported = [row for row in matches if not row["needs_confirmation"]]
+    priority = (
+        "direct professional evidence", "broader professional capability", "direct project evidence",
+        "practical non-professional experience", "confirmed technical knowledge",
+        "profile skill (proficiency unspecified)", "related engineering example",
+        "transferable experience", "genuine gap",
+    )
+    ranks = {value: rank for rank, value in enumerate(priority)}
+    matches.sort(key=lambda row: (
+        row["needs_confirmation"], row.get("fit") == "gap", row.get("fit") == "partial",
+        ranks.get(row["classification"], len(ranks)),
+    ))
+    classification = matches[0]["classification"] if supported else "needs confirmation"
+    if not supported and assessment.get("status") == "genuine gap" and assessment.get("basis"):
+        classification = "genuine gap"
+    discovery = None
+    if classification in ("needs confirmation", "transferable experience") and requirement.get("priority") == "required":
+        discovery = (
+            f"After checking previous answers, ask if still material: what have you used or learned about "
+            f"{term}, in which context, and what could you demonstrate in an interview?"
+        )
+    return {
+        "classification": classification,
+        "minimum_proficiency": minimum,
+        "why_it_matters": requirement.get("why_it_matters"),
+        "posting_excerpt": requirement.get("posting_excerpt"),
+        "assessment_basis": assessment.get("basis"),
+        "matches": matches,
+        "discovery": discovery,
+    }
+
+
+def build(root: str, application_id: str, limit: int, requirement_filter: str | None = None) -> dict:
+    application = require_screening(Path(root), application_id)
     targeting = application.get("targeting") or {}
-    requirements = targeting.get("requirements") or []
+    current_workflow = application.get("schema_version") == 2 and targeting.get("resume_mode") != "master"
+    input_digest = decision_basis(Path(root), application) if current_workflow else None
+    # Rebuild in memory from the current records. The persisted index can
+    # predate curation and is not part of the requirement decision.
+    index = build_index(root)
+    policy = evidence_policy(root)
+    profile_path = Path(root) / "profile" / "profile.yaml"
+    profile = load_yaml(profile_path) if profile_path.is_file() else {}
+    capabilities = read_capabilities(profile)
+    employers = {project for entry in profile.get("experience") or [] for project in entry.get("projects") or []}
+    requirements = frozen_requirements(application) if current_workflow else targeting.get("requirements") or []
+    if requirement_filter is not None:
+        requirements = [item for item in requirements if item.get("term") == requirement_filter]
+        if not requirements:
+            raise ValueError(f"no frozen requirement named {requirement_filter!r}")
 
     # Preserve authored decisions across a refresh.
     out_path = os.path.join(root, "applications", f"{application_id}.evidence.yaml")
     previous = {}
-    if os.path.isfile(out_path):
+    if not current_workflow and os.path.isfile(out_path):
         for entry in (load_yaml(out_path).get("requirements") or []):
             if isinstance(entry, dict) and entry.get("term"):
                 previous[entry["term"]] = {
@@ -203,7 +339,18 @@ def build(root: str, application_id: str, limit: int) -> dict:
     rows = []
     for requirement in sorted(requirements, key=sort_key):
         aliases = requirement.get("aliases") or []
-        found = candidates_for(index, aliases, limit)
+        term = requirement.get("term") or ""
+        formal = requirement.get("category") == "qualification"
+        found = [] if formal else candidates_for(
+            index, aliases, limit, requirement=term, role=application.get("role") or "",
+        )
+        profile_rows = [] if formal else profile_candidates_for(index, sorted(requirement_terms(term, aliases)))
+        mapping = requirement_mapping(requirement, found, profile_rows, capabilities, index, limit, policy, employers)
+        if current_workflow:
+            for match in mapping["matches"]:
+                match["suggested_classification"] = match.pop("classification")
+            mapping["suggested_classification"] = mapping.pop("classification")
+            mapping["review_state"] = "unreviewed retrieval leads"
         decision = previous.get(requirement.get("term"), {"selected": [], "reason": ""})
         rows.append(
             {
@@ -211,11 +358,15 @@ def build(root: str, application_id: str, limit: int) -> dict:
                 "priority": requirement.get("priority"),
                 "critical": bool(requirement.get("critical")),
                 "aliases": aliases,
+                "category": requirement.get("category"),
+                "mapping": mapping,
                 "candidates": [
                     {
                         "ref": row["id"],
                         "project": row["project"],
                         "strength": row["strength"],
+                        "match_terms": row["match_terms"],
+                        "match_reason": row["match_reason"],
                         "signals": row.get("signals") or [],
                         "claim": row.get("bullet") or row.get("claim", ""),
                         "cautions": row.get("cautions") or [],
@@ -230,25 +381,31 @@ def build(root: str, application_id: str, limit: int) -> dict:
                 # Profile entries that could state this requirement. A project
                 # record demonstrates; these only claim. Kept separate so the
                 # difference stays visible while deciding.
-                "profile_candidates": profile_candidates_for(index, aliases),
+                "profile_candidates": profile_rows,
                 # Authored. Empty means the decision has not been made yet.
-                "selected": decision["selected"],
-                "reason": decision["reason"],
+                **({"id": requirement["id"]} if current_workflow else decision),
             }
         )
 
     covered = sum(1 for row in rows if row["candidates"])
     profile_only = sum(1 for row in rows if not row["candidates"] and row["profile_candidates"])
     return {
-        "schema_version": 1,
+        "schema_version": 2 if current_workflow else 1,
         "kind": "evidence-shortlist",
         "application": application_id,
         "generated_at": dt.date.today().isoformat(),
         "generator": "scripts/ekb_shortlist.py",
         "basis": {
+            "posting_sha256": posting_digest(application),
+            **({"decision_basis_sha256": input_digest} if current_workflow else {}),
             "requirements": len(rows),
             "requirements_with_candidates": covered,
             "requirements_with_profile_sources_only": profile_only,
+            "requirements_with_broader_capability_matches": sum(
+                any(match.get("proficiency") and match.get("resume_use")
+                    for match in row["mapping"]["matches"])
+                for row in rows
+            ),
             "index_records": len((index.get("records") or [])),
             "candidate_limit_per_requirement": limit,
         },
@@ -278,9 +435,8 @@ HEADER = """# EVIDENCE SHORTLIST. Candidates are generated; decisions are author
 # WHAT IT IS NOT
 #   Not evidence. `strength` and `claim` are derived from the curated record and
 #   license nothing. Every visible resume line still cites the record itself and
-#   still passes the source check. An empty `candidates` list means no eligible
-#   project record matched the aliases; that is a real gap, not a search failure
-#   to work around.
+#   still passes the source check. Read `mapping` for broader capabilities,
+#   examples, transfer and discovery. Empty retrieval means the match remains open.
 """
 
 
@@ -291,10 +447,27 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=6, help="candidates per requirement")
     parser.add_argument("--refresh", action="store_true", help="recompute candidates, keep decisions")
     parser.add_argument("--stdout", action="store_true")
+    parser.add_argument("--requirement", help="exact frozen requirement to inspect with --stdout")
     args = parser.parse_args()
 
-    shortlist = build(args.root, args.application, args.limit)
-    rendered = HEADER + dump_yaml(shortlist)
+    if args.limit < 1:
+        parser.error("--limit must be positive")
+    if args.requirement and not args.stdout:
+        parser.error("--requirement requires --stdout")
+    try:
+        shortlist = build(args.root, args.application, args.limit, args.requirement)
+        current = require_screening(Path(args.root), args.application)
+        if posting_digest(current) != shortlist["basis"]["posting_sha256"]:
+            raise ScreeningError("frozen posting changed during shortlisting")
+        if shortlist["schema_version"] == 2 and decision_basis(Path(args.root), current) != shortlist["basis"]["decision_basis_sha256"]:
+            raise ScreeningError("application inputs changed during shortlisting")
+    except (ScreeningError, ValueError) as exc:
+        parser.exit(1, f"EKB shortlist: {exc}\n")
+    header = HEADER if shortlist["schema_version"] == 1 else (
+        "# RETRIEVAL LEADS. Review the exact record and limitations.\n"
+        "# Author fit and selection only in applications/ID.requirements.yaml.\n"
+    )
+    rendered = header + dump_yaml(shortlist)
 
     if args.stdout:
         sys.stdout.write(rendered)
@@ -305,10 +478,26 @@ def main() -> int:
         print(f"{os.path.relpath(out_path, args.root)} exists; pass --refresh to recompute", file=sys.stderr)
         return 1
 
-    with open(out_path, "w", encoding="utf-8") as handle:
-        handle.write(rendered)
+    try:
+        if not args.refresh:
+            with open(out_path, "x", encoding="utf-8") as handle:
+                handle.write(rendered)
+        else:
+            with tempfile.NamedTemporaryFile(mode="w", dir=Path(out_path).parent, delete=False, encoding="utf-8") as handle:
+                staged = Path(handle.name)
+                try:
+                    handle.write(rendered)
+                    handle.flush()
+                    os.replace(staged, out_path)
+                finally:
+                    staged.unlink(missing_ok=True)
+    except (OSError, ScreeningError) as exc:
+        parser.exit(1, f"EKB shortlist: {exc}\n")
     basis = shortlist["basis"]
-    undecided = sum(1 for r in shortlist["requirements"] if not r["selected"] and not r["reason"])
+    if shortlist["schema_version"] == 2:
+        print(f"wrote {os.path.relpath(out_path, args.root)}: retrieval leads for {basis['requirements']} requirements")
+        return 0
+    undecided = sum(1 for r in shortlist["requirements"] if not r.get("selected") and not r.get("reason"))
     print(
         f"wrote {os.path.relpath(out_path, args.root)}: "
         f"{basis['requirements']} requirements, "

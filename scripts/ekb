@@ -108,7 +108,7 @@ status)
   [[ -d "$ws/projects" ]] || die "no workspace at $ws; run 'ekb init'"
   curated=$(find "$ws/projects" -name '*.yaml' ! -name '*.candidates.yaml' | wc -l | tr -d ' ')
   pending=$(find "$ws/projects" -name '*.candidates.yaml' | wc -l | tr -d ' ')
-  apps=$(find "$ws/applications" -name '*.yaml' ! -name '*.evidence.yaml' ! -name '*.screening.yaml' 2>/dev/null | wc -l | tr -d ' ')
+  apps=$(find "$ws/applications" -name '*.yaml' ! -name '*.evidence.yaml' ! -name '*.screening.yaml' ! -name '*.requirements.yaml' 2>/dev/null | wc -l | tr -d ' ')
   printf 'workspace %s\n' "$ws"
   printf '  curated projects   %s\n' "$curated"
   printf '  pending reviews    %s\n' "$pending"
@@ -116,6 +116,12 @@ status)
   printf '  profile            %s\n' "$([[ -f "$ws/profile/profile.yaml" ]] && echo present || echo 'not created')"
   printf '\nFor the per-project state and next action, ask your agent to follow prompts/status.md\n'
   ;;
+
+candidate) exec "$PYTHON" "$TOOLKIT/scripts/ekb_capabilities.py" --workspace-view "$@" ;;
+
+requirement-map) exec "$PYTHON" "$TOOLKIT/scripts/ekb_requirements.py" "$@" ;;
+
+screening-basis) exec "$PYTHON" "$TOOLKIT/scripts/ekb_screening.py" "$@" ;;
 
 index) exec "$PYTHON" "$TOOLKIT/scripts/ekb_index.py" "$@" ;;
 check) exec "$PYTHON" "$TOOLKIT/scripts/ekb_check.py" "$@" ;;

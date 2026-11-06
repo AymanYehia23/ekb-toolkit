@@ -44,6 +44,7 @@ def _from_config() -> str | None:
     value = (data.get("paths") or {}).get("workspace")
     if not value:
         return None
+    value = os.path.expanduser(value)
     return value if os.path.isabs(value) else os.path.join(TOOLKIT_ROOT, value)
 
 
@@ -58,7 +59,7 @@ def workspace_root() -> str:
     return os.path.join(TOOLKIT_ROOT, "workspace")
 
 
-def config_path(name: str) -> str:
+def config_path(name: str, workspace: str | None = None) -> str:
     """Resolve a config file, preferring a private workspace override.
 
     The toolkit ships safe, versioned defaults in ``config/``. A user may put
@@ -70,15 +71,15 @@ def config_path(name: str) -> str:
     """
     if os.path.basename(name) != name:
         raise ValueError("config names must be filenames")
-    private = os.path.join(workspace_root(), "config", name)
+    private = os.path.join(workspace if workspace is not None else workspace_root(), "config", name)
     if os.path.isfile(private):
         return private
     return os.path.join(CONFIG_DIR, name)
 
 
-def load_config(name: str) -> dict:
+def load_config(name: str, workspace: str | None = None) -> dict:
     """Read a YAML or JSON config file. Missing file returns an empty dict."""
-    path = config_path(name)
+    path = config_path(name, workspace)
     if not os.path.isfile(path):
         return {}
     with open(path, encoding="utf-8") as handle:
@@ -89,3 +90,41 @@ def load_config(name: str) -> dict:
         import yaml
 
         return yaml.safe_load(handle) or {}
+
+
+def evidence_policy(workspace: str) -> dict[str, set[str]]:
+    """Read effective eligibility, with private keys overriding shipped keys."""
+    import yaml
+
+    settings = {}
+    for path in (os.path.join(CONFIG_DIR, "toolkit.yaml"),
+                 os.path.join(workspace, "config", "toolkit.yaml")):
+        if not os.path.isfile(path):
+            continue
+        with open(path, encoding="utf-8") as handle:
+            data = yaml.safe_load(handle)
+        if data is None:
+            data = {}
+        if not isinstance(data, dict) or not isinstance(data.get("evidence", {}), dict):
+            raise ValueError(f"{path}: evidence policy must be a mapping")
+        settings.update(data.get("evidence", {}))
+
+    boundaries = {
+        "eligible_kinds": {"repo-verified", "user-stated"},
+        "eligible_involvement": {"led", "implemented", "contributed"},
+    }
+    for key, allowed in boundaries.items():
+        values = settings.get(key)
+        if not isinstance(values, list) or any(
+            not isinstance(value, str) or value not in allowed for value in values
+        ):
+            raise ValueError(f"evidence.{key} must be a list drawn from {sorted(allowed)}")
+    return {key: set(settings[key]) for key in boundaries}
+
+
+def project_evidence_eligible(record: dict, policy: dict[str, set[str]]) -> bool:
+    return (
+        record.get("resume_eligible") is not False
+        and record.get("kind") in policy["eligible_kinds"]
+        and record.get("involvement") in policy["eligible_involvement"]
+    )

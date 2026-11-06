@@ -40,12 +40,10 @@ from bullet_quality import (  # noqa: E402
     parse_bullet_bank,
     semantic_review_findings,
 )
-from ekb_paths import workspace_root, load_config  # noqa: E402
+from ekb_paths import workspace_root, load_config, evidence_policy, project_evidence_eligible  # noqa: E402
 
 ROOT = workspace_root()
 
-ELIGIBLE_KINDS = {"repo-verified", "user-stated"}
-ELIGIBLE_INVOLVEMENT = {"led", "implemented", "contributed"}
 LEGACY_ATTRIBUTION = {"sole": "implemented", "shared": "contributed", "unclear": "unknown"}
 
 # Tag synonyms, loaded from config/capability-tags.yaml so a role profile can
@@ -53,15 +51,12 @@ LEGACY_ATTRIBUTION = {"sole": "implemented", "shared": "contributed", "unclear":
 # capability; the right side is the set of curated tags that fold into it. An
 # empty or missing config simply means no folding, which is a valid setup for a
 # small knowledge base.
-def load_tag_synonyms() -> dict:
-    data = load_config("capability-tags.yaml")
+def load_tag_synonyms(root) -> dict:
+    data = load_config("capability-tags.yaml", root)
     out = {}
     for canonical, variants in (data.get("synonyms") or {}).items():
         out[str(canonical)] = {str(v) for v in (variants or [])}
     return out
-
-
-TAG_SYNONYMS = load_tag_synonyms()
 
 # Number shaped like a real quantity, used to flag a record whose statement
 # already carries a verified figure. Mirrors the checker's own tokenizer.
@@ -122,25 +117,22 @@ def normalize_involvement(record: dict) -> str:
     return LEGACY_ATTRIBUTION.get(str(record.get("attribution")), "unknown")
 
 
-def build_synonym_lookup() -> dict:
+def build_synonym_lookup(root) -> dict:
     lookup = {}
-    for canonical, variants in TAG_SYNONYMS.items():
+    for canonical, variants in load_tag_synonyms(root).items():
         lookup[canonical] = canonical
         for variant in variants:
             lookup[variant] = canonical
     return lookup
 
 
-SYNONYMS = build_synonym_lookup()
-
-
-def canonical_tags(tags) -> list:
+def canonical_tags(tags, synonyms) -> list:
     out = []
     for tag in tags or []:
         key = str(tag).strip().lower()
         if not key:
             continue
-        canonical = SYNONYMS.get(key, key)
+        canonical = synonyms.get(key, key)
         if canonical not in out:
             out.append(canonical)
     return sorted(out)
@@ -199,7 +191,7 @@ def collect_curated_bullets(root: str) -> dict:
     record ever disagree, the record wins and the bank should be regenerated.
     """
     bullets: dict[str, dict] = {}
-    policy = load_config("resume-policy.json")
+    policy = load_config("resume-policy.json", root)
     quality = policy.get("bullet_quality") or {}
     maximum_bullets = int(quality.get("maximum_selected_per_project", 5))
     maximum_sources = int(quality.get("maximum_sources", 4))
@@ -364,6 +356,7 @@ def collect_profile_sources(profile: dict) -> list:
         sources.append(
             {
                 "id": entry["id"],
+                "kind": entry.get("kind"),
                 "origin": "responsibility",
                 "label": entry.get("label", ""),
                 "covers": " ".join(str(entry.get("value", "")).split()),
@@ -377,8 +370,11 @@ def collect_profile_sources(profile: dict) -> list:
     for entry in profile.get("skills") or []:
         if not isinstance(entry, dict) or not entry.get("id"):
             continue
+        source_items = entry.get("items") or []
+        if not source_items and entry.get("label"):
+            source_items = [{"name": entry["label"], "depth": entry.get("depth")}]
         items = []
-        for item in entry.get("items") or []:
+        for item in source_items:
             if isinstance(item, dict) and item.get("name"):
                 label = str(item["name"])
                 if item.get("depth"):
@@ -387,9 +383,11 @@ def collect_profile_sources(profile: dict) -> list:
         sources.append(
             {
                 "id": entry["id"],
+                "kind": entry.get("kind"),
                 "origin": "skill-group",
                 "label": entry.get("group", ""),
                 "covers": ", ".join(items),
+                "items": [item for item in source_items if isinstance(item, dict)],
                 "cap": " ".join(str(entry.get("cap", "")).split()) or None,
             }
         )
@@ -479,10 +477,8 @@ def score_record(
         score += 3.0
         signals.append("best-evidence")
     if before_after:
-        score += 3.0
         signals.append("before-after")
     elif material_number:
-        score += 1.0
         signals.append("measured")
     score += TIER_POINTS.get(str(tier), 0.0)
     if str(tier) == "flagship":
@@ -496,6 +492,8 @@ def score_record(
 
 
 def build(root: str) -> dict:
+    policy = evidence_policy(root)
+    synonyms = build_synonym_lookup(root)
     profile_path = os.path.join(root, "profile", "profile.yaml")
     ranking_path = os.path.join(root, "profile", "project-ranking.yaml")
     prof_profile_path = os.path.join(root, "profile", "professional-profile.yaml")
@@ -510,8 +508,8 @@ def build(root: str) -> dict:
     ranks, tiers, best_evidence = collect_ranking(ranking)
     shipped_projects = collect_store_projects(profile)
     before_after = collect_before_after_records(prof_text)
-    profile_sources = collect_profile_sources(profile)
-    evidence_bridges = collect_evidence_bridges(profile)
+    profile_sources = collect_profile_sources(profile) if "user-stated" in policy["eligible_kinds"] else []
+    evidence_bridges = collect_evidence_bridges(profile) if "user-stated" in policy["eligible_kinds"] else []
     curated_bullets = collect_curated_bullets(root)
     interview_stories = collect_interview_stories(root)
 
@@ -532,7 +530,7 @@ def build(root: str) -> dict:
             involvement = normalize_involvement(record)
             kind = str(record.get("kind") or "")
             resume_eligible = record.get("resume_eligible", True) is not False
-            tags = canonical_tags(record.get("tags"))
+            tags = canonical_tags(record.get("tags"), synonyms)
             statement = str(record.get("statement") or "")
             raw_limitations = record.get("limitations") or []
             if isinstance(raw_limitations, str):
@@ -558,9 +556,7 @@ def build(root: str) -> dict:
                 signals = signals + ["curated-bullet"]
             story = interview_stories.get(record_id)
             if story:
-                # Signal only, no score change. Defensibility is decision-relevant
-                # but must not outrank measured evidence, and it overlaps heavily
-                # with best-evidence already.
+                # A story supplies interview context and may overlap with best evidence.
                 signals = signals + ["interview-story"]
                 phrasing["story"] = story
             rows.append(
@@ -572,15 +568,14 @@ def build(root: str) -> dict:
                     "involvement": involvement,
                     "kind": kind,
                     "resume_eligible": resume_eligible,
-                    "eligible": (
-                        resume_eligible
-                        and kind in ELIGIBLE_KINDS
-                        and involvement in ELIGIBLE_INVOLVEMENT
+                    "eligible": project_evidence_eligible(
+                        {"kind": kind, "involvement": involvement, "resume_eligible": resume_eligible}, policy
                     ),
                     "strength": score,
                     "signals": signals,
                     "tags": tags,
                     "claim": first_sentence(statement),
+                    "statement": " ".join(statement.split()),
                     # Selection must see the same boundaries that bind the
                     # eventual public wording. Keeping them beside the derived
                     # claim prevents a strong keyword match from hiding a

@@ -1,0 +1,99 @@
+{
+  "categories": [
+    "technical",
+    "engineering",
+    "professional",
+    "domain"
+  ],
+  "contexts": {
+    "professional-experience": [
+      "professional"
+    ],
+    "practical-experience": [
+      "non-professional"
+    ],
+    "working-knowledge": [
+      "professional",
+      "non-professional",
+      "mixed"
+    ],
+    "familiarity": [
+      "professional",
+      "non-professional",
+      "mixed"
+    ],
+    "transferable": [
+      "professional",
+      "non-professional",
+      "mixed"
+    ],
+    "learning-target": [
+      "non-professional",
+      "unknown"
+    ]
+  },
+  "basis_types": {
+    "professional-experience": [
+      "employment"
+    ],
+    "practical-experience": [
+      "practice"
+    ],
+    "working-knowledge": [
+      "employment",
+      "education",
+      "study",
+      "practice",
+      "declaration"
+    ],
+    "familiarity": [
+      "employment",
+      "education",
+      "study",
+      "practice",
+      "declaration"
+    ],
+    "transferable": [
+      "transfer"
+    ],
+    "learning-target": [
+      "learning-goal"
+    ]
+  },
+  "skill_headings": {
+    "professional-experience": "Professional Skills",
+    "practical-experience": "Practical Experience",
+    "working-knowledge": "Working Knowledge",
+    "familiarity": "Familiarity"
+  },
+  "confidence": [
+    "high",
+    "medium",
+    "low"
+  ],
+  "interview_readiness": [
+    "ready",
+    "needs-preparation",
+    "unknown"
+  ],
+  "meets_minimum": {
+    "professional-experience": [
+      "professional-experience"
+    ],
+    "practical-experience": [
+      "professional-experience",
+      "practical-experience"
+    ],
+    "working-knowledge": [
+      "professional-experience",
+      "practical-experience",
+      "working-knowledge"
+    ],
+    "familiarity": [
+      "professional-experience",
+      "practical-experience",
+      "working-knowledge",
+      "familiarity"
+    ]
+  }
+}

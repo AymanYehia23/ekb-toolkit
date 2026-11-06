@@ -1,0 +1,76 @@
+{
+  "generic_terms": [
+    "flutter", "dart", "mobile", "android", "ios", "cross-platform",
+    "cross-platform mobile", "feature delivery", "riverpod", "bloc", "cubit",
+    "state management", "frontend logic", "domain logic", "typed failures",
+    "kotlin", "swift", "ui", "ux"
+  ],
+  "equivalent_terms": [
+    ["bluetooth", "bluetooth le", "ble", "wireless device transport"],
+    ["native ios", "native ios integration", "swift native integration", "native swift", "swift bridging", "apns-to-fcm"],
+    ["rest api", "rest apis", "restful api", "restful apis", "restful services", "rest integration"],
+    ["debugging", "troubleshooting", "root cause analysis", "root-cause analysis"],
+    ["problem-solving", "problem solving", "analytical problem-solving", "analytical reasoning"],
+    ["api integration", "api integrations", "api-integration", "backend integration", "backend integrations", "backend-integration"],
+    ["order management", "order lifecycle", "order-lifecycle"],
+    ["code review", "code reviews", "peer review"],
+    ["thermal printing", "thermal printer", "receipt printer"]
+  ],
+  "related_requirements": [
+    {
+      "requirements": ["problem-solving", "debugging"],
+      "example_terms": [
+        "isolated the cause", "traced", "reproduced", "diagnosed", "root cause",
+        "race condition", "stale selections", "before/after"
+      ]
+    },
+    {
+      "requirements": ["collaboration", "communication"],
+      "example_terms": ["worked with", "paired with", "code review", "requirements gathering"]
+    },
+    {
+      "requirements": ["native android integration", "native ios integration", "native integration"],
+      "transfer_terms": ["platform channel", "platform channels", "methodchannel", "native bridge"]
+    },
+    {
+      "requirements": ["device communication"],
+      "transfer_terms": ["bluetooth", "ble", "gatt", "serial protocol"]
+    },
+    {
+      "requirements": ["payment states"],
+      "example_terms": ["paid-but-unbooked", "payment intent", "payment-status", "pending states"]
+    },
+    {
+      "requirements": ["reliability"],
+      "example_terms": ["partial fulfilment", "idempotency", "retry"]
+    },
+    {
+      "requirements": ["system design"],
+      "example_terms": ["separated responsibilities", "shared endpoint", "state machine", "architectural trade-off"]
+    }
+  ],
+  "role_focus": [
+    {
+      "role_terms": ["purchase", "post-purchase", "post purchase", "commerce", "checkout"],
+      "requirements": ["complex frontend logic", "purchase", "checkout", "payment and fulfilment"],
+      "evidence_terms": [
+        "paid-but-unbooked", "partial booking", "partial fulfilment",
+        "booking fulfilment", "quote-to-cart", "stale selections",
+        "offer checkout", "server-priced cart", "cart validation"
+      ]
+    },
+    {
+      "role_terms": ["purchase", "post-purchase", "post purchase", "commerce", "checkout"],
+      "requirements": ["post-purchase"],
+      "evidence_terms": [
+        "paid-but-unbooked", "partial booking", "booking fulfilment",
+        "payment-status socket event", "status transitions", "order lifecycle"
+      ]
+    },
+    {
+      "role_terms": ["purchase", "post-purchase", "post purchase", "commerce", "checkout"],
+      "requirements": ["payment states"],
+      "evidence_terms": ["paid-but-unbooked", "partial booking", "payment-status socket event", "pending states"]
+    }
+  ]
+}

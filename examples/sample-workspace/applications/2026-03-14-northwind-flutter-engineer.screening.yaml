@@ -65,6 +65,7 @@ recommendation: >-
 decision:
   status: proceed
   decided_at: 2026-03-14
+  posting_sha256: cd46de570c42dec989dc871dc44390ac83da4625b9989f1a0b9e0e9673f4dc4c
   user_note: "Proceed. Ask about release ownership if it reaches an interview."
 
 not_assessed:

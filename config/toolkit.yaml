@@ -34,9 +34,8 @@ analysis:
   default_depth: quick
 
 evidence:
-  # Which records may support a public claim about you. Loosening either of
-  # these is how a knowledge base stops being defensible, so change them only
-  # if you understand what you are trading away. See docs/concepts.md.
+  # Workspace overrides can narrow these sets. Inferred evidence, team context,
+  # and unknown involvement cannot support a public personal claim.
   eligible_kinds: [repo-verified, user-stated]
   eligible_involvement: [led, implemented, contributed]
 
@@ -64,9 +63,7 @@ cover_letter:
 
 screening:
   # The pre-application gate in prompts/screen.md. It always stops for your
-  # decision, including on a clean report. Set to false only if you want
-  # postings to flow straight into a full tailoring pass.
-  enabled: true
+  # decision, including on a clean report. The gate is mandatory.
   policy: profile/screening-criteria.yaml # relative to the workspace
 
 git:
