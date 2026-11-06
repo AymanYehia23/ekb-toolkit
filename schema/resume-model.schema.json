@@ -295,6 +295,7 @@
         "requirements"
       ],
       "properties": {
+        "requirement_map_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
         "requirements": {
           "type": "array",
           "items": {
@@ -320,6 +321,32 @@
         },
         "opportunities": {
           "$ref": "#/$defs/stringList"
+        }
+      }
+    },
+    "claim_reviews": {
+      "type": "object",
+      "description": "Private editorial review by visible item path. Required for publication. Obtain current basis hashes from validation, then review and document each clause against its cited evidence.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["basis_sha256", "clauses"],
+        "properties": {
+          "basis_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "clauses": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["wording", "refs", "basis"],
+              "properties": {
+                "wording": {"type": "string", "minLength": 1},
+                "refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+                "basis": {"type": "string", "minLength": 1}
+              }
+            }
+          }
         }
       }
     },
@@ -696,6 +723,7 @@
         "evidence_refs"
       ],
       "properties": {
+        "requirement_id": {"type": "string", "pattern": "^req-[a-f0-9]{16}$"},
         "term": {
           "type": "string",
           "minLength": 1
@@ -720,7 +748,8 @@
           "enum": [
             "matched",
             "supported_not_selected",
-            "unsupported"
+            "unsupported",
+            "not_emphasized"
           ]
         },
         "evidence_refs": {

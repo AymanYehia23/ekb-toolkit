@@ -14,6 +14,7 @@ contact:
     value: engineer@example.test
     label: Email
     url: mailto:engineer@example.test
+    link_status: confirmed
     kind: user-stated
   - id: profile-contact-003
     type: location
@@ -28,6 +29,7 @@ links:
     value: example.test/casey
     label: Portfolio
     url: https://example.test/casey
+    link_status: confirmed
     kind: user-stated
 organization_links:
   - organization: Example Systems

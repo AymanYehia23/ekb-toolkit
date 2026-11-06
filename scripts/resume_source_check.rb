@@ -5,6 +5,9 @@ require "json"
 require "optparse"
 require "set"
 require "yaml"
+require_relative "resume_claim_review"
+require_relative "resume_capabilities"
+require_relative "resume_requirements"
 
 # `Enumerable#filter_map` was added in Ruby 2.7. Keep the checker usable with
 # the Ruby 2.6 runtime still bundled with some supported macOS releases.
@@ -24,11 +27,14 @@ end
 options = {}
 OptionParser.new do |parser|
   parser.banner = "usage: resume_source_check.rb --model FILE --profile FILE --projects DIR"
+  parser.on("--require-claim-reviews") { options[:require_claim_reviews] = true }
+  parser.on("--editorial-packet") { options[:editorial_packet] = true }
   parser.on("--model FILE") { |value| options[:model] = value }
   parser.on("--profile FILE") { |value| options[:profile] = value }
   parser.on("--projects DIR") { |value| options[:projects] = value }
   parser.on("--ranking FILE") { |value| options[:ranking] = value }
   parser.on("--index FILE") { |value| options[:index] = value }
+  parser.on("--decision-map FILE") { |value| options[:decision_map] = value }
   parser.on("--shortlist FILE") { |value| options[:shortlist] = value }
   parser.on("--rubric FILE") { |value| options[:rubric] = value }
   parser.on("--policy FILE") { |value| options[:policy] = value }
@@ -52,6 +58,36 @@ def load_yaml(path)
   YAML.safe_load(read_utf8(path), permitted_classes: [Date], aliases: false) || {}
 rescue Psych::Exception => e
   raise "cannot parse YAML #{path}: #{e.message}"
+end
+
+# Explicit project paths select the workspace for both direct Ruby and Python callers.
+def evidence_policy(workspace)
+  settings = {}
+  [File.expand_path("../config/toolkit.yaml", __dir__), File.join(workspace, "config", "toolkit.yaml")].each do |path|
+    next unless File.file?(path)
+    config = load_yaml(path)
+    unless config.is_a?(Hash) && config.fetch("evidence", {}).is_a?(Hash)
+      raise "#{path}: evidence policy must be a mapping"
+    end
+    settings.merge!(config.fetch("evidence", {}))
+  end
+
+  {
+    "eligible_kinds" => %w[repo-verified user-stated],
+    "eligible_involvement" => %w[led implemented contributed]
+  }.each do |key, allowed|
+    values = settings[key]
+    unless values.is_a?(Array) && (values - allowed).empty?
+      raise "evidence.#{key} must be a list drawn from #{allowed.sort.inspect}"
+    end
+  end
+  settings
+end
+
+def eligible_source?(source, policy)
+  policy["eligible_kinds"].include?(source["kind"]) &&
+    (source["origin"] != "project" ||
+      (source["resume_eligible"] != false && policy["eligible_involvement"].include?(source["involvement"])))
 end
 
 def normalize_involvement(record)
@@ -121,11 +157,18 @@ def collect_profile_sources(value, sources, errors, path = "profile")
   when Hash
     if value["id"].is_a?(String) && value["id"].start_with?("profile-")
       id = value["id"]
+      if id.start_with?("profile-capability-")
+        errors << "#{id} must be declared in profile.capabilities"
+        return
+      end
       if sources.key?(id)
         errors << "duplicate source ID #{id} at #{path}"
       else
         sources[id] = {
           "origin" => "profile",
+          "link_status" => value["link_status"],
+          "record_path" => path,
+          "record_revision" => claim_digest(value),
           "kind" => value["kind"],
           "involvement" => nil,
           "profile_type" => value["type"],
@@ -137,7 +180,10 @@ def collect_profile_sources(value, sources, errors, path = "profile")
         }
       end
     end
-    value.each { |key, child| collect_profile_sources(child, sources, errors, "#{path}.#{key}") }
+    value.each do |key, child|
+      next if path == "profile" && key == "capabilities"
+      collect_profile_sources(child, sources, errors, "#{path}.#{key}")
+    end
   when Array
     value.each_with_index { |child, index| collect_profile_sources(child, sources, errors, "#{path}[#{index}]") }
   end
@@ -152,7 +198,7 @@ end
 # cannot be enforced, so the status field is what this check reads.
 
 def normalize_url(value)
-  value.to_s.strip.downcase.sub(%r{/\z}, "")
+  value.to_s.strip
 end
 
 def collect_link_registry(profile)
@@ -167,25 +213,25 @@ def collect_link_registry(profile)
 
   Array(profile["contact"]).each do |entry|
     next unless entry.is_a?(Hash)
-    register.call(entry["url"], entry["id"], "confirmed")
+    register.call(entry["url"], entry["id"], entry["link_status"])
   end
   Array(profile["links"]).each do |entry|
     next unless entry.is_a?(Hash)
-    register.call(entry["url"], entry["id"], "confirmed")
+    register.call(entry["url"], entry["id"], entry["link_status"])
   end
   Array(profile["certifications"]).each do |entry|
     next unless entry.is_a?(Hash)
-    register.call(entry["url"], entry["id"], "confirmed")
+    register.call(entry["url"], entry["id"], entry["link_status"])
   end
   Array(profile["organization_links"]).each do |entry|
     next unless entry.is_a?(Hash)
-    status = entry["link_status"] || "confirmed"
+    status = entry["link_status"]
     register.call(entry["url"], entry["organization"], status)
     registry["organizations"][entry["organization"].to_s] = {"url" => entry["url"], "status" => status}
   end
   Array(profile["project_links"]).each do |entry|
     next unless entry.is_a?(Hash)
-    status = entry["link_status"] || "confirmed"
+    status = entry["link_status"]
     slots = %w[play_store app_store repo docs portfolio].filter_map do |slot|
       entry[slot] && [slot, entry[slot]]
     end
@@ -194,10 +240,10 @@ def collect_link_registry(profile)
   end
   Array(profile["education"]).each do |entry|
     next unless entry.is_a?(Hash)
-    register.call(entry["url"], entry["id"], "confirmed")
+    register.call(entry["url"], entry["id"], entry["link_status"])
     graduation = entry["graduation_project"]
     next unless graduation.is_a?(Hash)
-    %w[repo url docs].each { |slot| register.call(graduation[slot], graduation["id"], "confirmed") }
+    %w[repo url docs].each { |slot| register.call(graduation[slot], graduation["id"], graduation["link_status"]) }
   end
   registry
 end
@@ -273,7 +319,20 @@ def check_header_link_labels(visible_items, sources, model, profile, errors)
       next
     end
 
-    if require_links && source && source["origin"] == "profile" &&
+    if source && source["profile_type"] == "email" && item["url"].to_s.empty?
+      if item["text"] != source["profile_value"]
+        errors << "#{item['path']}.text must show the literal confirmed email when unlinked"
+      end
+      next if source["link_status"] != "confirmed" || !require_links
+    end
+
+    if require_links && item["path"].start_with?("resume.basics.links[") &&
+       item["url"].to_s.empty? && source && source["link_status"] != "confirmed"
+      errors << "#{item['path']} must link to an explicitly confirmed profile URL or be omitted"
+      next
+    end
+
+    if require_links && source && source["origin"] == "profile" && source["link_status"] == "confirmed" &&
        !source["profile_url"].to_s.strip.empty? && item["url"].to_s.strip.empty?
       label = source["profile_label"].to_s.strip
       errors << "#{item['path']} omits the confirmed profile hyperlink; use label " \
@@ -366,8 +425,28 @@ def check_professional_title(model, profile, errors)
   unless refs == [confirmed["id"]]
     errors << "resume.basics.title must cite profile.professional_title #{confirmed['id']}"
   end
-  unless title["text"].to_s.strip == confirmed["value"].strip
-    errors << "resume.basics.title must exactly match profile.professional_title"
+  canonical = confirmed["value"].strip
+  accepted = [canonical]
+  if model.dig("target", "mode") == "job-targeted"
+    phrasings = confirmed.fetch("job_targeted_phrasings", [])
+    if phrasings.is_a?(Array) && phrasings.all? { |value| value.is_a?(String) && !value.strip.empty? }
+      accepted.concat(phrasings.map(&:strip))
+    else
+      errors << "profile.professional_title.job_targeted_phrasings must be a list of non-empty confirmed strings"
+    end
+
+    # A tailored header does not replace the professional identity in the summary.
+    lead = model.dig("target", "summary_lead").to_s.strip
+    unless lead.match?(/\A#{Regexp.escape(canonical)}(?=\z|\s|[,;:|])/i)
+      errors << "target.summary_lead must begin with the confirmed profile.professional_title (#{canonical.inspect})"
+    end
+  end
+  unless accepted.include?(title["text"].to_s.strip)
+    errors << if model.dig("target", "mode") == "job-targeted"
+      "resume.basics.title must exactly match profile.professional_title or a confirmed job_targeted_phrasing"
+    else
+      "resume.basics.title must exactly match profile.professional_title"
+    end
   end
 end
 
@@ -862,7 +941,17 @@ def word_number_tokens(value)
 end
 
 def alignment_term_present?(text, term)
-  text.match?(/(?<![[:alnum:]])#{Regexp.escape(term)}(?![[:alnum:]])/i)
+  text.match?(/(?<![[:alnum:]_+#])#{Regexp.escape(term)}(?![[:alnum:]_+#])/i)
+end
+
+def bridge_phrase_present?(text, phrase)
+  # Evidence phrases and public prose can use equivalent word/digit quantities.
+  words = WORD_NUMBERS.join("|")
+  pattern = /(?<![[:alnum:]])(?:#{words})(?:[\s-]+(?:#{words}))*(?![[:alnum:]])/i
+  normalized = [text, phrase].map do |value|
+    value.gsub(pattern) { |number| parse_word_number(number).to_s }
+  end
+  alignment_term_present?(*normalized)
 end
 
 # --- Coverage strength -----------------------------------------------------
@@ -941,35 +1030,45 @@ ALIAS_STOPWORDS = %w[the and for with app apps code data new use using team work
 
 def usable_alias?(value)
   text = value.to_s.strip.downcase
-  return false if text.length < 3
+  return false if text.length < 3 && !%w[c r go c#].include?(text)
   return false if text.match?(/\A[\d\s+.]+\z/)
   !ALIAS_STOPWORDS.include?(text)
 end
 
-def index_candidates(index, aliases)
-  return [] if index.nil?
-  terms = aliases.select { |value| usable_alias?(value) }.map { |value| value.to_s.downcase.strip }
-  return [] if terms.empty?
+RETRIEVAL_RULES = JSON.parse(read_utf8(File.expand_path("../config/retrieval.json", __dir__)))
 
+def index_candidates(index, aliases, requirement, role)
+  return [] if index.nil?
+  exact = [*aliases, requirement].select { |value| usable_alias?(value) }.map { |value| value.to_s.downcase.strip }.uniq
+  return [] if exact.empty?
+
+  terms = exact | RETRIEVAL_RULES["equivalent_terms"].select { |group| !(group & exact).empty? }.flatten
+  focus = RETRIEVAL_RULES["role_focus"].select do |entry|
+    entry["requirements"].include?(requirement.downcase) &&
+      entry["role_terms"].any? { |term| alignment_term_present?(role, term) }
+  end.flat_map { |entry| entry["evidence_terms"] }
   capabilities = index["capabilities"] || {}
-  matched_ids = {}
-  terms.each do |term|
-    Array(capabilities[term]).each { |id| matched_ids[id] = true }
-  end
+  bridges = Hash.new { |hash, key| hash[key] = [] }
   Array(index["evidence_bridges"]).each do |bridge|
     next unless bridge.is_a?(Hash)
     bridge_text = Array(bridge["aliases"]).join(" ")
-    next unless terms.any? { |term| alignment_term_present?(bridge_text, term) }
-    Array(bridge["records"]).each { |id| matched_ids[id] = true }
+    matches = terms.select { |term| alignment_term_present?(bridge_text, term) }
+    Array(bridge["records"]).each { |id| bridges[id].concat(matches) }
   end
 
-  Array(index["records"]).select do |record|
-    next false unless record.is_a?(Hash)
-    next false unless record["eligible"]
-    next true if matched_ids[record["id"]]
-    claim = record["claim"].to_s
-    terms.any? { |term| alignment_term_present?(claim, term) }
-  end
+  Array(index["records"]).filter_map do |record|
+    next unless record.is_a?(Hash) && record["eligible"]
+    claim = (record["statement"] || record["claim"]).to_s
+    matches = (terms | focus).select do |term|
+      Array(record["tags"]).include?(term) ||
+        Array(capabilities[term]).include?(record["id"]) || alignment_term_present?(claim, term)
+    end
+    combined = matches | bridges[record["id"]]
+    next if combined.empty?
+    specific = combined - RETRIEVAL_RULES["generic_terms"]
+    tier = !(matches & focus).empty? ? 3 : (specific.empty? ? 1 : 2)
+    record.merge("match_tier" => tier)
+  end.sort_by { |record| [-record["match_tier"], -record["strength"].to_f, record["project_rank"] || 999] }
 end
 
 def validate_bridge_presentation(model, index, sources, visible_items, errors)
@@ -1005,7 +1104,7 @@ def validate_bridge_presentation(model, index, sources, visible_items, errors)
         )
         refs = Array(item["refs"]).map(&:to_s)
         refs.include?(profile_ref) && refs.include?(record_ref) &&
-          phrases.all? { |phrase| alignment_term_present?(item["text"].to_s, phrase) }
+          phrases.all? { |phrase| bridge_phrase_present?(item["text"].to_s, phrase) }
       end
       next if presented
 
@@ -1017,7 +1116,7 @@ def validate_bridge_presentation(model, index, sources, visible_items, errors)
   end
 end
 
-def collect_alignment_requirements(model, sources, visible_items, index, errors, warnings)
+def collect_alignment_requirements(model, sources, visible_items, index, errors, warnings, evidence_policy)
   return [] unless [1, 2].include?(model["schema_version"])
   alignment = model["alignment"]
   return [] unless alignment.is_a?(Hash) && alignment["requirements"].is_a?(Array)
@@ -1041,11 +1140,14 @@ def collect_alignment_requirements(model, sources, visible_items, index, errors,
         errors << "#{path} references missing source #{reference}"
         next
       end
-      unless %w[repo-verified user-stated].include?(source["kind"])
+      unless evidence_policy["eligible_kinds"].include?(source["kind"])
         errors << "#{path} uses ineligible kind #{source['kind'].inspect} from #{reference}"
       end
-      if source["origin"] == "project" && !%w[led implemented contributed].include?(source["involvement"])
+      if source["origin"] == "project" && !evidence_policy["eligible_involvement"].include?(source["involvement"])
         errors << "#{path} uses ineligible involvement #{source['involvement'].inspect} from #{reference}"
+      end
+      if source["origin"] == "capability" && !source["skill_heading"]
+        errors << "#{path} references a private-only capability #{reference}"
       end
       if source["origin"] == "project" && source["resume_eligible"] == false
         errors << "#{path} uses resume-ineligible source #{reference}"
@@ -1065,11 +1167,12 @@ def collect_alignment_requirements(model, sources, visible_items, index, errors,
     required = requirement["priority"].to_s == "required"
     reason = requirement["selection_reason"].to_s.strip
 
-    candidates = index_candidates(index, aliases)
-    unused = candidates.reject { |record| prose_refs.include?(record["id"]) }
-      .sort_by { |record| [-record["strength"].to_f, record["project_rank"] || 999] }
-    strongest_used = candidates.select { |record| prose_refs.include?(record["id"]) }
-      .map { |record| record["strength"].to_f }.max
+    candidates = index_candidates(index, aliases, term, model.dig("target", "role").to_s)
+    # Generic framework mentions are useful discovery fallback. They cannot
+    # create coverage pressure for a capability when specific evidence exists.
+    comparable = candidates.take_while { |record| record["match_tier"] == candidates.first["match_tier"] }
+    unused = comparable.reject { |record| prose_refs.include?(record["id"]) }
+    strongest_used = comparable.find { |record| prose_refs.include?(record["id"]) }&.fetch("strength")&.to_f
 
     # A term the reader actually meets in Summary, Experience, or Selected
     # Projects is on the page, even when the citation behind it is a profile
@@ -1231,6 +1334,14 @@ def validate_page_target(model, profile, errors)
             "profile.preferences.page_target #{preferred.inspect}"
 end
 
+begin
+  active_evidence_policy = evidence_policy(File.dirname(File.expand_path(options[:projects])))
+rescue RuntimeError => e
+  warn e.message
+  exit 2
+end
+
+decision_map = options[:decision_map] && JSON.parse(read_utf8(options[:decision_map]))
 errors = []
 warnings = []
 sources = {}
@@ -1250,6 +1361,7 @@ end
 
 profile = load_yaml(options[:profile])
 collect_profile_sources(profile, sources, errors)
+collect_capability_sources(profile, sources, errors)
 warnings.concat(timeline_warnings(profile))
 validate_page_target(model, profile, errors)
 link_registry = collect_link_registry(profile)
@@ -1284,7 +1396,7 @@ if index_path && File.file?(index_path)
                 "(#{missing.first(5).join(', ')}#{missing.length > 5 ? ', ...' : ''}). " \
                 "Run ekb index"
   end
-else
+elsif !decision_map
   warnings << "no evidence index loaded: the understatement gate is inactive. Run ekb index"
 end
 
@@ -1307,10 +1419,16 @@ project_files.each do |path|
     end
     sources[id] = {
       "origin" => "project",
+      "record_path" => "projects/#{File.basename(path)}",
+      "evidence" => record["evidence"],
+      "limitations" => record["limitations"],
+      "record_revision" => claim_digest([project_key, project["repo"], record]),
       "project" => project_key,
       "kind" => record["kind"],
       "involvement" => normalize_involvement(record),
       "resume_eligible" => record.fetch("resume_eligible", true) != false,
+      "statement" => record["statement"],
+      "ownership_content" => [record["statement"], record["interview_notes"]].compact.join(" "),
       "numeric_content" => JSON.generate({
         "statement" => record["statement"],
         "reasoning" => record["reasoning"],
@@ -1322,13 +1440,57 @@ project_files.each do |path|
   end
 end
 
-collect_visible_items(model, visible_items, errors)
+if evidence_index
+  evidence_index["evidence_bridges"] = [] unless active_evidence_policy["eligible_kinds"].include?("user-stated")
+  Array(evidence_index["records"]).each do |row|
+    next unless row.is_a?(Hash)
+    source = sources[row["id"]]
+    row["eligible"] = source && eligible_source?(source, active_evidence_policy)
+    row["statement"] = source["statement"].to_s.split.join(" ") if source
+  end
+end
+
+collect_visible_items(model.reject { |key, _| key == "claim_reviews" }, visible_items, errors)
+# Skill-group labels are editable public text, even though the schema stores
+# the citations on the items below each label.
+Array(model["skills"]).each_with_index do |group, index|
+  next unless group.is_a?(Hash) && group["name"].is_a?(String)
+  refs = Array(group["items"]).flat_map do |entry|
+    entry.is_a?(Hash) ? Array(entry["source_refs"] || entry["source_ref"]) : []
+  end.uniq
+  next if refs.empty?
+  visible_items << {"path" => "resume.skills[#{index}].name", "text" => group["name"],
+                    "refs" => refs, "heading" => true}
+end
+claim_reviews = model.fetch("claim_reviews", {})
+unless claim_reviews.is_a?(Hash)
+  errors << "claim_reviews must map visible item paths to editorial reviews"
+  claim_reviews = {}
+end
+unexpected_claim_reviews = claim_reviews.keys - visible_items.map { |item| item["path"] }
+errors << "claim_reviews contains unknown visible item paths" unless unexpected_claim_reviews.empty?
+policy_file = options[:policy] || File.expand_path("../config/resume-policy.json", __dir__)
+claim_rules = [
+  active_evidence_policy, Digest::SHA256.file(policy_file).hexdigest,
+  *%w[resume_source_check.rb resume_claim_review.rb resume_render.py bullet_quality.py].map do |name|
+    Digest::SHA256.file(File.join(__dir__, name)).hexdigest
+  end,
+  Digest::SHA256.file(File.expand_path("../schema/resume-model.schema.json", __dir__)).hexdigest,
+  Digest::SHA256.file(File.expand_path("../config/retrieval.json", __dir__)).hexdigest,
+  Digest::SHA256.file(CAPABILITY_POLICY_PATH).hexdigest,
+  Digest::SHA256.file(File.join(__dir__, "resume_capabilities.rb")).hexdigest,
+  Digest::SHA256.file(File.join(__dir__, "ekb_capabilities.py")).hexdigest,
+  Digest::SHA256.file(File.join(__dir__, "resume_requirements.rb")).hexdigest,
+  decision_map && decision_map["revision_sha256"]
+]
+claim_manifest = {}
 errors << "resume model contains no sourced visible items" if visible_items.empty?
 
 internal_label = /\b(repo-verified|user-stated|inferred|source_ref|provisional inference)\b/i
 expected_experience_years = confirmed_experience_years(profile, model)
 experience_years_pattern = /\b(\d+)\+\s+years?\s+of\s+experience\b/i
 
+semantic_review_flags = []
 composed_items = 0
 
 visible_items.each do |item|
@@ -1348,14 +1510,16 @@ visible_items.each do |item|
   end
   next if resolved.empty?
 
+  validate_capability_item(item, resolved, model, errors, sources, decision_map)
+
   # Every source in a composition must clear the same bar on its own. There is
   # no averaging: composing two weak sources does not produce a strong claim.
   resolved.each do |(ref, source)|
-    unless %w[repo-verified user-stated].include?(source["kind"])
+    unless active_evidence_policy["eligible_kinds"].include?(source["kind"])
       errors << "#{item['path']} uses ineligible kind #{source['kind'].inspect} from #{ref}"
     end
     next unless source["origin"] == "project"
-    unless %w[led implemented contributed].include?(source["involvement"])
+    unless active_evidence_policy["eligible_involvement"].include?(source["involvement"])
       errors << "#{item['path']} uses ineligible involvement #{source['involvement'].inspect} from #{ref}"
     end
     if source["resume_eligible"] == false
@@ -1363,28 +1527,28 @@ visible_items.each do |item|
     end
   end
 
-  # The strictest involvement governs the wording. If any cited record is only
-  # `contributed`, the composed sentence may not claim leadership or sole
-  # authorship, even when a co-cited record would allow it on its own.
-  weakest = resolved.map { |(_ref, source)| source["involvement"] }.compact
-  if weakest.include?("contributed") &&
-     text.match?(/\b(led\s+(?!to\b)|owned end[- ]to[- ]end|single-handedly|solely|independently|solo developer|sole developer|built|developed|implemented|designed)\b/i)
-    contributed = resolved.select { |(_ref, source)| source["involvement"] == "contributed" }
-                          .map { |(ref, _source)| ref }
-    errors << "#{item['path']} overstates contributed source #{contributed.join(', ')}"
+  fingerprint = claim_review_basis(item, sources, claim_rules, model)
+  clauses = checked_claim_clauses(claim_reviews[item["path"]], item, fingerprint)
+  claim_manifest[item["path"]] = {
+    "wording" => text, "refs" => refs, "basis_sha256" => fingerprint,
+    "status" => clauses ? "current" : (claim_reviews.key?(item["path"]) ? "stale_or_invalid" : "missing"),
+    "clauses" => options[:editorial_packet] ? clauses : nil
+  }
+  if options[:require_claim_reviews] && !clauses
+    errors << "#{item['path']} requires a fresh claim review (#{claim_manifest[item['path']]['status']})"
   end
-  if text.match?(/\bled\s+(?!to\b)/i) && weakest.any? { |level| level != "led" }
-    errors << "#{item['path']} uses leadership wording without exclusively led sources"
+  scoped = clauses || [{"wording" => text, "refs" => refs}]
+  participation_boundary_errors(text, clauses, item["path"], errors) if clauses
+  outcome_notes = []
+  scoped.each do |clause|
+    clause_sources = resolved.select { |ref, _| clause["refs"].include?(ref) }
+    participation_errors(clause["wording"], clause_sources, item["path"], errors)
+    outcome_notes.concat(outcome_findings(clause["wording"], clause_sources))
   end
-  sole_wording = text.match?(/\b(independently|single-handedly|solely|solo developer|sole developer)\b/i)
-  if sole_wording
-    explicit_support = resolved.any? do |(_ref, source)|
-      source["numeric_content"].to_s.match?(
-        /\b(independently|single-handedly|solely|solo developer|sole developer|only developer)\b/i
-      )
-    end
-    errors << "#{item['path']} uses independent-ownership wording without explicit source support" \
-      unless explicit_support
+  outcome_notes.concat(outcome_findings(text, resolved))
+  outcome_notes.uniq.each do |reason|
+    semantic_review_flags << {"path" => item["path"], "refs" => refs, "reason" => reason}
+    errors << "#{item['path']}: #{reason}" if options[:require_claim_reviews]
   end
 
   experience_match = item["path"].match?(/\Aresume\.summary\[\d+\]\z/) &&
@@ -1397,7 +1561,7 @@ visible_items.each do |item|
   # Profile-backed text must be supported by the union of the cited entries, so
   # a composed line may draw wording from several confirmed facts at once.
   profile_sources = resolved.select { |(_ref, source)| source["origin"] == "profile" }
-  if profile_sources.length == resolved.length
+  if !item["heading"] && profile_sources.length == resolved.length
     union = profile_sources.flat_map { |(_ref, source)| Array(source["profile_values"]) }
     unless profile_supports_text?(text, union)
       errors << "#{item['path']} is not supported by confirmed profile values in " \
@@ -1430,7 +1594,11 @@ visible_items.each do |item|
   end
 end
 
-coverage_report = collect_alignment_requirements(model, sources, visible_items, evidence_index, errors, warnings)
+coverage_report = if decision_map
+  reviewed_coverage(decision_map, sources, visible_items, active_evidence_policy, profile, model, errors)
+else
+  collect_alignment_requirements(model, sources, visible_items, evidence_index, errors, warnings, active_evidence_policy)
+end
 
 # The shortlist lives beside the frozen application unless pointed elsewhere.
 shortlist = nil
@@ -1442,7 +1610,7 @@ if shortlist_path.nil? && model["application_id"]
   )
   shortlist_path = default_shortlist if File.file?(default_shortlist)
 end
-if shortlist_path && File.file?(shortlist_path)
+if !decision_map && shortlist_path && File.file?(shortlist_path)
   shortlist = load_yaml(shortlist_path)
   prose_refs_for_shortlist = visible_items
     .select { |item| prose_item?(item["path"]) }
@@ -1450,7 +1618,7 @@ if shortlist_path && File.file?(shortlist_path)
     .uniq
   visible_refs_for_shortlist = visible_items.flat_map { |item| Array(item["refs"]) }.uniq
   shortlist_findings(shortlist, prose_refs_for_shortlist, visible_refs_for_shortlist, errors, warnings)
-elsif model.dig("target", "mode") == "job-targeted"
+elsif !decision_map && model.dig("target", "mode") == "job-targeted"
   warnings << "no evidence shortlist for this application: selection is unrecorded. " \
               "Run ekb shortlist #{model['application_id']}"
 end
@@ -1569,9 +1737,7 @@ end
 eligible_projects = sources.values
   .select do |source|
     source["origin"] == "project" &&
-      source["resume_eligible"] != false &&
-      %w[repo-verified user-stated].include?(source["kind"]) &&
-      %w[led implemented contributed].include?(source["involvement"])
+      eligible_source?(source, active_evidence_policy)
   end
   .map { |source| source["project"] }
   .uniq
@@ -1644,11 +1810,12 @@ if rubric_path && File.file?(rubric_path)
     warnings << "cannot parse selection rubric #{rubric_path}: #{e.message}"
   end
 end
-score = selection_score(rubric, coverage_report, shortlist)
-signals = external_signals(model, profile, coverage_report)
+score = decision_map ? nil : selection_score(rubric, coverage_report, shortlist)
+signals = decision_map ? nil : external_signals(model, profile, coverage_report)
 
 report = {
   "valid" => errors.empty?,
+  "requirement_map" => decision_map,
   "checks" => {
     "project_files" => project_files.length,
     "available_sources" => sources.length,
@@ -1660,6 +1827,12 @@ report = {
   },
   "errors" => errors,
   "warnings" => warnings,
+  "semantic_review" => {
+    "status" => semantic_review_flags.empty? && claim_manifest.values.all? { |item| item["status"] == "current" } ?
+      "current" : "requires_editorial_review",
+    "flags" => semantic_review_flags,
+    "claims" => claim_manifest
+  },
   "coverage" => {
     "counts" => coverage_counts,
     "requirements" => coverage_report
@@ -1678,6 +1851,43 @@ report = {
     "named_labels" => selected_project_labels
   }
 }
+
+if options[:editorial_packet]
+  report["editorial_packet"] = {
+    "application_id" => model["application_id"],
+    "target" => model["target"],
+    "requirement_coverage" => coverage_report,
+    "requirement_map" => decision_map,
+    "requirement_mapping_snapshot" => Array(shortlist && shortlist["requirements"]).filter_map do |entry|
+      entry.slice("term", "priority", "category", "mapping", "selected", "reason") if
+        entry.is_a?(Hash) && entry["mapping"].is_a?(Hash)
+    end,
+    "capability_interview" => visible_items.filter_map do |item|
+      next if item["heading"]
+      ref = item["source_ref"]
+      source = sources[ref]
+      next unless source && source["origin"] == "capability"
+      capability = source["capability"]
+      {
+        "path" => item["path"],
+        "wording" => item["text"],
+        "ref" => ref,
+        "question" => "What have you used #{capability['name']} for, and what could you explain or demonstrate?",
+        "answer_basis" => capability.slice(
+          "basis", "context", "proficiency", "examples", "limitations", "interview_readiness"
+        )
+      }
+    end,
+    "sources" => (report["selected_sources"] | Array(decision_map && decision_map["requirements"]).flat_map { |row| row["refs"] }).each_with_object({}) do |ref, packet|
+      source = sources[ref]
+      packet[ref] = source ? source.slice(
+        "record_path", "record_revision", "kind", "involvement", "resume_eligible",
+        "statement", "evidence", "limitations", "profile_values", "capability",
+        "origin", "profile_type", "skill_heading"
+      ) : nil
+    end
+  }
+end
 
 puts JSON.pretty_generate(report)
 exit(errors.empty? ? 0 : 1)

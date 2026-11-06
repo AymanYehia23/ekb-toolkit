@@ -28,15 +28,25 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from pathlib import Path
 import subprocess
 import sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from ekb_screening import APPLICATION_ID_PATTERN, read_record
+import re
 
 
 def run_check(model: str, profile: str, projects: str, ranking: str | None) -> dict:
-    checker = os.path.join(os.path.dirname(os.path.abspath(__file__)), "resume_source_check.rb")
-    command = ["ruby", checker, "--model", model, "--profile", profile, "--projects", projects]
+    script = Path(__file__).resolve().parent
+    application_id = json.loads(Path(model).read_text(encoding="utf-8")).get("application_id")
+    root = Path(projects).resolve().parent
+    application = root / "applications" / f"{application_id}.yaml"
+    if isinstance(application_id, str) and re.fullmatch(APPLICATION_ID_PATTERN, application_id) and (
+            application.is_file() and read_record(application).get("schema_version") == 2):
+        command = [sys.executable, str(script / "resume_render.py"), "validate"]
+    else:
+        command = ["ruby", str(script / "resume_source_check.rb")]
+    command += ["--model", model, "--profile", profile, "--projects", projects]
     if ranking and os.path.isfile(ranking):
         command += ["--ranking", ranking]
     done = subprocess.run(command, capture_output=True, text=True)
@@ -51,6 +61,7 @@ def summarize(report: dict) -> dict:
     dims = score.get("dimensions") or {}
     return {
         "valid": report.get("valid"),
+        "map_revision": (report.get("requirement_map") or {}).get("revision_sha256"),
         "score": score.get("score"),
         "demonstrated": counts.get("demonstrated", 0),
         "stated": counts.get("stated", 0),
@@ -111,6 +122,16 @@ def main() -> int:
             sys.exit(f"no such model: {path}")
         rows.append((name, summarize(run_check(path, args.profile, args.projects, args.ranking))))
 
+    revisions = {row["map_revision"] for _, row in rows}
+    if any(revisions):
+        if len(revisions) != 1:
+            sys.exit("comparison requires the same reviewed requirement map revision")
+        print(json.dumps({
+            "requirement_map_sha256": next(iter(revisions)), "editorial_choice_required": True,
+            "drafts": {name: {"valid": row["valid"], "errors": row["errors"], "warnings": row["warnings"]}
+                       for name, row in rows},
+        }, indent=2))
+        return 0 if all(row["valid"] for _, row in rows) else 1
     best, runner = verdict(rows)
 
     if args.json:

@@ -7,8 +7,10 @@ require "minitest/autorun"
 require "open3"
 require "tmpdir"
 require "yaml"
+require_relative "resume_test_support"
 
 class ResumeModuleTest < Minitest::Test
+  include ResumeTestSupport
   ROOT = File.expand_path("..", __dir__)
   FIXTURES = File.join(__dir__, "fixtures")
   TOOL = File.join(ROOT, "scripts", "resume_render.py")
@@ -17,9 +19,59 @@ class ResumeModuleTest < Minitest::Test
   POLICY = File.join(ROOT, "config", "resume-policy.json")
   RANKING = File.join(FIXTURES, "project-ranking.yaml")
 
-  def run_tool(*arguments)
+  def raw_tool(*arguments)
     env = {"EKB_PYTHON" => ENV.fetch("EKB_PYTHON", "python3")}
     Open3.capture3(env, ENV.fetch("EKB_PYTHON", "python3"), TOOL, *arguments)
+  end
+
+  def option(arguments, name)
+    index = arguments.rindex(name)
+    arguments[index + 1] if index
+  end
+
+  def run_tool(*arguments)
+    return raw_tool(*arguments) unless arguments.first == "render"
+
+    # Layout and format tests use a disposable, explicitly screened fictional
+    # workspace. Attach assessed fixture clauses only in this test harness.
+    Dir.mktmpdir("ekb-render-fixture-") do |workspace|
+      projects = File.join(workspace, "projects")
+      profile = File.join(workspace, "profile.yaml")
+      FileUtils.cp_r(option(arguments, "--projects"), projects)
+      FileUtils.cp(option(arguments, "--profile"), profile)
+      model = JSON.parse(File.read(option(arguments, "--model")))
+      target = model.fetch("target")
+      freeze_fixture(workspace, {
+        "id" => model.fetch("application_id"), "company" => target["company"],
+        "role" => target["role"],
+        "job_description" => target["mode"] == "master" ? nil : "Fictional test opportunity",
+        "targeting" => {"resume_mode" => target["mode"]}
+      })
+      path = File.join(workspace, "draft.json")
+      write_model(path, model)
+      replaced = ["--model", path, "--profile", profile, "--projects", projects]
+      policy = option(arguments, "--policy")
+      diagnostic = policy ? ["--policy", policy] : []
+      stdout, _err, status = raw_tool("validate", *replaced, *diagnostic)
+      if status.success?
+        claims = JSON.parse(stdout).dig("semantic_review", "claims")
+        model["claim_reviews"] = fixture_claim_reviews(claims)
+        write_model(path, model)
+      end
+      raw_tool(*arguments, *replaced, "--legacy-replay")
+    end
+  end
+
+  def fixture_claim_reviews(claims)
+    claims.transform_values do |claim|
+      {
+        "basis_sha256" => claim.fetch("basis_sha256"),
+        "clauses" => [{
+          "wording" => claim.fetch("wording"), "refs" => claim.fetch("refs"),
+          "basis" => "Fictional reviewed layout fixture with scoped support."
+        }]
+      }
+    end
   end
 
   def with_model
@@ -45,7 +97,7 @@ class ResumeModuleTest < Minitest::Test
     output = File.join(directory, "output")
     stdout, stderr, status = run_tool(
       "render", "--model", path, "--profile", PROFILE, "--projects", PROJECTS,
-      "--policy", POLICY, "--output-dir", output, *extra
+      "--policy", POLICY, "--output-dir", output, "--legacy-formats", *extra
     )
     [output, stdout, stderr, status]
   end
@@ -110,6 +162,68 @@ class ResumeModuleTest < Minitest::Test
       refute status.success?
       assert_includes JSON.parse(stdout)["errors"].join(" "),
                       "must cite profile.professional_title profile-title-001"
+    end
+  end
+
+  def test_job_targeted_header_accepts_a_confirmed_phrasing_without_rewriting_identity
+    with_model do |model, path, directory|
+      headline = "Ruby Developer | PostgreSQL"
+      profile = YAML.safe_load(File.read(PROFILE), permitted_classes: [Date])
+      profile["professional_title"]["job_targeted_phrasings"] = [headline]
+      profile_path = File.join(directory, "profile.yaml")
+      File.write(profile_path, YAML.dump(profile))
+      model["basics"]["title"]["text"] = headline
+      model["target"]["role"] = "Ruby Developer"
+      write_model(path, model)
+      output = File.join(directory, "output")
+
+      _stdout, stderr, status = run_tool(
+        "render", "--model", path, "--profile", profile_path, "--projects", PROJECTS,
+        "--policy", POLICY, "--output-dir", output, "--legacy-formats"
+      )
+      assert status.success?, stderr
+      assert_includes docx_runs(File.join(output, "resume.docx")), headline
+      assert_equal "Software Engineer", model["target"]["summary_lead"]
+      assert_equal "Software Engineer", model["experience"][0]["title"]["text"]
+    end
+  end
+
+  def test_unconfirmed_job_targeted_headline_is_rejected
+    with_model do |model, path, _directory|
+      model["basics"]["title"]["text"] = "Senior Software Engineer"
+      stdout, _stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "), "confirmed job_targeted_phrasing"
+    end
+  end
+
+  def test_master_header_cannot_use_a_job_targeted_phrasing
+    with_model do |model, path, directory|
+      headline = "Ruby Developer | PostgreSQL"
+      profile = YAML.safe_load(File.read(PROFILE), permitted_classes: [Date])
+      profile["professional_title"]["job_targeted_phrasings"] = [headline]
+      profile_path = File.join(directory, "profile.yaml")
+      File.write(profile_path, YAML.dump(profile))
+      model["basics"]["title"]["text"] = headline
+      model["target"]["mode"] = "master"
+      model["basics"]["mobility"] = {"text" => "Open to relocation.", "source_ref" => "profile-eligibility-003"}
+      write_model(path, model)
+      stdout, _stderr, status = run_tool("validate", "--model", path, "--profile", profile_path, "--projects", PROJECTS)
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "), "must exactly match profile.professional_title"
+    end
+  end
+
+  def test_malformed_job_targeted_phrasings_are_rejected
+    with_model do |model, path, directory|
+      profile = YAML.safe_load(File.read(PROFILE), permitted_classes: [Date])
+      profile["professional_title"]["job_targeted_phrasings"] = "Software Engineer"
+      profile_path = File.join(directory, "profile.yaml")
+      File.write(profile_path, YAML.dump(profile))
+      write_model(path, model)
+      stdout, _stderr, status = run_tool("validate", "--model", path, "--profile", profile_path, "--projects", PROJECTS)
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "), "must be a list of non-empty confirmed strings"
     end
   end
 
@@ -200,11 +314,11 @@ class ResumeModuleTest < Minitest::Test
   def test_rejects_a_vague_duty_opening
     with_model do |model, path, _directory|
       model["experience"][0]["bullets"][0]["text"] =
-        "Worked on a data import pipeline with Ruby and PostgreSQL."
+        "Responsible for a data import pipeline with Ruby and PostgreSQL."
       _stdout, stderr, status = validate(model, path)
       refute status.success?
       assert_includes stderr, "starts with vague duty wording"
-      assert_includes stderr, "worked on"
+      assert_includes stderr, "responsible for"
     end
   end
 
@@ -273,9 +387,9 @@ class ResumeModuleTest < Minitest::Test
       model["summary"][0]["text"] = model["summary"][0]["text"].sub(
         "Software Engineer", "Ruby Engineer"
       )
-      _stdout, stderr, status = validate(model, path)
+      stdout, _stderr, status = validate(model, path)
       refute status.success?
-      assert_includes stderr, "must begin with the confirmed basics.title"
+      assert_includes JSON.parse(stdout)["errors"].join(" "), "must begin with the confirmed profile.professional_title"
     end
   end
 
@@ -457,6 +571,149 @@ class ResumeModuleTest < Minitest::Test
     end
   end
 
+  def test_worked_on_is_allowed_for_a_scoped_collaborative_feature
+    with_model do |model, path, _directory|
+      model["experience"][0]["bullets"][0]["text"] =
+        "Worked on a team-built data import pipeline with Ruby and PostgreSQL."
+      stdout, stderr, status = validate(model, path)
+      assert status.success?, stderr
+      assert JSON.parse(stdout)["valid"]
+    end
+  end
+
+  def test_negative_or_inferred_ownership_context_cannot_support_independent_wording
+    with_model do |model, path, directory|
+      projects = File.join(directory, "projects")
+      FileUtils.cp_r(PROJECTS, projects)
+      source_path = File.join(projects, "stronger.yaml")
+      source = YAML.safe_load(File.read(source_path))
+      record = source["records"][0]
+      record["limitations"] = "No evidence of independently delivering this work is available."
+      record["inferred_context"] = "The developer likely implemented this independently."
+      model["experience"][0]["bullets"][0] = {
+        "text" => "Independently implemented a scheduling service with Ruby and PostgreSQL.",
+        "source_ref" => "stronger-001"
+      }
+      write_model(path, model)
+      ["", "Independent delivery is unconfirmed.",
+       "The user did not independently implement this service."].each do |notes|
+        record["interview_notes"] = notes
+        File.write(source_path, YAML.dump(source))
+        stdout, _stderr, status = run_tool("validate", "--model", path, "--profile", PROFILE, "--projects", projects)
+        refute status.success?
+        assert_includes JSON.parse(stdout)["errors"].join(" "), "independent-ownership wording without explicit source support"
+      end
+
+      record["interview_notes"] = "The user confirmed they independently implemented this service."
+      File.write(source_path, YAML.dump(source))
+      stdout, stderr, status = run_tool("validate", "--model", path, "--profile", PROFILE, "--projects", projects)
+      assert status.success?, stderr
+      assert JSON.parse(stdout)["valid"]
+
+      record["interview_notes"] = ""
+      record["statement"] = "Implemented the scheduling service solo with Ruby and PostgreSQL."
+      File.write(source_path, YAML.dump(source))
+      stdout, stderr, status = run_tool("validate", "--model", path, "--profile", PROFILE, "--projects", projects)
+      assert status.success?, stderr
+      assert JSON.parse(stdout)["valid"]
+    end
+  end
+
+  def test_unknown_participation_and_unconfirmed_alternatives_remain_private
+    with_model do |model, path, directory|
+      projects = File.join(directory, "projects")
+      FileUtils.cp_r(PROJECTS, projects)
+      source_path = File.join(projects, "stronger.yaml")
+      source = YAML.safe_load(File.read(source_path))
+      record = source["records"][0]
+      record["involvement"] = "unknown"
+      record["inferred_context"] = "It may have replaced a manual scheduling process."
+      File.write(source_path, YAML.dump(source))
+      original = File.binread(source_path)
+      model["experience"][0]["bullets"][0] = {
+        "text" => "Contributed to a scheduling service with Ruby and PostgreSQL.",
+        "source_ref" => "stronger-001"
+      }
+      write_model(path, model)
+      stdout, _stderr, status = run_tool("validate", "--model", path, "--profile", PROFILE, "--projects", projects)
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "), 'ineligible involvement "unknown"'
+      assert_equal original, File.binread(source_path)
+
+      record["involvement"] = "implemented"
+      record["kind"] = "inferred"
+      File.write(source_path, YAML.dump(source))
+      stdout, _stderr, status = run_tool("validate", "--model", path, "--profile", PROFILE, "--projects", projects)
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "), 'ineligible kind "inferred"'
+    end
+  end
+
+  def test_technical_leadership_does_not_imply_people_management
+    with_model do |model, path, directory|
+      projects = File.join(directory, "projects")
+      FileUtils.cp_r(PROJECTS, projects)
+      source = File.join(projects, "stronger.yaml")
+      File.write(source, File.read(source).sub("involvement: implemented", "involvement: led"))
+      model["experience"][0]["bullets"][0] = {
+        "text" => "Managed a team of engineers delivering a scheduling service with Ruby and PostgreSQL.",
+        "source_ref" => "stronger-001"
+      }
+      write_model(path, model)
+      stdout, _stderr, status = run_tool("validate", "--model", path, "--profile", PROFILE, "--projects", projects)
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "), "people-management wording without explicit source support"
+    end
+  end
+
+  def test_single_pdf_default_and_stable_replacement
+    with_model do |model, path, directory|
+      write_model(path, model)
+      output = File.join(directory, "output")
+      args = ["render", "--model", path, "--profile", PROFILE, "--projects", PROJECTS,
+              "--policy", POLICY, "--output-dir", output, "--pdf-name", "Existing CV.pdf"]
+      _stdout, stderr, status = run_tool(*args)
+      assert status.success?, stderr
+      assert_equal ["Existing CV.pdf", "editorial.json", "resume.json", "validation.json", "validation.md"], Dir.children(output).sort
+      generation = JSON.parse(File.read(File.join(output, "validation.json"))).fetch("generation")
+      args += ["--base-generation", generation]
+      pdf = File.join(output, "Existing CV.pdf")
+      old = File.binread(pdf)
+      model["experience"][0]["bullets"][0]["text"] = "Led an unsupported project."
+      write_model(path, model)
+      _stdout, _stderr, status = run_tool(*args)
+      refute status.success?
+      assert_equal old, File.binread(pdf)
+      model["experience"][0]["bullets"][0]["text"] =
+        "Contributed to a team-built data import pipeline with Ruby and PostgreSQL."
+      write_model(path, model)
+      _stdout, stderr, status = run_tool(*args)
+      assert status.success?, stderr
+      refute_equal old, File.binread(pdf)
+      assert_equal ["Existing CV.pdf"], Dir.children(output).grep(/\.pdf\z/)
+    end
+  end
+
+  def test_scoped_collaboration_survives_but_unsupported_causal_result_is_flagged
+    with_model do |model, path, _directory|
+      bullet = model["experience"][0]["bullets"][0]
+      bullet["text"] = "Contributed to a team-built data import pipeline with Ruby and PostgreSQL."
+      stdout, stderr, status = validate(model, path)
+      assert status.success?, stderr
+      assert_empty JSON.parse(stdout).dig("semantic_review", "flags")
+
+      bullet["text"] = "Contributed to a team-built data import pipeline that improved customer retention."
+      stdout, stderr, status = validate(model, path)
+      assert status.success?, stderr
+      assert_includes JSON.parse(stdout).dig("semantic_review", "flags").first["reason"], "retention"
+
+      bullet["text"] = "Contributed to a team-built pipeline and independently implemented its checkout."
+      stdout, _stderr, status = validate(model, path)
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "), "overstates contributed"
+    end
+  end
+
   def test_renders_docx_pdf_and_validation
     with_model do |model, path, directory|
       write_model(path, model)
@@ -467,7 +724,7 @@ class ResumeModuleTest < Minitest::Test
         "--profile", PROFILE,
         "--projects", PROJECTS,
         "--policy", POLICY,
-        "--output-dir", output
+        "--output-dir", output, "--legacy-formats"
       )
       assert status.success?, stderr
       assert JSON.parse(stdout)["valid"]
@@ -644,6 +901,7 @@ class ResumeModuleTest < Minitest::Test
         "issuer" => "Example Institute",
         "issued" => "2025-03",
         "url" => "https://certs.example.test/verify",
+        "link_status" => "confirmed",
         "kind" => "user-stated"
       }]
       profile_path = File.join(directory, "profile.yaml")
@@ -662,7 +920,7 @@ class ResumeModuleTest < Minitest::Test
       output = File.join(directory, "output")
       _stdout, stderr, status = run_tool(
         "render", "--model", path, "--profile", profile_path, "--projects", PROJECTS,
-        "--policy", POLICY, "--output-dir", output
+        "--policy", POLICY, "--output-dir", output, "--legacy-formats"
       )
       assert status.success?, stderr
       runs = docx_runs(File.join(output, "resume.docx"))
@@ -1006,7 +1264,7 @@ class ResumeModuleTest < Minitest::Test
       output = File.join(directory, "output")
       _stdout, stderr, status = run_tool(
         "render", "--model", path, "--profile", profile_path, "--projects", PROJECTS,
-        "--policy", POLICY, "--output-dir", output
+        "--policy", POLICY, "--output-dir", output, "--legacy-formats"
       )
       assert status.success?, stderr
       report = JSON.parse(File.read(File.join(output, "validation.json")))
@@ -1531,7 +1789,7 @@ class ResumeModuleTest < Minitest::Test
       output = File.join(directory, "output")
       _stdout, stderr, status = run_tool(
         "render", "--model", path, "--profile", profile_path, "--projects", PROJECTS,
-        "--policy", POLICY, "--output-dir", output
+        "--policy", POLICY, "--output-dir", output, "--legacy-formats"
       )
       assert status.success?, stderr
       runs = docx_runs(File.join(output, "resume.docx"))

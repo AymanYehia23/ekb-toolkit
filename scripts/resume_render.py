@@ -32,6 +32,10 @@ from reportlab.platypus import HRFlowable, KeepTogether, ListFlowable, ListItem,
 
 from bullet_quality import bullet_text_findings, semantic_review_findings
 from ekb_paths import config_path
+from ekb_screening import APPLICATION_ID_PATTERN, ScreeningError, frozen_application, posting_digest, require_screening
+from ekb_requirements import alignment_projection, load_decisions
+from resume_publish import PublicationError, previous_pdf, publication_lock, publish, require_atomic_update
+from uuid import uuid4
 
 
 class ResumeError(Exception):
@@ -39,6 +43,7 @@ class ResumeError(Exception):
 
 
 NO_BREAK_SPACE_MARKER = "\ue000"
+DELIVERY_STATUS = "private_draft_human_approval_required"
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -709,7 +714,7 @@ def validate_model(model: dict[str, Any], policy: dict[str, Any] | None = None) 
     }
     optional = {
         "summary", "languages", "awards", "activities", "hobbies", "career_breaks",
-        "bullet_quality_review",
+        "bullet_quality_review", "claim_reviews",
     }
     missing, unexpected = required - set(model), set(model) - required - optional
     if missing or unexpected:
@@ -719,7 +724,7 @@ def validate_model(model: dict[str, Any], policy: dict[str, Any] | None = None) 
     if model["schema_version"] == 2 and "bullet_quality_review" not in model:
         raise ResumeError("resume model schema_version 2 requires bullet_quality_review")
     app_id = model["application_id"]
-    if not isinstance(app_id, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}-[a-z0-9]+(?:-[a-z0-9]+)*", app_id):
+    if not isinstance(app_id, str) or not re.fullmatch(APPLICATION_ID_PATTERN, app_id):
         raise ResumeError("application_id is not safe or date-prefixed")
     target = model["target"]
     target_required = {
@@ -879,12 +884,7 @@ def validate_model(model: dict[str, Any], policy: dict[str, Any] | None = None) 
         lead = target.get("summary_lead")
         if not lead:
             raise ResumeError("job-targeted resumes require target.summary_lead")
-        confirmed_title = text_of(model["basics"]["title"])
-        if not lead.casefold().startswith(confirmed_title.casefold()):
-            raise ResumeError(
-                "target.summary_lead must begin with the confirmed basics.title "
-                f"({confirmed_title!r})"
-            )
+        # The source checker anchors the lead to the profile identity, not a tailored header.
         if not summary:
             raise ResumeError("job-targeted resumes with target.summary_lead require a summary")
         if not summary_text.casefold().startswith(lead.casefold()):
@@ -993,11 +993,17 @@ def validate_model(model: dict[str, Any], policy: dict[str, Any] | None = None) 
         sourced_list(entry["details"], f"{path}.details")
 
     alignment = model["alignment"]
-    if not isinstance(alignment, dict) or set(alignment) != {"requirements"} or not isinstance(alignment["requirements"], list):
+    if (not isinstance(alignment, dict) or set(alignment) - {"requirement_map_sha256"} != {"requirements"}
+            or not isinstance(alignment["requirements"], list)):
         raise ResumeError("alignment must contain requirements")
+    mapped_alignment = "requirement_map_sha256" in alignment
+    if mapped_alignment and not re.fullmatch(r"[a-f0-9]{64}", str(alignment["requirement_map_sha256"])):
+        raise ResumeError("alignment.requirement_map_sha256 must identify the reviewed map revision")
     for index, requirement in enumerate(alignment["requirements"]):
         path = f"alignment.requirements[{index}]"
         required_keys = {"term", "aliases", "priority", "critical", "status", "evidence_refs"}
+        if mapped_alignment:
+            required_keys.add("requirement_id")
         optional_keys = {"emphasize", "selection_reason"}
         if not isinstance(requirement, dict) or set(requirement) - optional_keys != required_keys:
             raise ResumeError(f"{path} has invalid keys")
@@ -1014,14 +1020,16 @@ def validate_model(model: dict[str, Any], policy: dict[str, Any] | None = None) 
             raise ResumeError(f"{path}.aliases must be non-empty strings")
         if requirement["priority"] not in {"required", "preferred"} or not isinstance(requirement["critical"], bool):
             raise ResumeError(f"{path} priority or critical value is invalid")
-        if requirement["status"] not in {"matched", "supported_not_selected", "unsupported"}:
+        statuses = {"matched", "not_emphasized"} if mapped_alignment else {"matched", "supported_not_selected", "unsupported"}
+        if requirement["status"] not in statuses:
             raise ResumeError(f"{path}.status is invalid")
+        if mapped_alignment and not re.fullmatch(r"req-[a-f0-9]{16}", str(requirement["requirement_id"])):
+            raise ResumeError(f"{path}.requirement_id is invalid")
         if not isinstance(requirement["evidence_refs"], list) or not all(isinstance(item, str) and item.strip() for item in requirement["evidence_refs"]):
             raise ResumeError(f"{path}.evidence_refs must be an array of IDs")
-        if requirement["status"] == "unsupported" and requirement["evidence_refs"]:
-            raise ResumeError(f"{path} cannot give evidence_refs for an unsupported requirement")
-        if requirement["status"] != "unsupported" and not requirement["evidence_refs"]:
-            raise ResumeError(f"{path} needs evidence_refs when it is supported")
+        has_evidence = bool(requirement["evidence_refs"])
+        if has_evidence != (requirement["status"] in {"matched", "supported_not_selected"}):
+            raise ResumeError(f"{path} has inconsistent evidence_refs for {requirement['status']}")
         # `selection_reason` records why a selection decision was made, and that
         # applies to every status. An earlier version banned it on `unsupported`
         # on the theory that there is nothing to explain when no evidence exists.
@@ -1062,9 +1070,16 @@ def run_source_check(
     ranking: Path | None = None,
     index: Path | None = None,
     policy: Path | None = None,
+    require_claim_reviews: bool = False,
+    editorial_packet: bool = False,
+    decisions: dict | None = None,
 ) -> dict[str, Any]:
     checker = Path(__file__).with_name("resume_source_check.rb")
     command = ["ruby", str(checker), "--model", str(model), "--profile", str(profile), "--projects", str(projects)]
+    if require_claim_reviews:
+        command.append("--require-claim-reviews")
+    if editorial_packet:
+        command.append("--editorial-packet")
     if ranking is not None and ranking.is_file():
         command += ["--ranking", str(ranking)]
     # The evidence index powers the understatement gate. Default to the one
@@ -1073,19 +1088,22 @@ def run_source_check(
         index = profile.parent.parent / "index" / "evidence-index.yaml"
     if index.is_file():
         command += ["--index", str(index)]
-    rubric = Path(config_path("review-rubric.json"))
+    rubric = Path(config_path("review-rubric.json", str(projects.parent)))
     if rubric.is_file():
         command += ["--rubric", str(rubric)]
     if policy is None:
-        policy = Path(config_path("resume-policy.json"))
+        policy = Path(config_path("resume-policy.json", str(projects.parent)))
     if policy.is_file():
         command += ["--policy", str(policy)]
-    process = subprocess.run(
-        command,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
+    with tempfile.TemporaryDirectory(prefix="ekb-source-check-") as directory:
+        if decisions is not None:
+            decision_path = Path(directory) / "requirements.json"
+            decision_path.write_text(json.dumps(decisions, ensure_ascii=False), encoding="utf-8")
+            command += ["--decision-map", str(decision_path)]
+        process = subprocess.run(
+            command, text=True, capture_output=True, check=False,
+            env={**os.environ, "EKB_PYTHON": sys.executable},
+        )
     if not process.stdout.strip():
         raise ResumeError(f"source validation failed: {process.stderr.strip() or 'no report produced'}")
     try:
@@ -1106,10 +1124,10 @@ def coverage_section(source_report: dict[str, Any]) -> str:
     counts = source_report.get("coverage", {}).get("counts") or {}
     if not counts:
         return ""
-    order = ["demonstrated", "stated", "unsupported"]
+    order = sorted(counts) if source_report.get("requirement_map") else ["demonstrated", "stated", "unsupported"]
     parts = [f"{counts[key]} {key}" for key in order if counts.get(key)]
     line = f"- Requirement coverage: {', '.join(parts)}\n"
-    if not source_report.get("checks", {}).get("evidence_index_loaded", True):
+    if not source_report.get("requirement_map") and not source_report.get("checks", {}).get("evidence_index_loaded", True):
         line += "- Evidence index: not loaded (understatement gate inactive)\n"
     return line
 
@@ -1187,6 +1205,18 @@ def coverage_table(source_report: dict[str, Any]) -> str:
     requirements = source_report.get("coverage", {}).get("requirements") or []
     if not requirements:
         return ""
+    if source_report.get("requirement_map"):
+        def cell(value):
+            return str(value).replace("|", "&#124;").replace("\n", " ")
+
+        rows = ["| " + " | ".join(cell(entry[key]) for key in
+                ("id", "term", "priority", "fit", "disposition", "reason")) + " |"
+                for entry in requirements]
+        return (
+            "\n## Requirement coverage\n\n"
+            "| ID | Requirement | Priority | Reviewed fit | Disposition | Reason |\n"
+            "| --- | --- | --- | --- | --- | --- |\n" + "\n".join(rows) + "\n"
+        )
     rows = []
     for entry in requirements:
         unused = ", ".join(entry.get("unused_candidates") or []) or "-"
@@ -1915,7 +1945,7 @@ def protect_pdf_markup(markup: str) -> str:
     )
 
 
-def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> None:
+def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> Emphasizer:
     emphasizer = Emphasizer(emphasis_terms(model, policy), policy)
     phrases = protected_line_phrases(model, policy)
     hyperlink_color, hyperlink_underline = link_appearance(policy)
@@ -2196,6 +2226,7 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> N
         canvas.restoreState()
 
     document.build(story, onFirstPage=lambda _canvas, _document: None, onLaterPages=later_page)
+    return emphasizer
 
 
 def docx_paragraph_text(paragraph: Any) -> str:
@@ -2763,19 +2794,54 @@ def apply_plain_mode(model: dict[str, Any]) -> None:
     model["layout"]["emphasis"] = "none"
 
 
+def application_decisions(root, model, *, legacy_replay=False):
+    application = require_screening(root, model["application_id"], model["target"])
+    if model["target"]["mode"] == "master" or application.get("schema_version", 1) == 1:
+        if "requirement_map_sha256" in model["alignment"]:
+            raise ResumeError("mapped alignment requires a version 2 job-targeted intake")
+    if model["target"]["mode"] == "master":
+        return application, None
+    if application.get("schema_version", 1) == 1:
+        if not legacy_replay:
+            raise ResumeError("version 1 target requires explicit --legacy-replay or a newly screened version 2 intake")
+        return application, None
+    decisions = load_decisions(root, application)
+    if model["alignment"] != alignment_projection(decisions):
+        raise ResumeError("model alignment differs from the reviewed map; use ekb requirement-map ID --alignment")
+    return application, decisions
+
+
 def render(args: argparse.Namespace) -> int:
-    model_path = Path(args.model).resolve()
+    output = Path(args.output_dir).absolute()
+    output = output.parent.resolve() / output.name
+    with publication_lock(output):
+        if output.is_symlink():
+            raise ResumeError("resume output cannot be a symlink")
+        return render_locked(args, output)
+
+
+def render_locked(args: argparse.Namespace, output_dir: Path) -> int:
+    model_path = Path(args.draft or args.model).resolve()
     profile_path = Path(args.profile).resolve()
     projects_path = Path(args.projects).resolve()
-    policy_path = Path(args.policy).resolve() if args.policy else Path(config_path("resume-policy.json"))
-    output_dir = Path(args.output_dir).resolve()
+    policy_path = Path(args.policy).resolve() if args.policy else Path(config_path("resume-policy.json", str(projects_path.parent)))
     ranking_path = Path(args.ranking).resolve() if args.ranking else profile_path.with_name("project-ranking.yaml")
 
-    model = load_json(model_path)
+    # Snapshot the draft once. The source checker and renderer must see the
+    # same bytes even when an editor modifies the original during rendering.
+    draft_bytes = model_path.read_bytes()
+    model = json.loads(draft_bytes)
+    if not isinstance(model, dict):
+        raise ResumeError("resume draft must contain a JSON object")
     policy = load_json(policy_path)
     validate_model(model, policy)
+    application_id = model["application_id"]
+    if args.application_id and args.application_id != application_id:
+        raise ResumeError("draft application ID does not match the requested application")
+    posting, decisions = application_decisions(projects_path.parent, model, legacy_replay=args.legacy_replay)
     if args.ats_plain:
         apply_plain_mode(model)
+        draft_bytes = (json.dumps(model, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
     compatible_models = policy.get("compatible_model_versions", [policy.get("version")])
     if model["schema_version"] not in compatible_models:
         raise ResumeError(
@@ -2784,23 +2850,36 @@ def render(args: argparse.Namespace) -> int:
         )
     if len(set(policy.get("sizes_pt", {}).values())) > 2:
         raise ResumeError("ATS policy must use no more than two font sizes")
-    source_report = run_source_check(
-        model_path, profile_path, projects_path, ranking_path, policy=policy_path
-    )
-    if not source_report.get("valid"):
-        raise ResumeError("source validation failed:\n- " + "\n- ".join(source_report.get("errors", [])))
 
-    output_dir.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="ekb-resume-", dir=output_dir.parent) as temporary:
-        temp_dir = Path(temporary)
+    pdf_name = previous_pdf(output_dir, args.pdf_name, args.base_generation, require_base=True)
+    if not isinstance(pdf_name, str) or not re.fullmatch(r"[^/\\]+\.pdf", pdf_name) or pdf_name.startswith("."):
+        raise ResumeError("--pdf-name must be a visible PDF filename without a path")
+    if args.legacy_formats and pdf_name != "resume.pdf":
+        raise ResumeError("--legacy-formats requires the resume.pdf path")
+    require_atomic_update(output_dir)
+    generation = uuid4().hex
+    with tempfile.TemporaryDirectory(prefix=".ekb-resume-", dir=output_dir.parent) as temporary:
+        temp_dir = Path(temporary) / "bundle"
+        temp_dir.mkdir(mode=0o700)
+        staged_model = temp_dir / "resume.json"
+        staged_model.write_bytes(draft_bytes)
+        source_report = run_source_check(
+            staged_model, profile_path, projects_path, ranking_path, policy=policy_path,
+            require_claim_reviews=True, editorial_packet=True, decisions=decisions,
+        )
+        if not source_report.get("valid"):
+            raise ResumeError("source validation failed:\n- " + "\n- ".join(source_report.get("errors", [])))
+
         docx_path = temp_dir / "resume.docx"
-        pdf_path = temp_dir / "resume.pdf"
-        emphasizer = render_docx(model, policy, docx_path)
-        render_pdf(model, policy, pdf_path)
+        pdf_path = temp_dir / pdf_name
+        emphasizer = render_pdf(model, policy, pdf_path)
+        docx_structure = None
+        if args.legacy_formats:
+            render_docx(model, policy, docx_path)
+            docx_text, docx_structure = extract_docx(docx_path)
 
         expected = resume_lines(model)
         phrases = protected_line_phrases(model, policy)
-        docx_text, docx_structure = extract_docx(docx_path)
         (
             pdf_text,
             pdf_pages,
@@ -2836,16 +2915,17 @@ def render(args: argparse.Namespace) -> int:
         warnings.extend(link_warnings(model))
         warnings.extend(emphasis_warnings(model, policy, emphasizer))
         warnings.extend(source_report.get("warnings", []))
-        errors.extend(verify_order(expected, docx_text, "DOCX"))
         errors.extend(verify_order(expected, pdf_text, "PDF"))
-        errors.extend(rendered_typography_errors(expected, docx_text, "DOCX", policy))
         errors.extend(rendered_typography_errors(expected, pdf_text, "PDF", policy))
-        if docx_structure["tables"]:
-            errors.append("DOCX contains tables")
-        if docx_structure["inline_shapes"]:
-            errors.append("DOCX contains inline images or shapes")
-        if not allowed_continuation_header(model, docx_structure["header_footer_text"]):
-            errors.append("DOCX contains non-permitted factual header/footer text")
+        if docx_structure is not None:
+            errors.extend(verify_order(expected, docx_text, "DOCX"))
+            errors.extend(rendered_typography_errors(expected, docx_text, "DOCX", policy))
+            if docx_structure["tables"]:
+                errors.append("DOCX contains tables")
+            if docx_structure["inline_shapes"]:
+                errors.append("DOCX contains inline images or shapes")
+            if not allowed_continuation_header(model, docx_structure["header_footer_text"]):
+                errors.append("DOCX contains non-permitted factual header/footer text")
         if len(normalize(pdf_text)) < 50:
             errors.append("PDF does not contain enough selectable text")
         expected_page_size = "A4" if model["target"]["market"] == "europe" else "LETTER"
@@ -2856,24 +2936,42 @@ def render(args: argparse.Namespace) -> int:
         if pdf_pages > model["layout"]["page_target"]:
             warnings.append(f"PDF exceeds the preferred {model['layout']['page_target']}-page target")
 
-        attachment_stem = delivery_stem(model, policy)
-        attachment_docx = temp_dir / f"{attachment_stem}.docx"
-        attachment_pdf = temp_dir / f"{attachment_stem}.pdf"
-        shutil.copyfile(docx_path, attachment_docx)
-        shutil.copyfile(pdf_path, attachment_pdf)
-        outputs = {
-            "resume.docx": docx_path,
-            "resume.pdf": pdf_path,
-            attachment_docx.name: attachment_docx,
-            attachment_pdf.name: attachment_pdf,
-        }
+        attachment_stem = pdf_path.stem
+        recommended_attachment = pdf_path.name
+        outputs = {pdf_path.name: pdf_path, "resume.json": staged_model}
+        if args.legacy_formats:
+            attachment_stem = delivery_stem(model, policy)
+            attachment_docx = temp_dir / f"{attachment_stem}.docx"
+            attachment_pdf = temp_dir / f"{attachment_stem}.pdf"
+            shutil.copyfile(docx_path, attachment_docx)
+            shutil.copyfile(pdf_path, attachment_pdf)
+            outputs.update({
+                "resume.docx": docx_path,
+                attachment_docx.name: attachment_docx,
+                attachment_pdf.name: attachment_pdf,
+            })
+            recommended_attachment = attachment_pdf.name
         if args.include_text:
             text_path = temp_dir / "resume.txt"
             text_path.write_text("\n".join(text_export_lines(model, policy)) + "\n", encoding="utf-8")
             outputs["resume.txt"] = text_path
 
+        packet_path = temp_dir / "editorial.json"
+        packet = source_report.pop("editorial_packet")
+        packet.update({
+            "delivery_status": DELIVERY_STATUS, "generation": generation,
+            "posting_sha256": posting_digest(posting), "primary_pdf": pdf_name,
+            "pdf_sha256": sha256(pdf_path), "model_sha256": sha256(staged_model),
+            "semantic_review": source_report["semantic_review"],
+        })
+        packet_path.write_text(json.dumps(packet, indent=2) + "\n", encoding="utf-8")
+        outputs["editorial.json"] = packet_path
         report = {
             "valid": not errors,
+            "delivery_status": DELIVERY_STATUS,
+            "generation": generation,
+            "primary_pdf": pdf_name,
+            "posting_sha256": posting_digest(posting),
             "policy_version": policy["version"],
             "application_id": model["application_id"],
             "resume_mode": model["target"]["mode"],
@@ -2909,7 +3007,6 @@ def render(args: argparse.Namespace) -> int:
             },
         }
         validation_json = temp_dir / "validation.json"
-        validation_json.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
         named_freelance = source_report.get("project_selection", {}).get(
             "named_in_freelance_projects",
             source_report.get("project_selection", {}).get("named_in_selected_projects", []),
@@ -2917,11 +3014,14 @@ def render(args: argparse.Namespace) -> int:
         validation_md = temp_dir / "validation.md"
         validation_md.write_text(
             "# Resume validation\n\n"
-            f"- Status: {'PASS' if report['valid'] else 'FAIL'}\n"
+            f"- Technical validation: {'PASS' if report['valid'] else 'FAIL'}\n"
+            "- Delivery status: private draft. Human editorial approval and full PDF inspection are required.\n"
             f"- Application: `{model['application_id']}`\n"
             f"- Resume mode: {report['resume_mode']}\n"
             f"- ATS policy: v{policy['version']}\n"
-            f"- Recommended attachment: `{attachment_pdf.name}`\n"
+            f"- Generation: `{generation}`\n"
+            f"- PDF SHA-256: `{sha256(pdf_path)}`\n"
+            f"- Draft attachment filename: `{recommended_attachment}`\n"
             f"- Selected sources: {', '.join(source_report['selected_sources'])}\n"
             f"- Hyperlinks: {report['presentation']['hyperlinks']} "
             f"({report['presentation']['linked_items']} linked items; "
@@ -2943,13 +3043,17 @@ def render(args: argparse.Namespace) -> int:
                 if named_freelance
                 else "- Named in Freelance Projects: none\n"
             )
+            + (f"- Requirement map revision: `{decisions['revision_sha256']}`\n" if decisions else "")
             + coverage_section(source_report)
             + selection_score_section(source_report)
             + f"- PDF pages: {pdf_pages}\n"
             f"- Content fill by page: {', '.join(f'{ratio:.1%}' for ratio in fill_ratios)}\n"
-            f"- DOCX tables: {docx_structure['tables']}\n"
-            f"- DOCX images/shapes: {docx_structure['inline_shapes']}\n"
-            f"- Extraction/order errors: {len(errors)}\n"
+            + (
+                f"- DOCX tables: {docx_structure['tables']}\n"
+                f"- DOCX images/shapes: {docx_structure['inline_shapes']}\n"
+                if docx_structure is not None else ""
+            )
+            + f"- Extraction/order errors: {len(errors)}\n"
             f"- Editorial/layout warnings: {len(warnings)}\n"
             + coverage_table(source_report)
             + external_signals_section(source_report)
@@ -2957,48 +3061,139 @@ def render(args: argparse.Namespace) -> int:
             + (("\n## Errors\n\n" + "\n".join(f"- {error}" for error in errors) + "\n") if errors else ""),
             encoding="utf-8",
         )
+        report["report_sha256"] = sha256(validation_md)
+        validation_json.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
         outputs["validation.json"] = validation_json
         outputs["validation.md"] = validation_md
 
         if errors:
             raise ResumeError("document validation failed:\n- " + "\n- ".join(errors))
 
-        for name, path in outputs.items():
-            os.replace(path, output_dir / name)
+        # Recheck mutable evidence and screening immediately before the swap.
+        final_report = run_source_check(
+            staged_model, profile_path, projects_path, ranking_path, policy=policy_path,
+            require_claim_reviews=True, editorial_packet=True, decisions=decisions,
+        )
+        if not final_report.get("valid") or final_report["semantic_review"] != source_report["semantic_review"]:
+            raise ResumeError("evidence or review rules changed during rendering; validate the draft again")
+        current_posting, current_decisions = application_decisions(
+            projects_path.parent, model, legacy_replay=args.legacy_replay
+        )
+        if posting_digest(current_posting) != posting_digest(posting) or current_decisions != decisions:
+            raise ResumeError("frozen opportunity or requirement map changed during rendering")
+        publish(temp_dir, output_dir, set(outputs))
 
-    print(json.dumps({"valid": True, "output_dir": str(output_dir), "selected_sources": source_report["selected_sources"]}, indent=2))
+    print(json.dumps({
+        "valid": True,
+        "delivery_status": DELIVERY_STATUS,
+        "generation": generation,
+        "output_dir": str(output_dir),
+        "selected_sources": source_report["selected_sources"],
+    }, indent=2))
     return 0
 
 
 def validate(args: argparse.Namespace) -> int:
-    model_path = Path(args.model).resolve()
+    model_path = Path(args.draft or args.model).resolve()
     profile_path = Path(args.profile).resolve()
-    model = load_json(model_path)
+    draft_bytes = model_path.read_bytes()
+    model = json.loads(draft_bytes)
+    projects_path = Path(args.projects).resolve()
     policy_path = (
         Path(args.policy).resolve()
         if args.policy
-        else Path(config_path("resume-policy.json"))
+        else Path(config_path("resume-policy.json", str(projects_path.parent)))
     )
-    policy = load_json(policy_path)
-    validate_model(model, policy)
+    validate_model(model, load_json(policy_path))
+    if args.application_id and args.application_id != model["application_id"]:
+        raise ResumeError("draft application ID does not match the requested application")
+    decisions = None
+    application_path = projects_path.parent / "applications" / f"{model['application_id']}.yaml"
+    if args.editorial_packet or application_path.is_file():
+        if args.editorial_packet or frozen_application(projects_path.parent, model["application_id"]).get("schema_version") == 2:
+            _, decisions = application_decisions(projects_path.parent, model, legacy_replay=args.legacy_replay)
     ranking_path = Path(args.ranking).resolve() if args.ranking else profile_path.with_name("project-ranking.yaml")
-    report = run_source_check(
-        model_path,
-        profile_path,
-        Path(args.projects).resolve(),
-        ranking_path,
-        policy=policy_path,
-    )
+    with tempfile.TemporaryDirectory(prefix="ekb-validate-") as directory:
+        draft = Path(directory) / "resume.json"
+        draft.write_bytes(draft_bytes)
+        report = run_source_check(
+            draft, profile_path, projects_path, ranking_path, policy=policy_path,
+            editorial_packet=args.editorial_packet, decisions=decisions,
+        )
+    if decisions and application_decisions(projects_path.parent, model)[1] != decisions:
+        raise ResumeError("requirement map changed during validation")
+    report["validation_scope"] = "reviewed_application_draft" if decisions else "source_diagnostic_only"
+    report["delivery_status"] = DELIVERY_STATUS
     print(json.dumps(report, indent=2))
     return 0 if report.get("valid") else 1
+
+
+def verify_review(args):
+    output = Path(args.output_dir).absolute()
+    if not output.is_dir() or output.is_symlink():
+        raise ResumeError("no published bundle to verify")
+    with publication_lock(output):
+        pdf = previous_pdf(output, None)
+        manifest_path = output / "validation.json"
+        report = load_json(manifest_path)
+        packet = load_json(output / "editorial.json")
+        model = load_json(output / "resume.json")
+        if args.application_id and args.application_id != model["application_id"]:
+            raise ResumeError("bundle application ID does not match the requested application")
+        projects = Path(args.projects).resolve()
+        posting, decisions = application_decisions(projects.parent, model, legacy_replay=args.legacy_replay)
+        profile = Path(args.profile).resolve()
+        ranking = Path(args.ranking).resolve() if args.ranking else profile.with_name("project-ranking.yaml")
+        current = run_source_check(
+            output / "resume.json", profile, projects, ranking,
+            require_claim_reviews=True, editorial_packet=True, decisions=decisions,
+            policy=Path(args.policy).resolve() if args.policy else None,
+        )
+        saved_source = report["source_validation"]
+        identity = {
+            "application_id": model["application_id"], "generation": report["generation"],
+            "posting_sha256": posting_digest(posting), "primary_pdf": pdf,
+            "pdf_sha256": sha256(output / pdf),
+        }
+        if (not current["valid"] or current["semantic_review"] != saved_source["semantic_review"]
+                or current["coverage"] != saved_source["coverage"]
+                or saved_source.get("requirement_map") != decisions
+                or report["posting_sha256"] != identity["posting_sha256"]
+                or any(packet.get(key) != value for key, value in identity.items())
+                or packet["model_sha256"] != sha256(output / "resume.json")
+                or packet["semantic_review"] != current["semantic_review"]
+                or any(packet.get(key) != value for key, value in current["editorial_packet"].items())):
+            raise ResumeError("published approval packet no longer matches current evidence or bundle")
+        current_posting, current_decisions = application_decisions(projects.parent, model, legacy_replay=args.legacy_replay)
+        if posting_digest(current_posting) != identity["posting_sha256"] or current_decisions != decisions:
+            raise ResumeError("application inputs changed during approval verification")
+        expected = identity | {
+            "validation_sha256": sha256(manifest_path),
+            "editorial_sha256": sha256(output / "editorial.json"),
+            "requirement_map_sha256": decisions["revision_sha256"] if decisions else None,
+        }
+        receipt = load_json(Path(args.approval))
+        from ekb_capabilities import valid_date
+
+        if (any(key not in receipt or receipt[key] != value for key, value in expected.items())
+                or not isinstance(receipt.get("reviewer"), str) or not receipt["reviewer"].strip()
+                or not valid_date(receipt.get("reviewed_at"))
+                or any(receipt.get(key) is not True for key in
+                       ("material_claims_approved", "exact_pdf_inspected", "gaps_reviewed"))):
+            raise ResumeError("human approval receipt is incomplete or refers to a different PDF or generation")
+        print(json.dumps({"approval_receipt_matches": True, **expected}, indent=2))
+    return 0
 
 
 def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser(description="Validate and render evidence-linked EKB resumes")
     commands = root.add_subparsers(dest="command", required=True)
-    for name in ("validate", "render"):
+    for name in ("validate", "render", "verify-review"):
         command = commands.add_parser(name)
         command.add_argument("--model", required=True)
+        command.add_argument("--legacy-replay", action="store_true", help="use an explicitly screened historical intake")
+        command.add_argument("--draft", help="separate draft model to validate or publish")
+        command.add_argument("--application-id", help=argparse.SUPPRESS)
         command.add_argument("--profile", required=True)
         command.add_argument("--projects", required=True)
         command.add_argument(
@@ -3011,13 +3206,24 @@ def parser() -> argparse.ArgumentParser:
                 help="writing and structure policy; defaults to config/resume-policy.json or its workspace override",
             )
             command.add_argument("--output-dir", required=True)
+            command.add_argument("--base-generation", help="refuse to overwrite a newer published generation")
             command.add_argument("--include-text", action="store_true")
+            command.add_argument("--pdf-name", help="stable PDF filename; defaults to the existing published name")
+            command.add_argument("--legacy-formats", action="store_true", help="also export DOCX and named attachment copies")
             command.add_argument(
                 "--ats-plain",
                 action="store_true",
                 help="render the same text with no hyperlink annotations and no bold emphasis",
             )
+        elif name == "verify-review":
+            command.add_argument("--output-dir", required=True)
+            command.add_argument("--approval", required=True, help="human-authored JSON review receipt")
+            command.add_argument("--policy", help="same explicit policy used to render the bundle")
         else:
+            command.add_argument(
+                "--editorial-packet", action="store_true",
+                help="include private excerpts and evidence locations for cited records after screening",
+            )
             command.add_argument(
                 "--policy",
                 help="writing and structure policy; defaults to config/resume-policy.json",
@@ -3028,8 +3234,8 @@ def parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = parser().parse_args()
     try:
-        return render(args) if args.command == "render" else validate(args)
-    except ResumeError as exc:
+        return {"render": render, "validate": validate, "verify-review": verify_review}[args.command](args)
+    except (ResumeError, ValueError, OSError, KeyError, TypeError) as exc:
         print(f"EKB Resume: {exc}", file=sys.stderr)
         return 1
 

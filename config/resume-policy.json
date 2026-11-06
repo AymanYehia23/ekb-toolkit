@@ -100,10 +100,11 @@
     "attachment_pattern": "FirstName_LastName_TargetRole_CV.pdf",
     "required_format": "PDF",
     "password_protected": false,
-    "note": "Rendering keeps stable resume.docx and resume.pdf files for tooling and also writes professionally named attachment copies derived only from the confirmed name and target role."
+    "note": "Rendering writes one stable resume.pdf. The attachment name pattern applies to explicit legacy exports."
   },
   "job_targeted_content_balance": {
-    "summary_lead": "Begin with the exact confirmed profile professional title. Append the advertised discipline, framework, or specialization when eligible evidence supports it; never replace the profile identity with a framework-first target label.",
+    "headline": "Prefer a job-matched headline from profile.professional_title.job_targeted_phrasings, supported by confirmed experience. If none fits, confirm a new phrasing through the profile procedure or retain the general title. Never import unsupported seniority or expertise, and never rewrite employment titles. Master resumes retain profile.professional_title.value.",
+    "summary_lead": "Begin with the exact confirmed profile.professional_title.value, independently of a tailored header. Append an advertised discipline, framework, or specialization only when eligible evidence supports it.",
     "customer_facing_experience": "When the target asks for customer-facing apps and eligible evidence exists in a current or highly relevant role, retain at least one concrete product, UI, or user-workflow bullet. Authentication, infrastructure, release, and CI/CD evidence must not occupy every bullet.",
     "distinct_integrations": "When the posting explicitly requests payments or another third-party integration, retain a distinct implementation when it adds a materially different gateway, trust boundary, or failure model.",
     "engagement_marginal_value": "A named engagement pays for both a heading and its bullets. Remove it when its only incremental value is architecture, framework, or keyword wording already visible in Summary, Skills, Freelance Projects, or another Experience bullet. Retain a one-bullet engagement only when it adds a distinct product, ownership, platform, integration, release, scale, measured, or user-workflow signal. Prefer a stronger second bullet under the highest-ranked relevant existing engagement when that adds more value.",

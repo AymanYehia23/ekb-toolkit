@@ -11,11 +11,15 @@
 #   ekb doctor                   report what is installed and what is missing
 #   ekb status                   one-line state of the workspace
 #   ekb index [--check]          rebuild the evidence index
+#   ekb candidate              read the private capability and profile view
+#   ekb requirement-map <id>    read the reviewed decisions or print a skeleton
+#   ekb screening-basis <id>    hash frozen intake for the proceed decision
+#   ekb verify-review <id>      verify an exact-PDF human approval receipt
 #   ekb shortlist <app-id>       build the per-requirement evidence shortlist
 #   ekb check                    cross-file consistency check
 #   ekb skills                   recompute the evidence behind the skills list
 #   ekb validate <app-id>        source-eligibility check, no rendering
-#   ekb render <app-id> [...]    validate, then write DOCX and PDF
+#   ekb render <app-id> [...]    validate, then write one stable PDF
 #   ekb compare <a.json> <b.json>  score two competing drafts
 #   ekb bullet-audit             audit historical bullets against ranked banks
 #   ekb git <mode> [...]         local checkpoint in the workspace
@@ -38,7 +42,7 @@ workspace() {
 }
 
 usage() {
-  sed -n '3,25p' "${BASH_SOURCE[0]}" | sed 's/^#\{1,2\} \{0,1\}//'
+  sed -n '3,29p' "${BASH_SOURCE[0]}" | sed 's/^#\{1,2\} \{0,1\}//'
   exit "${1:-0}"
 }
 
@@ -134,18 +138,17 @@ shortlist)
   exec "$PYTHON" "$TOOLKIT/scripts/ekb_shortlist.py" --application "$@"
   ;;
 
-validate | render)
+validate | render | verify-review)
   require_id "${1:-}"
   id="$1"
   shift
   ws="$(workspace)"
   model="$ws/artifacts/applications/$id/resume.json"
-  [[ -f "$model" ]] || die "no resume model at $model"
-  args=(--model "$model" --profile "$ws/profile/profile.yaml" --projects "$ws/projects")
-  if [[ "$command" == "render" ]]; then
+  args=(--application-id "$id" --model "$model" --profile "$ws/profile/profile.yaml" --projects "$ws/projects")
+  if [[ "$command" != "validate" ]]; then
     args+=(--output-dir "$ws/artifacts/applications/$id")
   fi
-  exec "$PYTHON" "$TOOLKIT/scripts/resume_render.py" "$command" "${args[@]}" "$@"
+  exec "$PYTHON" "$TOOLKIT/scripts/resume_render.py" "$command" "$@" "${args[@]}"
   ;;
 
 compare)

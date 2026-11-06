@@ -22,6 +22,7 @@ contact:
     value: sam.rivera@example.com
     label: Email
     url: mailto:sam.rivera@example.com
+    link_status: confirmed
     kind: user-stated
   - id: profile-contact-002
     type: location
@@ -37,12 +38,14 @@ links:
     value: linkedin.com/in/example-sam-rivera
     label: LinkedIn
     url: https://linkedin.com/in/example-sam-rivera
+    link_status: confirmed
     kind: user-stated
   - id: profile-link-002
     type: github
     value: github.com/example-sam-rivera
     label: GitHub
     url: https://github.com/example-sam-rivera
+    link_status: confirmed
     kind: user-stated
 
 organization_links:
@@ -98,6 +101,7 @@ education:
     start: 2018-09
     end: 2022-07
     url: null
+    link_status: confirmed
     kind: user-stated
 
 certifications: []

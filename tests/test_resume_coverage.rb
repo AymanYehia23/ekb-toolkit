@@ -13,7 +13,10 @@ require "open3"
 require "tmpdir"
 require "yaml"
 
+require_relative "resume_test_support"
+
 class ResumeCoverageTest < Minitest::Test
+  include ResumeTestSupport
   ROOT = File.expand_path("..", __dir__)
   CHECKER = File.join(ROOT, "scripts", "resume_source_check.rb")
   INDEXER = File.join(ROOT, "scripts", "ekb_index.py")
@@ -176,6 +179,15 @@ class ResumeCoverageTest < Minitest::Test
       academic_projects: []
   YAML
 
+  def screen_shortlist_fixture(dir)
+    path = File.join(dir, "applications", "test.yaml")
+    application = YAML.safe_load(File.read(path)).merge(
+      "id" => "test", "company" => "Example", "role" => "Engineer",
+      "job_description" => "Fictional requirements"
+    )
+    freeze_fixture(dir, application)
+  end
+
   def with_workspace
     Dir.mktmpdir("ekb-coverage-") do |dir|
       FileUtils.mkdir_p(File.join(dir, "projects"))
@@ -249,6 +261,139 @@ class ResumeCoverageTest < Minitest::Test
     [JSON.parse(stdout), status]
   end
 
+  def test_private_eligibility_tightens_index_shortlist_and_checker_consistently
+    with_workspace do |dir|
+      FileUtils.mkdir_p(File.join(dir, "config"))
+      path = File.join(dir, "config", "toolkit.yaml")
+      File.write(path, "evidence:\n  eligible_involvement: [contributed]\n")
+      FileUtils.mkdir_p(File.join(dir, "applications"))
+      File.write(File.join(dir, "applications", "test.yaml"), <<~YAML)
+        targeting:
+          requirements:
+            - term: checkout
+              aliases: [checkout]
+      YAML
+      screen_shortlist_fixture(dir)
+      out, err, status = Open3.capture3("python3", SHORTLISTER, "--root", dir,
+                                        "--application", "test", "--stdout")
+      assert status.success?, err
+      assert_empty YAML.safe_load(out).dig("requirements", 0, "candidates")
+      out, err, status = Open3.capture3("python3", INDEXER, "--root", dir, "--stdout")
+      assert status.success?, err
+      refute YAML.safe_load(out)["records"].find { |r| r["id"] == "sample-002" }["eligible"]
+      report, status = check(dir, base_model)
+      refute status.success?
+      assert_includes report["errors"].join(" "), 'ineligible involvement "implemented" from sample-002'
+
+      File.write(path, "evidence:\n  eligible_kinds: [inferred]\n")
+      _out, err, status = Open3.capture3("python3", INDEXER, "--root", dir, "--stdout")
+      refute status.success?
+      assert_includes err, "evidence.eligible_kinds"
+      _out, err, status = Open3.capture3("ruby", CHECKER, "--model", File.join(dir, "model.json"),
+                                         "--profile", File.join(dir, "profile/profile.yaml"),
+                                         "--projects", File.join(dir, "projects"))
+      refute status.success?
+      assert_includes err, "evidence.eligible_kinds"
+    end
+  end
+
+  def test_shortlist_matches_past_preview_without_boosting_a_number
+    with_workspace do |dir|
+      path = File.join(dir, "projects", "sample.yaml")
+      project = YAML.safe_load(File.read(path))
+      checkout = project["records"].find { |r| r["id"] == "sample-002" }
+      checkout["statement"] = ("Implemented a shared checkout pipeline with a server-confirmed payment status. " * 5) +
+                               "Also integrated store distribution with TestFlight."
+      File.write(path, YAML.dump(project))
+      _out, err, status = Open3.capture3("python3", INDEXER, "--root", dir)
+      assert status.success?, err
+      index = YAML.safe_load(File.read(File.join(dir, "index", "evidence-index.yaml")))
+      rows = index["records"].to_h { |row| [row["id"], row] }
+      refute_includes rows["sample-002"]["claim"], "TestFlight"
+      assert_includes rows["sample-004"]["signals"], "measured"
+      assert_equal rows["sample-002"]["strength"], rows["sample-004"]["strength"]
+      FileUtils.mkdir_p(File.join(dir, "applications"))
+      File.write(File.join(dir, "applications", "test.yaml"), <<~YAML)
+        targeting:
+          requirements:
+            - term: distribution
+              aliases: [TestFlight]
+      YAML
+      screen_shortlist_fixture(dir)
+      out, err, status = Open3.capture3("python3", SHORTLISTER, "--root", dir,
+                                        "--application", "test", "--stdout")
+      assert status.success?, err
+      assert_equal ["sample-002"], YAML.safe_load(out).dig("requirements", 0, "candidates").map { |c| c["ref"] }
+    end
+  end
+
+  def test_kind_and_involvement_tightening_agree_across_index_and_source_checker
+    with_workspace do |dir|
+      FileUtils.mkdir_p(File.join(dir, "config"))
+      config = File.join(dir, "config", "toolkit.yaml")
+      cases = [
+        [{"eligible_kinds" => ["repo-verified"]}, true],
+        [{"eligible_kinds" => ["user-stated"]}, false],
+        [{"eligible_kinds" => []}, false],
+        [{"eligible_involvement" => ["implemented"]}, true],
+        [{"eligible_involvement" => ["contributed"]}, false],
+        [{"eligible_involvement" => []}, false]
+      ]
+      cases.each do |policy, expected|
+        File.write(config, YAML.dump({"evidence" => policy}))
+        out, err, status = Open3.capture3("python3", INDEXER, "--root", dir, "--stdout")
+        assert status.success?, err
+        row = YAML.safe_load(out)["records"].find { |record| record["id"] == "sample-002" }
+        assert_equal expected, row["eligible"], policy.inspect
+        report, _status = check(dir, base_model)
+        rejected = report["errors"].any? { |error| error.include?("ineligible") && error.include?("sample-002") }
+        assert_equal !expected, rejected, policy.inspect
+      end
+    end
+  end
+
+  def test_a_specific_role_query_surfaces_older_specialist_work_over_a_measured_generic_record
+    with_workspace do |dir|
+      file = File.join(dir, "projects", "sample.yaml")
+      project = YAML.safe_load(File.read(file))
+      specialist = project["records"].find { |record| record["id"] == "sample-002" }
+      specialist["statement"] = "Implemented a shared checkout pipeline with server-confirmed payment status and Bluetooth transport."
+      specialist["tags"] << "bluetooth"
+      # The measured activity stays eligible and discoverable for its own topic.
+      recent = project["records"].find { |record| record["id"] == "sample-004" }
+      recent["statement"] = "Delivered a Flutter proof of concept in 3 days."
+      project["records"].delete(recent)
+      project["analyses"] = [{"at" => "2020-01-01", "head" => "aaa111"}]
+      recent["id"] = "other-002"
+      other_file = File.join(dir, "projects", "other.yaml")
+      other = YAML.safe_load(File.read(other_file))
+      other["records"] << recent
+      other["analyses"] = [{"at" => "2026-01-01", "head" => "bbb222"}]
+      File.write(other_file, YAML.dump(other))
+      File.write(File.join(dir, "profile", "project-ranking.yaml"), YAML.dump({
+        "projects" => [
+          {"project" => "other", "rank" => 1, "tier" => "flagship", "best_evidence" => ["other-002"]},
+          {"project" => "sample", "rank" => 18, "tier" => "situational", "best_evidence" => []}
+        ]
+      }))
+      File.write(file, YAML.dump(project))
+      _out, err, status = Open3.capture3("python3", INDEXER, "--root", dir)
+      assert status.success?, err
+      FileUtils.mkdir_p(File.join(dir, "applications"))
+      File.write(File.join(dir, "applications", "test.yaml"), <<~YAML)
+        targeting:
+          requirements:
+            - term: native device integration
+              aliases: [Bluetooth, Flutter]
+      YAML
+      screen_shortlist_fixture(dir)
+      out, err, status = Open3.capture3("python3", SHORTLISTER, "--root", dir,
+                                        "--application", "test", "--limit", "1", "--stdout")
+      assert status.success?, err
+      assert_equal ["sample-002"], YAML.safe_load(out).dig("requirements", 0, "candidates").map { |row| row["ref"] }
+    end
+  end
+
   def test_index_ranks_the_performance_record_under_its_capability
     with_workspace do |dir|
       index = YAML.safe_load(File.read(File.join(dir, "index", "evidence-index.yaml")))
@@ -302,6 +447,7 @@ class ResumeCoverageTest < Minitest::Test
               priority: required
               critical: true
       YAML
+      screen_shortlist_fixture(dir)
       _out, err, status = Open3.capture3(
         "python3", SHORTLISTER, "--root", dir, "--application", "test"
       )
@@ -402,6 +548,35 @@ class ResumeCoverageTest < Minitest::Test
       }
       report, status = check(dir, model)
       assert status.success?, report["errors"].inspect
+    end
+  end
+
+  def test_bridge_accepts_digits_for_a_spelled_out_required_quantity
+    with_workspace do |dir|
+      profile_path = File.join(dir, "profile", "profile.yaml")
+      profile = YAML.safe_load(File.read(profile_path))
+      profile["responsibilities"][0]["evidence_bridges"][0]["required_public_phrases"] =
+        ["proof-of-concept", "AI agents", "three days"]
+      File.write(profile_path, YAML.dump(profile))
+      _out, err, status = Open3.capture3("python3", INDEXER, "--root", dir)
+      assert status.success?, err
+
+      model = bridged_project_model
+      model["experience"][0]["bullets"][-1] = {
+        "text" => "Built this Flutter proof-of-concept with AI agents in 3 days.",
+        "source_refs" => ["profile-responsibility-ai-001", "sample-004"]
+      }
+      report, status = check(dir, model)
+      assert status.success?, report["errors"].inspect
+
+      ["Built this Flutter proof-of-concept with AI agents in 4 days.",
+       "Built this Flutter application with AI agents in 3 days."].each do |text|
+        model["experience"][0]["bullets"][-1]["text"] = text
+        report, status = check(dir, model)
+        refute status.success?
+        assert report["errors"].any? { |error| error.include?("selected through evidence bridge") },
+          report["errors"].inspect
+      end
     end
   end
 
