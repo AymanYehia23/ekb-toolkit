@@ -17,10 +17,16 @@ presentation of prose that selection has already chosen.
 
 ## 1. Hyperlinks are automatic
 
-Entity labels and contact/profile values may carry a `url`, which renders as a
-clickable hyperlink in both DOCX and PDF while the visible text stays whatever
-`text` says. A `url` is presentation, not a claim, so it needs no source of its
-own.
+Every URL uses its exact registry value and explicit `link_status: confirmed`.
+In auto mode use the recorded short label for confirmed linked contacts. A
+confirmed email address can appear as its literal value when its link status is
+missing or unconfirmed. Omit unconfirmed social and portfolio links. Phone is
+always its confirmed literal value without a link.
+
+Entity labels and contact/profile values may carry a `url`. The PDF and any
+requested legacy DOCX export render it as a clickable hyperlink while preserving
+the visible `text`. A `url` is presentation, not a claim, so it needs no source of
+its own.
 
 Narrative prose must never become one large hyperlink. When a bullet or detail
 names a linked project, add `link_text` with the exact project-name substring;
@@ -175,7 +181,9 @@ use a named compact override when cross-viewer pagination requires it; never
 misrepresent that inner adjustment as a smaller inter-section gap.
 
 **Header.** Render the confirmed `basics.title` on its own centered line
-immediately below the confirmed name. Keep the labeled professional email and
+immediately below the confirmed name. For targeted resumes, prefer an approved
+job-matched headline; master resumes retain the general professional title.
+Keep the labeled professional email and
 profile links, literal phone number, and location together in the contact row
 below the title. When automatic links are on, a recorded header URL is
 mandatory: omitting it is not a fallback for an invalid or missing label. On
@@ -216,7 +224,8 @@ model retained a break because it materially explains the visible timeline or
 is directly useful for the target. It competes for page space with Experience;
 do not render a confirmed profile break automatically.
 
-**Bullet geometry** comes from the policy and must be identical in DOCX and PDF.
+**Bullet geometry** comes from the policy for the PDF and any requested legacy
+DOCX export.
 Bullet text starts inside the company or project title margin, wrapped lines
 align under the first text line, and the marker is vertically offset to the
 body-text baseline. An engagement title aligns with the role bullet text and its
@@ -239,7 +248,7 @@ a materially better-balanced layout.
 ## 5. Render
 
 ```bash
-scripts/ekb render <application-id>
+scripts/ekb render <application-id> --draft DRAFT.json
 ```
 
 That resolves the model, profile, projects, and policy from the workspace. Add
@@ -248,14 +257,18 @@ parentheses because plain text has no annotation layer. Add `--ats-plain` for a
 copy with no hyperlinks and no bold: the same words with the presentation layer
 removed.
 
-The tool must pass source eligibility checks before writing any public
-document, then verify DOCX and PDF text extraction and write `validation.json`
-plus `validation.md`.
+Render from a separate private draft. The tool checks the authorized screening
+decision, the current claim reviews, and PDF text extraction before publishing
+the staged bundle. It publishes one primary PDF, the corresponding
+`resume.json`, `editorial.json` and private validation reports together. The first publication
+defaults to `resume.pdf`. A legacy folder with several PDFs requires
+`--pdf-name EXISTING.pdf`. Manifested updates require `--base-generation` and reuse the published path. Use
+`--legacy-formats` only for a separately requested legacy export.
 
-The output directory keeps stable `resume.docx` and `resume.pdf` names for
-tooling and also contains attachment-ready copies named
-`FirstName_LastName_TargetRole_CV.docx` and `.pdf`. Submit the PDF copy. The
-renderer rejects password-protected PDFs.
+An update probes atomic exchange with two disposable nonempty directories on
+the destination filesystem before staging. It refuses the update if the
+probe fails. Keep the existing bundle and use a verified local volume for
+private draft work. See `docs/workflow.md` for recovery and filesystem limits.
 
 If `ekb render` reports missing dependencies, run `scripts/ekb doctor`.
 
@@ -265,15 +278,18 @@ Treat these warnings as work, not noise: unlinked entities that have a confirmed
 address, a rank inversion with no stated reason, capped emphasis terms, a
 heavily bolded document, and a stale evidence index.
 
-The report carries a **requirement coverage** table showing each requirement's
-coverage grade, the strongest record left unused, and any recorded reason. A row
-reading `stated` with a strong record in the unused column is the shape of a
-resume that will review below its evidence, even when every other check passes.
-That is a selection decision: go back to `prompts/resume.md`.
+The private report displays the reviewed fit and disposition for each
+requirement. Check that the named claims carry the intended scope and that a
+partial or unresolved requirement remains visible. Return material changes to
+the [application decision procedure](application-decisions.md).
 
 **Render every page to an image and look at it.** Fix clipping, overflow,
 awkward page breaks, broken bullets, and inconsistent spacing before delivery.
 Do not deliver on a failed validation.
+
+Treat CLI success as technical validation of a private draft. Follow
+`prompts/resume-editorial.md` to bind human approval to the reviewed PDF and
+frozen application before external delivery.
 
 No visible word may be divided between lines. The renderers must keep complete
 tokens together, including compounds that contain an ASCII hyphen. Treat any
@@ -282,8 +298,8 @@ hyphenation choice. Rewrite the sentence only when keeping the complete token
 together creates an awkward line or overflow.
 
 Run a separate proofreading pass before layout review and repeat it against the
-extracted DOCX and PDF text after rendering. Check spelling, missing or repeated
-words, merged compounds, and lost punctuation. A renderer changing
+extracted PDF text and any requested legacy DOCX text. Check spelling, missing
+or repeated words, merged compounds, and lost punctuation. A renderer changing
 `customer-facing` to `customerfacing` is a failed document even when the source
 model is correct. Apply `proofreading.forbidden_typos` mechanically, then read
 the complete public copy once in order; the configured list supplements review
@@ -292,21 +308,16 @@ and does not replace it.
 Keep the engineering and product phrases in `line_wrap.protected_phrases` on one
 line, and include short multiword requirement aliases and skill names when the
 policy allows them. Examples include `production support`, `clean architecture`,
-and `permission handling`. Validate the rendered PDF for phrase boundaries and
-inspect the DOCX render for the same breaks. A complete word on the next line is
-still a defect when it is the second half of a protected technical phrase.
+and `permission handling`. Validate the rendered PDF for phrase boundaries.
+If a legacy DOCX was requested, inspect its render for the same breaks. A
+complete word on the next line is still a defect when it is the second half of
+a protected technical phrase.
 
-After the first render, inspect page count and page use. A single-page resume
-below `content_density.single_page_minimum_usable_height_ratio` is underfilled
-even with no clipping. Resolve empty space in this order:
-
-Every one-page resume should aim to reach
-`content_density.single_page_minimum_usable_height_ratio`, currently 99 percent,
-when strong, non-redundant evidence and confirmed compact sections can do so. A
-master resume must also meet
-`content_density.master_single_page_target_usable_height_ratio`. Page use never
-justifies clipping, unequal section gaps, weakened hierarchy, or a low-value
-bullet.
+After the first render, inspect page count and page use. The report measures
+page fill. A positive effective `content_density.single_page_minimum_usable_height_ratio`
+or `content_density.master_single_page_target_usable_height_ratio` can emit an
+advisory warning. A zero value disables that warning. Evaluate the page
+against the confirmed page preference and the readability of its layout.
 
 Before adding anything, compare it with the whole public resume. Reject an
 Experience or Freelance Projects detail that only repeats a capability already
@@ -320,6 +331,9 @@ spend the final available lines on a second-best keyword match while omitting a
 higher-ranked relevant ownership, productization, adoption, scale, or sustained-
 delivery record. Requirement coverage and career strength are separate checks;
 the first cannot stand in for the second.
+
+If the document still leaves out useful evidence and has room, consider these
+options in order:
 
 1. restore a strong relevant Experience detail omitted for space;
 2. add a relevant independent project when it contributes non-redundant

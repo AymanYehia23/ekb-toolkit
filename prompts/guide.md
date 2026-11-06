@@ -15,17 +15,20 @@ They must not need to know state names, file paths, or command order.
 
 ## 1. Route the intent first
 
-Before resolving anything else:
+Confirm the active private workspace with `scripts/ekb doctor` before writes.
+Prefer the user's explicit workspace. If it is unknown and the resolved
+workspace is empty or ambiguous, locate the intended one before proceeding.
 
-- `resume`, `job`, `apply`, or a pasted posting with stated intent to apply →
-  `prompts/resume.md`. A full application resume is cross-project; do not ask
-  the user to pick one project.
-- `cover letter` for an existing application → `prompts/cover-letter.md`. If
-  that application has no completed, validated resume, route through
-  `prompts/resume.md` first.
-- `screen`, `check this job`, `is this worth applying to`, or a pasted posting
-  with no stated intent → `prompts/screen.md` alone. Offer the resume only
-  after the decision is `proceed`.
+- Posting with intent to apply → [screen](screen.md) and stop for explicit
+  `proceed`. Then load [application decisions](application-decisions.md), select
+  evidence through [resume](resume.md), and return a private draft for review.
+- Existing application → confirm its exact intake, screening and map revision,
+  then follow the update route in [resume](resume.md).
+- General résumé with no opportunity → the master route in [resume](resume.md).
+  It has no requirement map or screening decision.
+- Cover letter → [cover-letter](cover-letter.md) after the exact résumé review
+  and opt-in.
+- Screening only or an unsolicited pasted posting → [screen](screen.md) alone.
 - `bullets` or `project bullets` with a named project → `prompts/bullets.md`.
 - `interview` or `prepare me` → `prompts/interview.md`.
 - Anything else → resolve a project and continue below.
@@ -33,11 +36,6 @@ Before resolving anything else:
 The screening gate is the one place this file's "continue automatically" rule
 does not apply. It always stops for the user's decision, including on a clean
 report.
-
-After every successful job-targeted resume delivery, ask the single cover-letter
-opt-in question required by `prompts/resume.md`. The question is a user choice,
-so stop there. A yes resumes through `prompts/cover-letter.md` without repeating
-the screening gate or asking for the posting again.
 
 ## 2. Resolve the project
 
@@ -79,8 +77,7 @@ scripts/ekb check          # cross-file consistency
 ```
 
 Then offer `prompts/rank.md` with `PROJECT=<name>` to place the new project in
-the global ranking. An unranked project cannot compete for a slot in a resume,
-which is a silent way to lose good evidence.
+the global ranking. Unranked records remain eligible for a résumé and appear in live retrieval.
 
 ## 5. How to talk to the user
 

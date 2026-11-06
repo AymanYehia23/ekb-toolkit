@@ -73,12 +73,14 @@ evidence:
 ```
 
 **Loosening either of these is how a knowledge base stops being defensible.**
-Adding `inferred` to `eligible_kinds` means agent guesses can become resume
-lines. Adding `unknown` to involvement means work you may not have done can be
-claimed as yours.
+Override either key in the selected workspace's `config/toolkit.yaml` to
+narrow eligibility. Missing keys inherit the shipped settings. The tools
+reject values outside the sets above. `resume_eligible: false` always takes
+precedence. A policy that excludes `user-stated` also excludes confirmed
+profile facts, which are required for a complete résumé.
 
-There is one legitimate reason to tighten them: dropping `contributed` if you
-only want sole-authored work in your documents.
+Dropping `contributed` limits project claims to supported implementation or
+leadership. Implementation can include shared work.
 
 ### `evidence.limitations`
 
@@ -107,11 +109,21 @@ default. A shorter user-requested length wins. These settings change space, not
 evidence eligibility: the letter still reuses only the screened application's
 selected, validated claims.
 
-### `screening.enabled`
+### Screening and publication
 
-`true` by default. Setting it to `false` lets postings flow straight into a full
-tailoring pass. Consider what the gate costs you before turning it off: it reads
-three files and stops, and the pass it protects reads everything.
+Screening is mandatory for a job-targeted shortlist or render. A favorable
+verdict, cached shortlist, or existing model does not replace an explicit
+`decision.status: proceed` bound to the current frozen posting digest.
+`ekb screening-basis ID` prints that digest for the screening procedure. A
+general master résumé uses a frozen master record with no job posting.
+
+Use diagnostic validation to inspect claim-review status. Publish from a
+private draft with `ekb render ID --draft FILE`. The renderer stages the model,
+PDF and reports and publishes them with one directory rename or exchange.
+Updates require filesystem support for atomic exchange (macOS or Linux).
+The generation report identifies the primary PDF and carries artifact hashes.
+Keep the draft outside the published directory. For a legacy directory with
+multiple PDFs, explicitly identify the primary path on the first update.
 
 ---
 
@@ -234,12 +246,12 @@ Bullets per role, engagements per role, bullets per engagement. Enforced as
 warnings, not truncation — the schema bounds are wider on purpose so a genuinely
 dense role is not cut by policy.
 
-### `content_density.single_page_minimum_usable_height_ratio`
+### `content_density`
 
-0.84. A one-page resume using less than 84% of the printable height is
-underfilled even with no clipping. The fix is more evidence, never a longer
-summary. Master resumes additionally target 97% page use when strong,
-non-redundant content can reach it without disturbing normal section spacing.
+`single_page_minimum_usable_height_ratio` and
+`master_single_page_target_usable_height_ratio` set advisory thresholds.
+Set either to zero in the workspace policy to disable its warning. The
+validation report still includes measured page fill.
 
 ### `page_length`
 
@@ -256,9 +268,9 @@ data.
 
 ### `delivery`
 
-The renderer keeps stable `resume.*` files for scripts and writes additional
-attachment-ready copies using `FirstName_LastName_TargetRole_CV`. PDF output is
-checked to ensure it is selectable and not password-protected.
+The default deliverable is the stable `resume.pdf`. Use `--pdf-name` for an
+identified existing filename. Attachment naming patterns apply to explicit
+`--legacy-formats` exports. PDF output must be selectable and unencrypted.
 
 ### `bullets.*_indent_pt`
 

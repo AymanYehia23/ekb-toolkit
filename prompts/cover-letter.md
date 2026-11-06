@@ -24,7 +24,8 @@ Require all of the following:
   `job-targeted`;
 - `applications/<id>.screening.yaml` records `decision.status: proceed`;
 - `artifacts/applications/<id>/resume.json` exists;
-- the resume's latest validation completed successfully.
+- `ekb verify-review ID --approval RECEIPT.json` succeeds for the exact PDF.
+- The current reviewed map and editorial packet are available.
 
 When this procedure follows `prompts/resume.md` in the same application run,
 reuse the existing application ID and state. **Do not screen the posting again,
@@ -49,7 +50,7 @@ Read:
 - `profile/professional-profile.yaml` for binding framing and limits, never as
   an independent source;
 - only the curated `projects/*.yaml` records cited by the selected resume and
-  shortlist decisions.
+  reviewed application decisions.
 
 Never read candidate files, generated summaries, or target repositories. Do
 not broaden the evidence search merely to make the letter sound different from

@@ -28,7 +28,7 @@ generated artifact or a third-party page is not confirmed profile truth.
 A complete resume needs:
 
 - a display name;
-- a stable professional title for the line directly below the name;
+- a stable professional identity for master-resume headers and summary openings;
 - at least one contact method;
 - employment entries with organization, title, start date, and end date or
   `present`;
@@ -130,6 +130,22 @@ They are presentation data, not sources, and nothing cites them.
 
 Write the result using `templates/profile.yaml`. Append material confirmations
 or corrections to `profile/profile-context.md`, preserving existing entries.
+
+### Job-matched headlines
+
+For a job-targeted resume, prefer a concise headline matching the advertised
+role and supported specialization. Record approved alternatives in
+`professional_title.job_targeted_phrasings`, keeping `professional_title.value`
+as the general identity. A targeted headline is presentation, not a new
+employment title. It must not import an unsupported seniority, qualification,
+leadership role or technology from the posting. Ask for one compact confirmation
+when a useful variant is not recorded; reuse confirmed variants for later
+relevant opportunities.
+
+Record the preference as
+`preferences.resume_defaults.job_targeted.headline: job-matched`. Master resumes
+retain the general title, and summary openings may use that identity even when
+the targeted header differs. Never rewrite employment titles to match a job.
 
 ## 6. Responsibilities: the work that leaves no Git trace
 

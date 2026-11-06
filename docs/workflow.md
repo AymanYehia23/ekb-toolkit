@@ -117,36 +117,56 @@ is never screened twice.
 Follow prompts/resume.md with JOB_DESCRIPTION=<paste>
 ```
 
-The gate runs first. After `proceed`, the interesting part is the shortlist:
+The gate runs first. After `proceed`, confirm the active candidate view and
+compare live evidence for the complete posting.
 
 ```bash
-scripts/ekb shortlist 2026-03-14-northwind-flutter-engineer
+scripts/ekb candidate
+scripts/ekb shortlist ID --stdout
+scripts/ekb requirement-map ID --skeleton
 ```
 
-Open `applications/<id>.evidence.yaml` and read it yourself. For each
-requirement it lists the eligible candidates with their strength and signals.
-The agent fills in `selected` and `reason`; you can see whether it chose well.
+The shortlist contains retrieval leads. Follow the [application decision
+procedure](../prompts/application-decisions.md) to record every reviewed
+fit, placement, source and material gap in `applications/ID.requirements.yaml`.
+Draft from that file and use `ekb requirement-map ID --alignment` for the
+model's layout projection. The model, validation report and private packet
+identify the same map revision. Changing the profile, frozen requirements or
+curated records makes the prior map stale.
 
-This file is where resume quality comes from. A `required` requirement answered
-by a skills line while a `before-after` record sits unused is obvious on paper
-and invisible in a finished document.
+### Private drafts and existing PDFs
 
-Then:
+Use `ekb validate ID --draft DRAFT.json --editorial-packet` after screening,
+then follow [the editorial procedure](../prompts/resume-editorial.md).
+Keep the packet and the validation reports private. A passing render has
+`delivery_status: private_draft_human_approval_required`. Approve delivery
+only after a human reviews the claims, inspects every page and confirms the
+exact PDF against the frozen opportunity. The reviewer keeps the receipt
+outside the bundle and runs `ekb verify-review ID --approval RECEIPT.json`.
 
-```bash
-scripts/ekb render 2026-03-14-northwind-flutter-engineer
-```
+For an update, keep a separate draft and pass the current manifest's
+`--base-generation`. The updater locks the application and tests the real
+destination filesystem with disposable nonempty directories. macOS uses
+`renamex_np(RENAME_SWAP)` and Linux uses `renameat2(RENAME_EXCHANGE)` when
+the system library, kernel and filesystem provide the operation. A fresh
+path uses one directory rename. An existing path requires exchange and a
+failed probe leaves it in place. Use a verified local volume for further
+private drafting if exchange is unavailable.
 
-Read `validation.md`. Look at the rendered pages. Fix what the report flags, and
-treat a `stated` required requirement with a strong unused record as a selection
-problem rather than a layout one.
+After an interrupted update, use the published application directory as the
+source of truth. Read its `validation.json` and check its `generation`,
+`primary_pdf`, every SHA-256 under `outputs`, and `report_sha256` for
+`validation.md`. A normal update checks the previous manifest before
+proceeding. Ignore hidden `.ekb-resume-*` and `.ekb-exchange-probe-*`
+directories while recovering. Clean them up only when no render is active.
+Use the manifest's primary PDF when legacy copies also exist.
 
-```bash
-scripts/ekb render 2026-03-14-northwind-flutter-engineer --ats-plain
-```
-
-Same words, no hyperlinks, no bold, for a submission portal that mangles
-formatting.
+The exchange is the commit point for a single directory generation. Review
+and hash the same generation before delivery. A reader opening separate files
+across a concurrent swap must recheck the generation and hashes. Guarantees
+cover cooperating writers and process interruptions on tested volumes.
+Power loss, filesystem or storage failures, and untested network or sync
+providers are outside that verification.
 
 After a job-targeted resume is delivered, the agent asks whether you want a
 cover letter. Answer `yes` to run `prompts/cover-letter.md` against the same
@@ -178,15 +198,14 @@ Both re-derive from everything you have accumulated since. A strength that was
 
 ## Following along with the example
 
-Every step above can be run against the shipped fictional workspace:
+Inspect the shipped fictional workspace without rewriting the saved shortlist:
 
 ```bash
 export EKB_WORKSPACE=$PWD/examples/sample-workspace
 scripts/ekb status
-scripts/ekb index
 scripts/ekb check
-scripts/ekb shortlist 2026-03-14-northwind-flutter-engineer --refresh
-scripts/ekb validate 2026-03-14-northwind-flutter-engineer
+scripts/ekb shortlist 2026-03-14-northwind-flutter-engineer --stdout
+unset EKB_WORKSPACE
 ```
 
 Read these three files in this order and the design will make sense:
@@ -195,4 +214,16 @@ Read these three files in this order and the design will make sense:
 2. `context/fittrack-questions.md` — the conversation that produced it,
    including the candidate that was dropped and why
 3. `applications/2026-03-14-northwind-flutter-engineer.evidence.yaml` — the
-   selection decisions, written down
+   historical selection decisions
+
+The [sample README](../examples/sample-workspace/README.md#reproduce-the-example-pdf)
+describes the disposable PDF replay.
+
+### Whole-candidate matching
+
+After screening, use the [discovery procedure](../prompts/capability-discovery.md)
+and inspect `ekb shortlist ID --stdout`. The requirement map combines project
+leads, existing profile sources, confirmed broader capabilities, and related
+engineering examples. Record the selected refs and rationale before drafting.
+See the [controlled-use policy for capabilities](controlled-use-capabilities.md)
+for review, interview preparation, and delivery.

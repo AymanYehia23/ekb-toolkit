@@ -116,6 +116,10 @@ Place every curated project under exactly one context: an employer, independent
 work, or academic work. This is what stops a personal project drifting into
 employment history in a generated resume.
 
+When the confirmed profile distinguishes personal projects from freelance work,
+keep a separate personal-project context with no employment reference. Follow
+its stated selection limits.
+
 Every project must appear exactly once, and the map must agree with
 `profile.yaml` `experience[].projects`. `scripts/ekb check` enforces both.
 

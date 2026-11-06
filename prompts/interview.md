@@ -68,6 +68,12 @@ Each story carries:
   This is the part that turns a story into preparation.
 - its source comment.
 
+Start each story with a numbered heading such as
+`## Story 1: Runtime workspace discovery`, followed by its source comments.
+The evidence index uses this heading format to distinguish stories from fact
+banks and system context. After rebuilding the index, verify that each story's
+primary record has a `story` entry with the expected title.
+
 The follow-up questions are worth real effort. A story that survives its own
 telling and collapses on the first "why not the other approach?" has not helped
 anyone.
@@ -95,3 +101,25 @@ Report the output path and the selected record IDs. Checkpoint with
 `scripts/ekb git artifact <PROJECT> interview`.
 
 Offer a deeper story or a bullet bank if either would help, and stop.
+
+## Application mode
+
+When asked to prepare for a frozen opportunity or when drafting its résumé,
+follow `prompts/screen.md` and verify the current proceed decision first.
+Use the current draft and editorial packet. Read the same reviewed map through
+`ekb requirement-map ID`. If its basis is stale, resolve it before using the
+old interview claims.
+Write the targeted guide to `artifacts/interview/<application-id>.md`,
+outside the résumé bundle. Preserve other application and project guides.
+
+For each important requirement on the résumé, quote the exact public line and
+keep its model path and source refs. Prepare a likely question and an answer
+outline at the same scope. For project work, use the actual investigation,
+decision, constraints, contribution and result. For a capability declaration,
+explain its level, where and how it was learned or used, what the candidate can
+show, and any limits on professional use. For a transferable match, name the
+shared mechanism and the experience the candidate still needs. For unconfirmed
+claims, gaps and low readiness, record preparation or clarification privately.
+Before final review, compare the guide with the current résumé wording and
+recheck changed sources. Keep inferred motivations and trade-offs visibly
+labelled. Leave uncertain story details open.
