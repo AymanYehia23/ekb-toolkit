@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """Audit every rendered resume bullet against the ranked project banks.
 
-Historical application artifacts are immutable snapshots. This command does not
-rewrite them; it records whether each rendered instance is retained verbatim,
-superseded by a stronger canonical phrasing for the same evidence, or retired
-because its evidence did not survive project-level selection.
+Historical snapshots stay intact. This command reports factual relationships
+to the banks and leaves wording quality and retirement to editorial review.
 """
 
 from __future__ import annotations
@@ -28,7 +26,9 @@ BULLET_PATH = re.compile(
     r"experience\[\d+\]\.engagements\[\d+\]\.bullets\[\d+\]|"
     r"projects\[\d+\]\.details\[\d+\])$"
 )
-RECORD_ID = re.compile(r"^(.+)-\d{3}$")
+CLASSIFICATIONS = (
+    "exact_match", "approved_variant", "alternative_wording", "overlapping_sources", "absent_from_bank"
+)
 
 
 def source_refs(value: dict[str, Any]) -> list[str]:
@@ -51,11 +51,6 @@ def rendered_bullets(model: Any, path: str = "") -> list[dict[str, Any]]:
     return found
 
 
-def project_of(reference: str) -> str | None:
-    match = RECORD_ID.fullmatch(reference)
-    return match.group(1) if match else None
-
-
 def load_banks(workspace: Path) -> list[dict[str, Any]]:
     banks: list[dict[str, Any]] = []
     for filename in sorted(glob.glob(str(workspace / "artifacts" / "bullets" / "*.md"))):
@@ -68,6 +63,7 @@ def load_banks(workspace: Path) -> list[dict[str, Any]]:
                     "rank": rank,
                     "text": entry["text"],
                     "sources": entry["sources"],
+                    "variants": entry["variants"],
                     "level": review.get("level"),
                     "result_type": review.get("result_type"),
                 }
@@ -76,28 +72,24 @@ def load_banks(workspace: Path) -> list[dict[str, Any]]:
 
 
 def replacement_for(item: dict[str, Any], banks: list[dict[str, Any]]) -> tuple[str, dict[str, Any] | None]:
-    refs = item["sources"]
-    key = tuple(sorted(refs))
-    exact_sources = [entry for entry in banks if tuple(sorted(entry["sources"])) == key]
+    refs = set(item["sources"])
+    if not refs:
+        return "absent_from_bank", None
+    exact_sources = [entry for entry in banks if set(entry["sources"]) == refs]
     for entry in exact_sources:
         if entry["text"] == item["text"]:
-            return "kept", entry
+            return "exact_match", entry
+    for entry in exact_sources:
+        if item["text"] in entry.get("variants", []):
+            return "approved_variant", entry
     if exact_sources:
-        return "improved", exact_sources[0]
+        return "alternative_wording", exact_sources[0]
 
-    projects = {project_of(ref) for ref in refs}
-    projects.discard(None)
-    if len(projects) == 1:
-        same_project = [
-            entry
-            for entry in banks
-            if any(project_of(ref) in projects for ref in entry["sources"])
-            and set(entry["sources"]) & set(refs)
-        ]
-        if same_project:
-            same_project.sort(key=lambda entry: (-len(set(entry["sources"]) & set(refs)), entry["rank"]))
-            return "improved", same_project[0]
-    return "removed", None
+    overlaps = [entry for entry in banks if refs.intersection(entry["sources"])]
+    if overlaps:
+        best = min(overlaps, key=lambda entry: (-len(refs.intersection(entry["sources"])), entry["rank"]))
+        return "overlapping_sources", best
+    return "absent_from_bank", None
 
 
 def build_audit(workspace: Path) -> dict[str, Any]:
@@ -112,19 +104,19 @@ def build_audit(workspace: Path) -> dict[str, Any]:
                 {
                     "artifact": str(path.relative_to(workspace)),
                     **item,
-                    "decision": status,
-                    "replacement": replacement,
+                    "classification": status,
+                    "bank_match": replacement,
                 }
             )
 
-    counts = {name: sum(item["decision"] == name for item in instances) for name in ("kept", "improved", "removed")}
+    counts = {name: sum(item["classification"] == name for item in instances) for name in CLASSIFICATIONS}
     variants = {
-        (item["text"], tuple(sorted(item["sources"])), item["decision"])
+        (item["text"], tuple(sorted(item["sources"])), item["classification"])
         for item in instances
     }
     distinct_counts = {
         f"distinct_{name}": sum(decision == name for _, _, decision in variants)
-        for name in ("kept", "improved", "removed")
+        for name in CLASSIFICATIONS
     }
     selected = [
         {
@@ -140,9 +132,9 @@ def build_audit(workspace: Path) -> dict[str, Any]:
     return {
         "generated_at": dt.date.today().isoformat(),
         "method": (
-            "All historical resume bullet instances were compared with the ranked, "
-            "quality-reviewed project banks. Exact text and evidence is kept; matching "
-            "project evidence is improved; evidence not selected into a bank is removed."
+            "Historical model bullets were compared with the ranked banks. "
+            "These classifications describe text and source relationships. "
+            "Editorial quality and retirement require a separate decision."
         ),
         "summary": {
             "reviewed_instances": len(instances),

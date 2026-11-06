@@ -263,18 +263,11 @@
     "require_terminal_punctuation": true,
     "forbidden_openings": [
       "responsible for",
-      "worked on",
       "helped with",
       "involved in",
       "participated in",
       "tasked with",
       "handled"
-    ],
-    "selection_order": [
-      "outcome",
-      "impact",
-      "scope",
-      "activity"
     ],
     "publishable_levels": [
       "outcome",
@@ -303,7 +296,7 @@
       "readability",
       "credibility"
     ],
-    "note": "Applies to every engineering stack. Select and order evidence in Outcome > Impact > Scope > Activity order so the strongest bullet is first. Activity is an audit classification, not a publishable level: cut it or select stronger evidence. A bullet is one short sentence and one defensible achievement: begin with the contribution or engineering change, then state its verified consequence or meaningful scope, and keep only the technical details needed to distinguish the work. Lead at recruiter-readable professional impact and add implementation detail only when it proves an important skill, keyword, constraint, or technical result. A supported number earns space only when it materially strengthens the achievement; small adoption figures, build counts, and operational counts that read as routine or unimpressive should remain private. Reject repeated capabilities even when their implementation differs, and never add a weak bullet merely to fill the page. Do not force a result clause when no outcome is supported, and do not turn a record into a comma-separated inventory. Schema-version 2 records the A-H semantic review and metric decision for every public bullet; the executable validator requires an exact review-to-bullet and review-to-evidence match."
+    "note": "Applies to every engineering stack. Lead with the strongest relevant engineering accomplishment. Compare relevance, depth, responsibility, significance, distinctiveness, evidence, clarity, and space cost before selecting a metric. Activity is an audit classification, not a publishable level: cut it or select stronger evidence. A bullet is one short sentence and one defensible achievement: begin with the contribution or engineering change, then state its verified consequence or meaningful scope, and keep only the technical details needed to distinguish the work. Lead at recruiter-readable professional impact and add implementation detail only when it proves an important skill, keyword, constraint, or technical result. A supported number earns space only when it materially strengthens the achievement; small adoption figures, build counts, and operational counts that read as routine or unimpressive should remain private. Reject repeated capabilities even when their implementation differs, and never add a weak bullet merely to fill the page. Do not force a result clause when no outcome is supported, and do not turn a record into a comma-separated inventory. Schema-version 2 records the A-H semantic review and metric decision for every public bullet; the executable validator requires an exact review-to-bullet and review-to-evidence match."
   },
   "number_format": {
     "digits_default": true,

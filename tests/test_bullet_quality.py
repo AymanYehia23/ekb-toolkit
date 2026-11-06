@@ -175,7 +175,7 @@ class BulletQualityTest(unittest.TestCase):
             bank_dir = Path(directory) / "artifacts" / "bullets"
             bank_dir.mkdir(parents=True)
             (bank_dir / "example.md").write_text(
-                "# Example\n\n- Worked on an API.\n  <!-- src: example-001 -->\n  "
+                "# Example\n\n- Responsible for an API.\n  <!-- src: example-001 -->\n  "
                 + QUALITY + "\n",
                 encoding="utf-8",
             )

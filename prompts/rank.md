@@ -43,7 +43,7 @@ for an ordering, not a measurement.
 | `architecture` | structural work, layering, testing, delivery practice |
 | `scale` | size of the system and of the change surface |
 | `maturity` | production reality: released, in use, maintained over time |
-| `ownership` | supported involvement (`led` > `implemented` > `contributed`) and authorship share |
+| `ownership` | supported responsibility for the actual feature or subsystem |
 | `collaboration` | client, requirements, or cross-functional evidence |
 | `distinctiveness` | rarity inside THIS portfolio, not in the industry |
 | `resume_value` | how well one bullet survives a recruiter's read |
@@ -53,7 +53,11 @@ Calibration that matters:
 
 - `maturity` — a demo, proof of concept, or never-published build scores at most
   1. An academic build scores 0.
-- `ownership` — follows supported involvement, never commit count.
+- `ownership` — evaluate supported responsibility and the feature boundary.
+  Collaboration carries full value at the supported scope.
+- Metrics corroborate individual dimensions when useful. They do not add an
+  automatic advantage. For a target resume, compare role relevance and
+  engineering substance before using this general rank as a tie-break.
 - `distinctiveness` — a common technology can be distinctive here if only one
   project uses it.
 - `resume_value` and `interview_value` must fall when a cap forces a qualifier

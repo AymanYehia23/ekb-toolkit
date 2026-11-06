@@ -4,6 +4,7 @@ Parameters:
 
 - `REPO_PATH` — absolute path to the repository. Required on the first run only.
 - `PROJECT` — short project name. Defaults to the repository folder name.
+- `REF` — optional explicit in-scope ref or commit. Defaults to the current HEAD.
 - `DEPTH` — `quick` (default) or `deep`. Use `deep` only when the user asks.
 - `SINCE` — recovery override, valid only when no candidates file is pending.
 
@@ -32,25 +33,32 @@ deepen only the records it actually selects.
    `PROJECT` and resolve the path from the pending or curated file. Stop if
    neither provides one. Canonicalize the path.
 2. Read the workspace `EXCLUSIONS.md` and the active profile pack's
-   `exclusions.md`. Confirm the path is a Git repository, resolve the full
-   current HEAD, and record the target's initial `git status --short`.
+   `exclusions.md`. Confirm the path is a Git repository. Record its checked-out
+   branch, full HEAD, and `git status --short` as the integrity baseline.
+   Resolve the permitted analysis ref to a full commit after applying the ref
+   exclusions. Use that commit for evidence and the analysis header. Never
+   switch the working tree to inspect a different ref.
 3. Read the pending and curated files for path consistency, continuity, and
    deduplication. Stop on a mismatched project or repository.
 4. Determine the baseline:
    - **Pending candidates exist** — preserve every analysis entry and record.
-     Resume at the pending HEAD, or append only `PENDING_HEAD..HEAD` when that
-     is an ancestor of current HEAD. `SINCE` may not bypass pending work.
+     Resume at the pending HEAD, or append only `PENDING_HEAD..INSPECTED_HEAD`
+     when the pending HEAD is its ancestor. `SINCE` may not bypass pending work.
    - **No pending candidates** — use an explicit `SINCE`, otherwise the latest
      curated analysis HEAD.
    - **First run** — inspect the available history.
    - Validate every baseline with read-only ancestry checks. Stop and report on
      missing, rewritten, or disconnected history rather than silently
      re-scanning from the beginning.
-   - **Baseline equals HEAD with nothing pending** — report that the project is
-     current and write nothing in quick mode. In explicit deep mode, look for
-     high-value gaps in existing history and record a supplemental analysis
-     entry with `since` and `head` both at current HEAD plus `depth: deep`.
-5. Before drafting anything, compare discoveries against every curated and
+   - **Baseline equals the inspected HEAD with nothing pending** — report that
+     the project is current and write nothing in quick mode. In explicit deep
+     mode, look for high-value gaps in existing history and record a supplemental
+     analysis entry with `since` and `head` both at the inspected HEAD plus
+     `depth: deep`.
+5. Reuse confirmed profile facts, prior answers, analyses and interview guides
+   before framing questions. Inspect committed evidence for unresolved factual
+   pieces and record it separately from existing user wording.
+6. Before drafting anything, compare discoveries against every curated and
    pending record by claim, evidence range, path, and engineering event. Do not
    create semantic duplicates.
 
@@ -138,6 +146,8 @@ materially improve a resume, an interview, or future recall.
 
 Write it under `inferred_context` with the boundary explicit:
 
+- retain materially different plausible interpretations as separate labelled
+  alternatives, each with its basis and its uncertainty;
 - distinguish likely intent from achieved outcome;
 - state the repository or domain basis;
 - state the important uncertainty;
@@ -150,8 +160,8 @@ preserved. Blank answer blocks are optional enrichment and never block review.
 ## 6. Verify, then stop
 
 - Validate the YAML with a real parser.
-- Confirm the target repository's final `git status --short` exactly matches its
-  initial state.
+- Confirm the target repository's checked-out branch, full HEAD, and
+  `git status --short` exactly match the integrity baseline.
 - Confirm the workspace changed only at the two allowed paths, all earlier
   pending content is still present, and the latest analysis HEAD equals the
   inspected target HEAD.

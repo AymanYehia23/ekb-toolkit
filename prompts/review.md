@@ -61,6 +61,11 @@ each, show only:
 Do not dump diffs by default. Show the excerpt when the evidence check failed,
 the claim is high-risk, or the user asks to see it.
 
+Reuse any prior confirmation that still covers the same scope. Put only
+remaining questions that would change participation, eligibility, ownership,
+or a material public claim in the same batch as the save decision. Leave
+other proposed context inferred.
+
 Separate ordinary records from **high-risk confirmations**. High risk means a
 claim of leadership or sole ownership, an observed metric, achieved business
 impact, an unverified production result, or whether the user participated at

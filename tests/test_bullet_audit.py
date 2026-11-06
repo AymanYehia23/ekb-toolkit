@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 import sys
-import tempfile
 import unittest
 
 
@@ -23,32 +21,46 @@ class BulletAuditTest(unittest.TestCase):
                 "rank": 1,
                 "text": "Built one validated import path.",
                 "sources": ["example-001"],
+                "variants": ["Consolidated the import paths."],
                 "level": "impact",
                 "result_type": "reliability",
             }
         ]
 
-    def test_keeps_an_exact_ranked_bullet(self) -> None:
+    def test_classifies_exact_ranked_bullet(self) -> None:
         status, replacement = replacement_for(
             {"text": "Built one validated import path.", "sources": ["example-001"]},
             self.banks,
         )
-        self.assertEqual("kept", status)
+        self.assertEqual("exact_match", status)
         self.assertEqual(1, replacement["rank"])
 
-    def test_supersedes_weaker_wording_for_selected_evidence(self) -> None:
+    def test_classifies_different_text_with_same_evidence(self) -> None:
         status, replacement = replacement_for(
             {"text": "Worked on imports.", "sources": ["example-001"]}, self.banks
         )
-        self.assertEqual("improved", status)
+        self.assertEqual("alternative_wording", status)
         self.assertEqual("Built one validated import path.", replacement["text"])
 
-    def test_retires_evidence_not_selected_into_a_bank(self) -> None:
+    def test_classifies_evidence_absent_from_bank(self) -> None:
         status, replacement = replacement_for(
             {"text": "Updated a dependency.", "sources": ["example-009"]}, self.banks
         )
-        self.assertEqual("removed", status)
+        self.assertEqual("absent_from_bank", status)
         self.assertIsNone(replacement)
+
+    def test_classifies_an_approved_variant(self) -> None:
+        status, _ = replacement_for(
+            {"text": "Consolidated the import paths.", "sources": ["example-001"]}, self.banks
+        )
+        self.assertEqual("approved_variant", status)
+
+    def test_partial_sources_do_not_approve_a_variant(self) -> None:
+        status, _ = replacement_for(
+            {"text": "Consolidated the import paths.", "sources": ["example-001", "other-001"]},
+            self.banks,
+        )
+        self.assertEqual("overlapping_sources", status)
 
 
 if __name__ == "__main__":

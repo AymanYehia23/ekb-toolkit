@@ -5,7 +5,9 @@ Parameters:
 - `PROJECT` — one project.
 - optional target role or job context to guide selection.
 
-Follow `AGENTS.md`. This is a **lightweight single-project bullet bank**, not a
+Follow `AGENTS.md`. Resolve the selected workspace explicitly and use its
+`config/toolkit.yaml` evidence keys over shipped defaults. Apply both eligibility
+sets and every explicit record exclusion. This is a **lightweight single-project bullet bank**, not a
 complete application resume. Route `resume`, `job`, or `apply` intent to
 `prompts/resume.md` instead.
 
@@ -95,7 +97,7 @@ achievement by itself.
 
 ### Select at the right altitude
 
-Evaluate each candidate in this order:
+Classify each candidate by what its source can establish:
 
 1. **Outcome**: a measured or observed change supported by before/after evidence.
 2. **Impact**: a verified user, product, operational, reliability, delivery, or
@@ -105,9 +107,11 @@ Evaluate each candidate in this order:
 4. **Activity**: implementation work with no demonstrated consequence or useful
    scope.
 
-Prefer Outcome over Impact, Impact over Scope, and Scope over Activity. Drop an
-activity-only record when stronger evidence exists. Do not manufacture an
-outcome or force a "so that" clause merely to make an activity sound important.
+Order candidates by relevance, engineering substance and depth, responsibility,
+product significance, distinctiveness, evidence strength, clarity, and space
+cost. A metric can corroborate a strong result. Substantial unmeasured delivery
+and collaborative features can lead the bank. Drop activity-only entries when
+stronger work exists and use the strongest feature scope the evidence supports.
 When no measured result exists, a precise structural result such as
 "consolidated four request paths into one endpoint" is stronger and safer than
 "improved performance."
