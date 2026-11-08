@@ -112,7 +112,7 @@ def requirement_terms(requirement, aliases):
     }
 
 
-def candidates_for(index: dict, aliases: list, limit: int, *, requirement: str = "", role: str = "") -> list:
+def candidates_for(index: dict, aliases: list, limit: int | None, *, requirement: str = "", role: str = "") -> list:
     terms = requirement_terms(requirement, aliases)
     if not terms:
         return []
@@ -273,7 +273,7 @@ def requirement_mapping(requirement, direct, profile_rows, capabilities, index, 
     supported = [row for row in matches if not row["needs_confirmation"]]
     priority = (
         "direct professional evidence", "broader professional capability", "direct project evidence",
-        "practical non-professional experience", "confirmed technical knowledge",
+        "practical non-professional experience", "working knowledge", "familiarity",
         "profile skill (proficiency unspecified)", "related engineering example",
         "transferable experience", "genuine gap",
     )
@@ -341,9 +341,17 @@ def build(root: str, application_id: str, limit: int, requirement_filter: str | 
         aliases = requirement.get("aliases") or []
         term = requirement.get("term") or ""
         formal = requirement.get("category") == "qualification"
-        found = [] if formal else candidates_for(
-            index, aliases, limit, requirement=term, role=application.get("role") or "",
+        leads = [] if formal else candidates_for(
+            index, aliases, None if current_workflow else limit,
+            requirement=term, role=application.get("role") or "",
         )
+        found = leads[:limit]
+        project_leads = {}
+        if current_workflow:
+            for lead in leads:
+                project_leads.setdefault(lead["project"], []).append({
+                    "ref": lead["id"], "match_tier": lead["match_tier"],
+                })
         profile_rows = [] if formal else profile_candidates_for(index, sorted(requirement_terms(term, aliases)))
         mapping = requirement_mapping(requirement, found, profile_rows, capabilities, index, limit, policy, employers)
         if current_workflow:
@@ -383,7 +391,8 @@ def build(root: str, application_id: str, limit: int, requirement_filter: str | 
                 # difference stays visible while deciding.
                 "profile_candidates": profile_rows,
                 # Authored. Empty means the decision has not been made yet.
-                **({"id": requirement["id"]} if current_workflow else decision),
+                **({"id": requirement["id"], "project_leads": project_leads}
+                   if current_workflow else decision),
             }
         )
 

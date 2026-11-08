@@ -193,8 +193,8 @@ end
 #
 # Automatic hyperlinking is the default, which makes the opposite risk the real
 # one: a plausible-looking address that nobody confirmed. Every url a document
-# renders must appear in profile.yaml, and every project or organization link
-# must be marked `link_status: confirmed` there. A caveat recorded only in prose
+# renders must appear in profile.yaml with `link_status: confirmed`.
+# A caveat recorded only in prose
 # cannot be enforced, so the status field is what this check reads.
 
 def normalize_url(value)
@@ -303,6 +303,21 @@ end
 def check_header_link_labels(visible_items, sources, model, profile, errors)
   require_links = model.dig("layout", "hyperlinks") != "off" &&
                   profile.dig("preferences", "link_style", "auto_hyperlink").to_s != "off"
+
+  if require_links && model["schema_version"] == 2
+    included = Array(model.dig("basics", "links")).map { |item| item["source_ref"] }
+    Array(profile["links"]).each do |entry|
+      next unless entry.is_a?(Hash) && !normalize_url(entry["url"]).empty?
+
+      id = entry["id"]
+      status = entry["link_status"]
+      if !%w[confirmed unconfirmed uncurated].include?(status)
+        errors << "profile.links entry #{id} needs an explicit link_status; reconcile it through prompts/profile.md"
+      elsif status == "confirmed" && !included.include?(id)
+        errors << "resume.basics.links omits confirmed profile link #{id}; include its recorded label and URL"
+      end
+    end
+  end
 
   visible_items.each do |item|
     next unless item["path"].match?(/\Aresume\.basics\.(?:contact|links)\[\d+\]\z/)
@@ -464,6 +479,27 @@ def organization_link_warnings(model, registry)
     end
   end
   warnings
+end
+
+def engagement_link_findings(model, registry, visible, sources, errors)
+  visible.filter_map do |item|
+    next unless item["path"].match?(/\.engagements\[\d+\]\.name\z/)
+    projects = item["refs"].filter_map { |ref| sources.dig(ref, "project") }.uniq
+    next unless projects.length == 1
+
+    record = registry["projects"][projects.first] || {}
+    registered = record["status"] == "confirmed" ? Array(record["slots"]&.values).map { |url| normalize_url(url) } : []
+    if !item["url"].to_s.empty? && !registered.include?(normalize_url(item["url"]))
+      errors << "#{item['path']}.url is not a confirmed link for this engagement"
+    end
+    next if model.dig("layout", "hyperlinks") == "off" || !item["url"].to_s.empty?
+
+    if registered.empty?
+      {"severity" => "non-applicable", "message" => "#{item['text']}: no confirmed engagement URL in the link registry."}
+    else
+      {"severity" => "presentation", "message" => "#{item['text']}: add its confirmed engagement URL from the link registry."}
+    end
+  end
 end
 
 # --- Project ranking -------------------------------------------------------
@@ -1544,6 +1580,12 @@ visible_items.each do |item|
     clause_sources = resolved.select { |ref, _| clause["refs"].include?(ref) }
     participation_errors(clause["wording"], clause_sources, item["path"], errors)
     outcome_notes.concat(outcome_findings(clause["wording"], clause_sources))
+    if decision_map
+      errors.concat(scope_findings(clause["wording"], clause_sources).map { |reason| "#{item['path']}: #{reason}" })
+    end
+  end
+  if decision_map && clauses && clauses.length > 1
+    errors.concat(scope_findings(text, resolved).map { |reason| "#{item['path']}: #{reason}" })
   end
   outcome_notes.concat(outcome_findings(text, resolved))
   outcome_notes.uniq.each do |reason|
@@ -1630,6 +1672,7 @@ check_mobility(model, profile, sources, errors)
 check_professional_title(model, profile, errors)
 check_summary_links(visible_items, errors)
 warnings.concat(organization_link_warnings(model, link_registry))
+link_findings = decision_map ? engagement_link_findings(model, link_registry, visible_items, sources, errors) : []
 
 selected_projects = visible_items
   .flat_map { |item| Array(item["refs"]).filter_map { |ref| sources.dig(ref, "project") } }
@@ -1763,10 +1806,15 @@ if ranking
   end
   warnings.concat(
     rank_warnings(ranking, selected_projects, eligible_projects, model.dig("target", "mode"), relevant_projects)
-  )
+  ) unless decision_map
 end
 
-ordered_projects = selected_projects.sort_by { |project| selected_ranks[project] || 999 }
+reviewed_projects = if decision_map
+  ranks = Array(ranking && ranking["projects"]).to_h { |row| [row["project"], row["rank"]] }
+  reviewed_project_selection(decision_map, visible_items, sources, active_evidence_policy, ranks, errors, warnings)
+end
+discovery_questions = decision_map ? requirement_interview(coverage_report, sources, warnings) : []
+ordered_projects = decision_map ? selected_projects : selected_projects.sort_by { |project| selected_ranks[project] || 999 }
 ordered_section_projects = selected_projects_section.sort_by { |project| selected_ranks[project] || 999 }
 
 # "N of 262 sources were not selected" is true of every resume ever generated
@@ -1827,6 +1875,7 @@ report = {
   },
   "errors" => errors,
   "warnings" => warnings,
+  "link_findings" => link_findings,
   "semantic_review" => {
     "status" => semantic_review_flags.empty? && claim_manifest.values.all? { |item| item["status"] == "current" } ?
       "current" : "requires_editorial_review",
@@ -1841,6 +1890,7 @@ report = {
   "external_signals" => signals,
   "selected_sources" => visible_items.flat_map { |item| Array(item["refs"]) }.compact.uniq.sort,
   "project_selection" => {
+    "reviewed_comparison" => reviewed_projects,
     "selected" => ordered_projects,
     "ranks" => ordered_projects.map { |project| selected_ranks[project] }.compact,
     "evidence_used" => ordered_projects,
@@ -1862,7 +1912,8 @@ if options[:editorial_packet]
       entry.slice("term", "priority", "category", "mapping", "selected", "reason") if
         entry.is_a?(Hash) && entry["mapping"].is_a?(Hash)
     end,
-    "capability_interview" => visible_items.filter_map do |item|
+    "project_selection" => report["project_selection"],
+    "capability_interview" => discovery_questions + visible_items.filter_map do |item|
       next if item["heading"]
       ref = item["source_ref"]
       source = sources[ref]
@@ -1878,7 +1929,9 @@ if options[:editorial_packet]
         )
       }
     end,
-    "sources" => (report["selected_sources"] | Array(decision_map && decision_map["requirements"]).flat_map { |row| row["refs"] }).each_with_object({}) do |ref, packet|
+    "sources" => (report["selected_sources"] |
+      Array(decision_map && decision_map["requirements"]).flat_map { |row| row["refs"] } |
+      Array(reviewed_projects).flat_map { |row| row["refs"] }).each_with_object({}) do |ref, packet|
       source = sources[ref]
       packet[ref] = source ? source.slice(
         "record_path", "record_revision", "kind", "involvement", "resume_eligible",

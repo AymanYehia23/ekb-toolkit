@@ -135,3 +135,58 @@ def outcome_findings(text, resolved)
     "Verify the observed #{name} (#{match[0]}) and attribution against the sources"
   end
 end
+
+# These explicit predicates have materially different meanings from their
+# client-side or test-source counterparts. Other phrasings still need review.
+BACKEND_AUTHORSHIP = /
+  \b(?:built|developed|implemented|designed|authored|wrote|created)\s+
+  (?:(?:a|the|new|production|server[- ]side|backend|REST|Frappe|ERPNext|BFF|API)\s+){0,5}
+  (?:backend(?!\s+(?:APIs?|endpoints?)\b)|server[- ]side\s+(?:logic|APIs?)|endpoints?|APIs?)\b
+  (?![- ](?:clients?|integration|responses?|consumption))
+/ix
+EXTERNAL_CRM = /\b(?:Salesforce|HubSpot|Zoho CRM|Dynamics 365|(?:third[- ]party|external|standalone|separate) CRM)\b/i
+DEVICE_MATRIX = /\b(?:cross[- ]device testing|(?:tested|validated|verified)\b[^.!?]{0,70}\bacross (?:multiple |different )?(?:devices|OS versions|iOS and Android versions|Android and iOS versions))\b/i
+TEST_AUTHORSHIP = /\b(?:wrote|authored|added|created|implemented)\s+(?:(?:automated|unit|widget|integration|regression|end[- ]to[- ]end)\s+){0,3}tests\b/i
+REQUIREMENTS_WORK = /\b(?:gather(?:ed|ing)|elicited|analy[sz]ed|refined|defined|led)\s+(?:(?:the|client|business|product|technical|user|and|refined)\s+){0,5}requirements\b|\brequirements (?:gathering|analysis)\b/i
+SUBMISSION_TOTAL = /\b(\d+)\s+((?:(?:client[- ]branded|independent|distinct|separate|mobile|original|native|production|different|unique)\s+)*)(?:apps?|applications?|codebases?)\b[^.!?]{0,100}?\b(\d+)\s+[^.!?]{0,45}?\blistings?\b/i
+
+def scope_findings(text, resolved)
+  statements = resolved.flat_map { |_, source| [source["statement"], *Array(source["profile_values"])] }
+  positive = statements.flat_map { |statement| affirmative_sentences(statement) }
+                       .reject { |sentence| sentence.match?(/\bno\s+(?:separate|external|third[- ]party|production|professional)\b/i) }
+  findings = {
+    BACKEND_AUTHORSHIP => "Backend/API authorship needs a source for the authored server-side work and its environment.",
+    EXTERNAL_CRM => "A named or separate CRM integration needs affirmative evidence for that integration.",
+    DEVICE_MATRIX => "Cross-device or OS-version testing needs evidence of the devices or OS versions actually tested.",
+    REQUIREMENTS_WORK => "Requirements analysis needs a source documenting the candidate's requirements work."
+  }.filter_map do |pattern, message|
+    match = text.match(pattern)
+    next unless match
+    supported = positive.any? do |sentence|
+      if pattern == EXTERNAL_CRM
+        sentence.downcase.include?(match[0].downcase)
+      elsif pattern == BACKEND_AUTHORSHIP && text.match?(/\bproduction\b/i)
+        sentence.match?(pattern) && sentence.match?(/\bproduction\b/i)
+      else
+        sentence.match?(pattern)
+      end
+    end
+    message unless supported
+  end
+  if text.match?(TEST_AUTHORSHIP) && positive.none? { |sentence| sentence.match?(TEST_AUTHORSHIP) }
+    findings << "Test authorship needs a source for the tests the candidate wrote."
+  end
+
+  if (match = text.match(SUBMISSION_TOTAL))
+    scoped = match[2].casecmp?("client-branded ") && match[0].match?(/\bclient-branded (?:apps|applications)\b/i)
+    same_count = positive.any? do |sentence|
+      source_total = sentence.match(SUBMISSION_TOTAL)
+      source_total && source_total[1] == match[1] && source_total[3] == match[3] &&
+        source_total[2].casecmp?("client-branded ")
+    end
+    unless scoped && same_count
+      findings << "Separate client-branded apps from store listings and cite a source confirming both counts and their units."
+    end
+  end
+  findings
+end

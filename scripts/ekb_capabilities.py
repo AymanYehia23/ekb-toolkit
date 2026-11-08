@@ -10,8 +10,8 @@ POLICY = json.loads((Path(__file__).resolve().parents[1] / "config/capabilities.
 CLASSIFICATION = {
     "professional-experience": "broader professional capability",
     "practical-experience": "practical non-professional experience",
-    "working-knowledge": "confirmed technical knowledge",
-    "familiarity": "confirmed technical knowledge",
+    "working-knowledge": "working knowledge",
+    "familiarity": "familiarity",
     "transferable": "transferable experience",
     "learning-target": "genuine gap",
 }

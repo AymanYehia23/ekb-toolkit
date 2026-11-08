@@ -8,6 +8,7 @@ require "open3"
 require "tmpdir"
 require "yaml"
 require_relative "resume_test_support"
+require_relative "../scripts/resume_claim_review"
 
 class ResumeModuleTest < Minitest::Test
   include ResumeTestSupport
@@ -18,6 +19,23 @@ class ResumeModuleTest < Minitest::Test
   PROJECTS = File.join(FIXTURES, "projects")
   POLICY = File.join(ROOT, "config", "resume-policy.json")
   RANKING = File.join(FIXTURES, "project-ranking.yaml")
+
+  def test_scope_checks_distinguish_backend_integration_from_authorship
+    sources = [["sample-001", {"statement" => "Implemented a backend integration for checkout."}]]
+    assert_empty scope_findings("Implemented a backend integration for checkout.", sources)
+    assert_empty scope_findings("Implemented a backend API client for checkout.", sources)
+    assert_includes scope_findings("Implemented a backend API for checkout.", sources).join,
+                    "Backend/API authorship needs"
+  end
+
+  def test_scope_checks_require_test_authorship_beyond_a_test_path
+    source = {"statement" => "Implemented checkout.", "involvement" => "implemented",
+              "evidence" => [{"path" => "test/checkout_test.dart"}]}
+    wording = "Wrote regression tests for checkout."
+    assert_includes scope_findings(wording, [["sample-001", source]]).join, "Test authorship needs"
+    source["statement"] = wording
+    assert_empty scope_findings(wording, [["sample-001", source]])
+  end
 
   def raw_tool(*arguments)
     env = {"EKB_PYTHON" => ENV.fetch("EKB_PYTHON", "python3")}
@@ -938,9 +956,9 @@ class ResumeModuleTest < Minitest::Test
       assert status.success?, stderr
       report = JSON.parse(File.read(File.join(output, "validation.json")))
       assert_equal 1, report.dig("document_validation", "pdf_pages")
-      assert_operator report.dig("document_validation", "content_fill_ratios", 0), :<, 0.99
+      assert_operator report.dig("document_validation", "content_fill_ratios", 0), :<, 0.90
       assert_includes report.dig("document_validation", "warnings").join(" "), "underfilled"
-      assert_includes report.dig("document_validation", "warnings").join(" "), "99.0%"
+      assert_includes report.dig("document_validation", "warnings").join(" "), "90.0%"
     end
   end
 
@@ -1417,6 +1435,33 @@ class ResumeModuleTest < Minitest::Test
       stdout, _stderr, status = validate(model, path)
       refute status.success?
       assert_includes JSON.parse(stdout)["errors"].join(" "), "link_status \"unconfirmed\""
+    end
+  end
+
+  def test_requires_confirmed_profile_links_and_reports_unmigrated_entries
+    with_model do |model, path, directory|
+      model["schema_version"] = 2
+      model["basics"]["links"].clear
+      write_model(path, model)
+      profile_path = File.join(directory, "profile.yaml")
+      FileUtils.cp(PROFILE, profile_path)
+      checker = File.join(ROOT, "scripts", "resume_source_check.rb")
+      check = -> { Open3.capture3("ruby", checker, "--model", path, "--profile", profile_path, "--projects", PROJECTS) }
+      stdout, _stderr, status = check.call
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "), "omits confirmed profile link profile-link-001"
+
+      profile = YAML.safe_load(File.read(PROFILE), permitted_classes: [Date])
+      profile["links"].first.delete("link_status")
+      File.write(profile_path, YAML.dump(profile))
+      stdout, _stderr, status = check.call
+      refute status.success?
+      assert_includes JSON.parse(stdout)["errors"].join(" "), "profile-link-001 needs an explicit link_status"
+
+      profile["links"].first["link_status"] = "unconfirmed"
+      File.write(profile_path, YAML.dump(profile))
+      stdout, stderr, status = check.call
+      assert status.success?, stdout + stderr
     end
   end
 

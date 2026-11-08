@@ -237,8 +237,10 @@ sentence count.
 
 ### `emphasis.max_terms`
 
-12. Past roughly a dozen bolded terms nothing stands out any more. Overflow is
-reported rather than silently dropped.
+The default is 12. A reviewed application highlights one visible phrase per
+matched requirement and bolds the first occurrence of each distinct phrase.
+Required and critical requirements take precedence. Legacy alignments retain
+their per-section behavior. The report identifies matches dropped by the cap.
 
 ### `experience_budget`
 
@@ -248,10 +250,11 @@ dense role is not cut by policy.
 
 ### `content_density`
 
-`single_page_minimum_usable_height_ratio` and
-`master_single_page_target_usable_height_ratio` set advisory thresholds.
-Set either to zero in the workspace policy to disable its warning. The
-validation report still includes measured page fill.
+`single_page_minimum_usable_height_ratio` sets the publication floor for
+current one-page résumés. Legacy replays report underfill as an advisory.
+`master_single_page_target_usable_height_ratio` is a separate advisory target.
+Set a threshold to zero in the workspace policy to disable that check.
+The validation report still includes measured page fill.
 
 ### `page_length`
 
@@ -261,10 +264,10 @@ planning, not a public years-of-experience claim.
 
 ### `contact_hygiene` and `languages`
 
-Missing email, phone, professional profile links, and CEFR language levels are
-reported as advisory warnings. The renderer never fills those gaps itself:
-contact information and proficiency mappings must come from confirmed profile
-data.
+Missing email, phone, or CEFR language levels can generate advisory warnings.
+With hyperlinks enabled, version 2 models must include every confirmed
+professional profile link. Each recorded profile URL needs an explicit status.
+Contact information and proficiency mappings come from the confirmed profile.
 
 ### `delivery`
 

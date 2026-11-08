@@ -17,6 +17,10 @@ candidate updates and [résumé selection](resume.md) for editorial work.
    through [capability discovery](capability-discovery.md) before asking a new
    question. Compare underlying sources and limitations. A retrieval hit alone
    establishes neither proficiency nor qualification.
+   Read `project_leads` for the complete set of eligible project matches to
+   each requirement. The candidate display limit applies to the detailed
+   examples. Search curated records independently for relevant work missed by
+   the alias search.
 3. Run `ekb requirement-map ID --skeleton` and author the reviewed copy at
    `applications/ID.requirements.yaml`. Fill `reviewed_by`, `inventory_review`
    and `positioning` after checking the entire posting and deciding what the
@@ -43,6 +47,18 @@ waiting for a decision uses `unresolved`. Confirmed gaps use `gap`.
 For time bars, cite the confirmed employment entries that count toward the
 requirement and explain the context that makes them count. Recheck those facts
 and the finding together when anything changes.
+
+Record `discovery: {question, reason}` when a specific answer could change
+the reviewed fit or preparation. Use `discovery: {reason}` when prior evidence
+or the posting makes further questioning unnecessary. The editorial packet
+carries these questions even when the related work stays off the page.
+
+Record `project_review` keyed by project for each selected project and the
+credible alternatives. Each entry has `disposition` (`selected`, `reserve`
+or `omitted`), `refs`, `requirement_ids` and a concrete `reason` comparing
+scope, contribution and marginal value. Treat general rank as a tiebreaker.
+Make the judgment before drafting so the coverage and interview packet show
+the same decisions.
 
 ## Set the claim plan
 
