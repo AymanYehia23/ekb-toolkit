@@ -2548,7 +2548,7 @@ def count_links(model: dict[str, Any]) -> int:
     return total
 
 
-def link_warnings(model: dict[str, Any]) -> list[str]:
+def link_warnings(model: dict[str, Any], *, reviewed: bool = False) -> list[str]:
     """Hyperlinking is the default, so a rendered entity with no link is worth
     reporting — the address may simply be missing from the profile."""
     warnings: list[str] = []
@@ -2558,7 +2558,7 @@ def link_warnings(model: dict[str, Any]) -> list[str]:
         if not url_of(entry["organization"]):
             warnings.append(f"No hyperlink on employer: {text_of(entry['organization'])}")
         for engagement in engagements_of(entry):
-            if not url_of(engagement["name"]):
+            if not reviewed and not url_of(engagement["name"]):
                 warnings.append(f"No hyperlink on engagement: {text_of(engagement['name'])}")
     for entry in model.get("projects", []):
         if not url_of(entry["primary"]):
@@ -2687,10 +2687,20 @@ def editorial_warnings(model: dict[str, Any], policy: dict[str, Any]) -> list[st
         if phrase in visible:
             warnings.append(f"Avoid generic resume phrase: {phrase}")
     all_bullets = [text_of(item) for item in experience_items(model)]
+    reviewed = "requirement_map_sha256" in model.get("alignment", {})
     for index, entry in enumerate(model["experience"], 1):
         count = len(entry["bullets"])
         current = text_of(entry["end"]).casefold() == "present"
         engagements = engagements_of(entry)
+        if reviewed:
+            for label, items in [(text_of(entry["organization"]), entry["bullets"]),
+                                 *((text_of(group["name"]), group["bullets"]) for group in engagements)]:
+                openings = [text_of(item).casefold().split()[:1] for item in items]
+                if openings.count(["contributed"]) > 1:
+                    warnings.append(
+                        f"{label}: repeated 'Contributed' openings. Specify the distinct contributions "
+                        "while keeping their collaborative scope."
+                    )
         if engagements:
             # The role delegates its detail to named engagements, so the
             # role-level bullets are framing lines and the flat targets do not
@@ -2954,8 +2964,9 @@ def render_locked(args: argparse.Namespace, output_dir: Path) -> int:
                     f"PDF page {page_number} splits the protected phrase {phrase!r} "
                     "across lines; keep the complete phrase together"
                 )
-        warnings.extend(link_warnings(model))
-        warnings.extend(emphasis_warnings(model, policy, emphasizer))
+        presentation_findings = link_warnings(model, reviewed=bool(decisions))
+        presentation_findings.extend(emphasis_warnings(model, policy, emphasizer))
+        warnings.extend(presentation_findings)
         warnings.extend(source_report.get("warnings", []))
         errors.extend(verify_order(expected, pdf_text, "PDF"))
         errors.extend(rendered_typography_errors(expected, pdf_text, "PDF", policy))
@@ -3008,6 +3019,21 @@ def render_locked(args: argparse.Namespace, output_dir: Path) -> int:
         })
         packet_path.write_text(json.dumps(packet, indent=2) + "\n", encoding="utf-8")
         outputs["editorial.json"] = packet_path
+        findings = [
+            {"severity": "presentation" if warning in presentation_findings else "editorial",
+             "message": warning}
+            for warning in warnings
+        ]
+        findings.extend(source_report.get("link_findings", []))
+        if decisions:
+            for row in source_report["coverage"]["requirements"]:
+                if (row["disposition"] in {"unresolved", "gap"}
+                        or (row.get("discovery", {}).get("question") and row["priority"] == "required")):
+                    findings.append({
+                        "severity": "editorial", "requirement_id": row["id"],
+                        "message": f"{row['term']} ({row['disposition']}). {row['reason']}",
+                    })
+        findings.extend({"severity": "blocking", "message": error} for error in errors)
         report = {
             "valid": not errors,
             "delivery_status": DELIVERY_STATUS,
@@ -3033,6 +3059,7 @@ def render_locked(args: argparse.Namespace, output_dir: Path) -> int:
             "document_validation": {
                 "errors": errors,
                 "warnings": warnings,
+                "findings": findings,
                 "docx_structure": docx_structure,
                 "pdf_pages": pdf_pages,
                 "page_size": detected_page_size,
@@ -3096,11 +3123,10 @@ def render_locked(args: argparse.Namespace, output_dir: Path) -> int:
                 if docx_structure is not None else ""
             )
             + f"- Extraction/order errors: {len(errors)}\n"
-            f"- Editorial/layout warnings: {len(warnings)}\n"
+            f"- Editorial findings: {sum(item['severity'] == 'editorial' for item in findings)}\n"
             + coverage_table(source_report)
             + external_signals_section(source_report)
-            + (("\n## Warnings\n\n" + "\n".join(f"- {warning}" for warning in warnings) + "\n") if warnings else "")
-            + (("\n## Errors\n\n" + "\n".join(f"- {error}" for error in errors) + "\n") if errors else ""),
+            + (("\n## Findings\n\n" + "\n".join(f"- **{item['severity']}** — {item['message']}" for item in findings) + "\n") if findings else ""),
             encoding="utf-8",
         )
         report["report_sha256"] = sha256(validation_md)

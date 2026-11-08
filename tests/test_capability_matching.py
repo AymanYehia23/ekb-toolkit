@@ -47,10 +47,10 @@ class CapabilityMatchingTest(unittest.TestCase):
 
     def test_confirmation_without_project_reuses_the_actual_basis_and_level(self):
         for level, context, basis, classification, heading in (
-            ("working-knowledge", "non-professional", "study", "confirmed technical knowledge", "Working Knowledge"),
+            ("working-knowledge", "non-professional", "study", "working knowledge", "Working Knowledge"),
             ("professional-experience", "professional", "employment", "broader professional capability", "Professional Skills"),
             ("practical-experience", "non-professional", "practice", "practical non-professional experience", "Practical Experience"),
-            ("familiarity", "non-professional", "declaration", "confirmed technical knowledge", "Familiarity"),
+            ("familiarity", "non-professional", "declaration", "familiarity", "Familiarity"),
         ):
             with self.subTest(level=level):
                 capability = declaration(level, context=context, basis=basis)
@@ -66,7 +66,7 @@ class CapabilityMatchingTest(unittest.TestCase):
 
     def test_study_remains_partial_when_posting_requires_professional_use(self):
         mapping = self.mapping("Zig", capabilities=[declaration()], minimum_proficiency="professional-experience")
-        self.assertEqual(mapping["classification"], "confirmed technical knowledge")
+        self.assertEqual(mapping["classification"], "working knowledge")
         self.assertEqual(mapping["matches"][0]["fit"], "partial")
         self.assertEqual(mapping["matches"][0]["resume_use"]["heading"], "Working Knowledge")
         self.assertIsNone(mapping["discovery"])  # reuse the existing answer about context
@@ -116,7 +116,7 @@ class CapabilityMatchingTest(unittest.TestCase):
     def test_short_language_names_respect_punctuation(self):
         cpp = declaration(name="Cpp") | {"name": "C++"}
         self.assertEqual(self.mapping("C", capabilities=[cpp])["classification"], "needs confirmation")
-        self.assertEqual(self.mapping("C++", capabilities=[cpp])["classification"], "confirmed technical knowledge")
+        self.assertEqual(self.mapping("C++", capabilities=[cpp])["classification"], "working knowledge")
 
     def test_formal_bar_never_uses_skill_retrieval_as_qualification(self):
         assessment = {"status": "formal eligibility gap", "basis": "Screened against confirmed timeline."}

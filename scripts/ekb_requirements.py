@@ -101,7 +101,7 @@ def skeleton(root, application):
     return {
         "schema_version": 1, "application": application["id"], "basis_sha256": basis,
         "reviewed_by": "", "inventory_review": "", "positioning": "",
-        "claim_plan": {},
+        "claim_plan": {}, "project_review": {},
         "requirements": [{"id": row["id"], "term": row["term"], "fit": "",
                           "disposition": "", "refs": [], "claim_paths": [], "reason": ""} for row in rows],
     }
@@ -154,13 +154,35 @@ def load_decisions(root, application):
         if (bool(claim_paths) != (disposition == "included" and not formal)
                 or any(path not in plan or not set(refs).intersection(plan[path]["refs"]) for path in claim_paths)):
             raise ScreeningError(f"{frozen['term']}: included requirement must name its planned claims and sources")
+        discovery = row.get("discovery")
+        if "discovery" in row and (
+            not isinstance(discovery, dict) or set(discovery) not in ({"reason"}, {"question", "reason"})
+            or not all(text(value) for value in discovery.values())
+            or ("question" in discovery and fit in {"skill-gap", "formal-eligibility-gap"})
+        ):
+            raise ScreeningError(f"{frozen['term']}: record a focused discovery question and reason, or a reason to skip")
         requirements.append(frozen | {"fit": fit, "disposition": disposition,
                                       "refs": refs, "claim_paths": claim_paths,
-                                      "reason": reason, "screening_finding": finding})
+                                      "reason": reason, "screening_finding": finding}
+                            | ({"discovery": discovery} if discovery else {}))
 
+    project_review = reviewed.get("project_review", {})
+    requirement_ids = {row["id"] for row in requirements}
+    if not isinstance(project_review, dict) or any(
+        not text(project) or not isinstance(row, dict)
+        or set(row) != {"disposition", "reason", "refs", "requirement_ids"}
+        or row["disposition"] not in ("selected", "reserve", "omitted")
+        or not text(row["reason"]) or not ids(row["refs"]) or not row["refs"]
+        or not ids(row["requirement_ids"]) or not row["requirement_ids"]
+        or set(row["requirement_ids"]) - requirement_ids
+        for project, row in project_review.items()
+    ):
+        raise ScreeningError("project review must record each compared project's disposition, rationale, sources and requirement IDs")
     payload = {key: reviewed[key] for key in (
         "schema_version", "application", "basis_sha256", "reviewed_by", "inventory_review", "positioning",
     )} | {"claim_plan": plan, "requirements": requirements}
+    if project_review:
+        payload["project_review"] = project_review
     # The order of substantive claims is material.
     payload["revision_sha256"] = digest([payload, list(plan)])
     return payload

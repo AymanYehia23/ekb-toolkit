@@ -8,6 +8,7 @@ require "open3"
 require "tmpdir"
 require "yaml"
 require_relative "resume_test_support"
+require_relative "../scripts/resume_claim_review"
 
 class ResumeModuleTest < Minitest::Test
   include ResumeTestSupport
@@ -18,6 +19,23 @@ class ResumeModuleTest < Minitest::Test
   PROJECTS = File.join(FIXTURES, "projects")
   POLICY = File.join(ROOT, "config", "resume-policy.json")
   RANKING = File.join(FIXTURES, "project-ranking.yaml")
+
+  def test_scope_checks_distinguish_backend_integration_from_authorship
+    sources = [["sample-001", {"statement" => "Implemented a backend integration for checkout."}]]
+    assert_empty scope_findings("Implemented a backend integration for checkout.", sources)
+    assert_empty scope_findings("Implemented a backend API client for checkout.", sources)
+    assert_includes scope_findings("Implemented a backend API for checkout.", sources).join,
+                    "Backend/API authorship needs"
+  end
+
+  def test_scope_checks_require_test_authorship_beyond_a_test_path
+    source = {"statement" => "Implemented checkout.", "involvement" => "implemented",
+              "evidence" => [{"path" => "test/checkout_test.dart"}]}
+    wording = "Wrote regression tests for checkout."
+    assert_includes scope_findings(wording, [["sample-001", source]]).join, "Test authorship needs"
+    source["statement"] = wording
+    assert_empty scope_findings(wording, [["sample-001", source]])
+  end
 
   def raw_tool(*arguments)
     env = {"EKB_PYTHON" => ENV.fetch("EKB_PYTHON", "python3")}

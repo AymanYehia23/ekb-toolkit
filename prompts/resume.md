@@ -221,10 +221,9 @@ reveal an omission; it may never bridge it.
 
 A lower-ranked project can lead when it addresses the target more directly,
 adds technical depth or a distinctive contribution, or avoids duplicating
-another selected accomplishment. The source checker emits a
-rank-inversion warning for a skipped project that could have covered an
-under-covered requirement; when it fires, name the reason at delivery rather
-than silently accepting it.
+another selected accomplishment. For reviewed applications, record those
+comparisons in the requirement map. Older workflows can still surface a
+general rank warning, which is a prompt to compare the actual evidence.
 
 Selection and placement are different decisions. A project is **selected** when
 any visible item cites one of its records. The stable `projects` array renders

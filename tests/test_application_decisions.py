@@ -15,7 +15,7 @@ import yaml
 from test_capability_matching import declaration
 from test_resume_workflow import SCRIPTS
 from ekb_screening import posting_digest
-from resume_render import Emphasizer
+from resume_render import Emphasizer, editorial_warnings
 
 EXAMPLE = SCRIPTS.parent / "examples/sample-workspace"
 SAMPLE_ID = "2026-03-14-northwind-flutter-engineer"
@@ -222,6 +222,13 @@ class ApplicationDecisionsTest(unittest.TestCase):
         self.assertEqual(packet["requirement_map"], reviewed)
         self.assertEqual(report["source_validation"]["requirement_map"], reviewed)
         self.assertEqual(packet["requirement_coverage"], report["source_validation"]["coverage"]["requirements"])
+        self.assertEqual(packet["project_selection"], report["source_validation"]["project_selection"])
+        interview = {row["term"]: row for row in packet["capability_interview"] if "term" in row}
+        self.assertEqual(interview["Rust"]["disposition"], "unresolved")
+        self.assertEqual(interview["low-end Android performance"]["fit"], "partial")
+        self.assertNotIn("10 years of mobile employment", interview)
+        self.assertTrue(any(item.get("requirement_id") and "10 years" in item["message"]
+                            for item in report["document_validation"]["findings"]))
         self.assertEqual(report["outputs"]["editorial.json"]["sha256"], sha(out / "editorial.json"))
         self.assertEqual(packet["pdf_sha256"], sha(out / report["primary_pdf"]))
         self.assertEqual(packet["model_sha256"], sha(out / "resume.json"))
@@ -245,6 +252,172 @@ class ApplicationDecisionsTest(unittest.TestCase):
         self.assertIn("mid-range Android device", text)
         self.assertNotIn("low-end Android", text)
         return report, packet, text
+
+    def test_project_relevance_comparison_is_independent_of_global_rank_and_display_limit(self):
+        model, app_path = self.application()
+        # Recreate the shape of the reviewed inversion. A booking project ranks
+        # higher generally, while the chosen evidence is closer to a concrete
+        # requirement. The short display must retain both as review leads.
+        app = yaml.safe_load(app_path.read_text())
+        app["targeting"]["requirements"][1]["aliases"] = ["Flutter", "workout", "receipt printing"]
+        write_yaml(app_path, app)
+        ranking = self.root / "profile/project-ranking.yaml"
+        write_yaml(ranking, {"projects": [
+            {"project": "fittrack", "rank": 3, "placement": "experience"},
+            {"project": "mealmate", "rank": 11, "placement": "experience"},
+        ]})
+        limited = yaml.safe_load(self.run_ekb("shortlist", HARDWARE, "--stdout", "--limit", "1"))
+        expanded = yaml.safe_load(self.run_ekb("shortlist", HARDWARE, "--stdout", "--limit", "50"))
+        def flutter(data):
+            return next(row for row in data["requirements"] if row["term"] == "Flutter")
+        self.assertEqual(len(flutter(limited)["candidates"]), 1)
+        self.assertEqual(flutter(limited)["project_leads"], flutter(expanded)["project_leads"])
+        self.assertIn("fittrack", flutter(limited)["project_leads"])
+        self.assertIn("mealmate", flutter(limited)["project_leads"])
+
+        path = app_path.with_suffix(".requirements.yaml")
+        review = yaml.safe_load(path.read_text())
+        # Keep the direct transport for this target. Exercise a higher-ranked
+        # unselected alternative without changing the visible fixture's claims.
+        spare = self.root / "projects/booking.yaml"
+        write_yaml(spare, {"project": "booking", "records": [
+            {"id": "booking-001", "statement": "Contributed to Flutter booking checkout.",
+             "kind": "repo-verified", "involvement": "contributed"},
+        ]})
+        ranking_data = yaml.safe_load(ranking.read_text())
+        ranking_data["projects"].insert(0, {"project": "booking", "rank": 2, "placement": "experience"})
+        write_yaml(ranking, ranking_data)
+        review["basis_sha256"] = yaml.safe_load(self.run_ekb("requirement-map", HARDWARE, "--skeleton"))["basis_sha256"]
+        ids = {row["term"]: row["id"] for row in review["requirements"]}
+        review["project_review"] = {
+            "mealmate": {"disposition": "selected", "refs": ["mealmate-101"], "requirement_ids": [ids["Bluetooth"]],
+                         "reason": "Direct acknowledged device writes add a requirement-specific mechanism."},
+            "fittrack": {"disposition": "selected", "refs": ["fittrack-002"], "requirement_ids": [ids["Flutter"]],
+                         "reason": "Selected workflow is independently relevant."},
+            "booking": {"disposition": "reserve", "refs": ["booking-001"], "requirement_ids": [ids["Flutter"]],
+                        "reason": "Flutter work overlaps the existing evidence and adds no device integration."},
+        }
+        write_yaml(path, review)
+        model["alignment"] = json.loads(self.run_ekb("requirement-map", HARDWARE, "--alignment"))
+        draft = self.root / "selection.json"
+        write_json(draft, model)
+        report = json.loads(self.run_ekb("validate", HARDWARE, "--draft", draft, "--editorial-packet"))
+        projects = {row["project"]: row for row in report["project_selection"]["reviewed_comparison"]}
+        self.assertEqual(projects["mealmate"]["disposition"], "selected")
+        self.assertEqual(projects["booking"]["disposition"], "reserve")
+        self.assertLess(projects["booking"]["general_rank"], projects["mealmate"]["general_rank"])
+        self.assertIn("booking-001", report["editorial_packet"]["sources"])
+        self.assertFalse(any("rank inversion" in warning for warning in report["warnings"]))
+
+        review["project_review"]["booking"]["disposition"] = "selected"
+        write_yaml(path, review)
+        model["alignment"] = json.loads(self.run_ekb("requirement-map", HARDWARE, "--alignment"))
+        write_json(draft, model)
+        self.run_ekb("validate", HARDWARE, "--draft", draft, error="reviewed project selection disagrees")
+
+    def test_scope_guards_and_bullet_warnings(self):
+        model, _ = self.application()
+        draft = self.root / "scope.json"
+        bullet = model["experience"][1]["bullets"][0]
+        original = bullet["text"]
+        for wording, error in (
+            ("Integrated an external CRM for the retail client.", "separate CRM integration needs"),
+            ("Developed a backend API for receipt uploads.", "Backend/API authorship needs"),
+            ("Personally submitted 16 apps across 21 Google Play and App Store listings.", "Separate client-branded apps"),
+            ("Tested across different devices.", "Cross-device or OS-version testing needs"),
+            ("Wrote regression tests for checkout.", "Test authorship needs"),
+            ("Gathered client requirements for checkout.", "Requirements analysis needs"),
+            ("Built Bluetooth receipt printing.", "overstates contributed source"),
+        ):
+            with self.subTest(wording=wording):
+                bullet["text"] = wording
+                write_json(draft, model)
+                self.run_ekb("validate", HARDWARE, "--draft", draft, error=error)
+        bullet["text"] = original
+        model["experience"][1]["bullets"] += [
+            {"text": "Contributed to checkout improvements.", "source_ref": "mealmate-101"},
+        ]
+        policy = read_json(self.policy_path)
+        warnings = editorial_warnings(model, policy)
+        self.assertTrue(any("has 3 bullets" in warning for warning in warnings))
+        self.assertTrue(any("repeated 'Contributed'" in warning for warning in warnings))
+        model["experience"][1]["bullets"] = [
+            bullet, {"text": "Helped improve checkout.", "source_ref": "mealmate-101"},
+        ]
+        warnings = editorial_warnings(model, policy)
+        self.assertFalse(any("has 3 bullets" in warning or "repeated 'Contributed'" in warning for warning in warnings))
+
+    def test_engagement_links_and_range_minimum_use_the_actual_profile(self):
+        model, app_path = self.application()
+        role = model["experience"][0]
+        heading = {"text": "FitTrack", "source_ref": "fittrack-002"}
+        role["engagements"] = [{"name": heading, "bullets": [role["bullets"].pop()]}]
+        path = app_path.with_suffix(".requirements.yaml")
+        review = yaml.safe_load(path.read_text())
+        review["claim_plan"]["resume.experience[0].engagements[0].bullets[0]"] = review["claim_plan"].pop(
+            "resume.experience[0].bullets[1]"
+        )
+        write_yaml(path, review)
+        model["alignment"] = json.loads(self.run_ekb("requirement-map", HARDWARE, "--alignment"))
+        draft = self.root / "engagement.json"
+        write_json(draft, model)
+        result = json.loads(self.run_ekb("validate", HARDWARE, "--draft", draft))
+        self.assertEqual(result["link_findings"][0]["severity"], "presentation")
+        heading["url"] = "https://play.google.com/store/apps/details?id=com.example.mealmate"
+        write_json(draft, model)
+        self.run_ekb("validate", HARDWARE, "--draft", draft, error="not a confirmed link for this engagement")
+
+        self.profile["project_links"] = [entry for entry in self.profile["project_links"]
+                                         if entry["project"] != "fittrack"]
+        write_yaml(self.profile_path, self.profile)
+        heading.pop("url")
+        write_json(draft, model)
+        self.run_ekb("validate", HARDWARE, "--draft", draft, error="reviewed requirement map is stale")
+        review["basis_sha256"] = yaml.safe_load(self.run_ekb("requirement-map", HARDWARE, "--skeleton"))["basis_sha256"]
+        write_yaml(path, review)
+        model["alignment"] = json.loads(self.run_ekb("requirement-map", HARDWARE, "--alignment"))
+        write_json(draft, model)
+        result = json.loads(self.run_ekb("validate", HARDWARE, "--draft", draft))
+        self.assertEqual(result["link_findings"][0]["severity"], "non-applicable")
+
+        app = yaml.safe_load(app_path.read_text())
+        prior = "At least 10 years of mobile employment."
+        current = "3–5 years of mobile employment."
+        app["job_description"] = app["job_description"].replace(prior, current)
+        app["targeting"]["requirements"][-1].update(
+            term="3–5 years of mobile employment", posting_excerpt=current,
+        )
+        write_yaml(app_path, app)
+        screen_path = app_path.with_suffix(".screening.yaml")
+        screen = yaml.safe_load(screen_path.read_text())
+        screen["decision"]["posting_sha256"] = posting_digest(app)
+        screen["findings"][0]["basis"] = current
+        write_yaml(screen_path, screen)
+        skeleton = yaml.safe_load(self.run_ekb("requirement-map", HARDWARE, "--skeleton"))
+        review["basis_sha256"] = skeleton["basis_sha256"]
+        review["requirements"][-1]["id"] = skeleton["requirements"][-1]["id"]
+        write_yaml(path, review)
+        model["alignment"] = json.loads(self.run_ekb("requirement-map", HARDWARE, "--alignment"))
+        write_json(draft, model)
+        self.run_ekb("validate", HARDWARE, "--draft", draft, error="formal-eligibility-gap lacks support")
+
+        screen["findings"][0]["qualification_fit"] = "formal-eligibility-met"
+        write_yaml(screen_path, screen)
+        review["basis_sha256"] = yaml.safe_load(
+            self.run_ekb("requirement-map", HARDWARE, "--skeleton")
+        )["basis_sha256"]
+        qualification = review["requirements"][-1]
+        qualification.update(fit="formal-eligibility-met", disposition="omitted",
+                             reason="The dates remain visible in Experience.")
+        for disposition in ("omitted", "included"):
+            with self.subTest(disposition=disposition):
+                qualification["disposition"] = disposition
+                write_yaml(path, review)
+                model["alignment"] = json.loads(self.run_ekb("requirement-map", HARDWARE, "--alignment"))
+                write_json(draft, model)
+                result = json.loads(self.run_ekb("validate", HARDWARE, "--draft", draft))
+                paths = result["coverage"]["requirements"][-1]["claim_paths"]
+                self.assertEqual(bool(paths), disposition == "included")
 
     def test_independent_wording_repeat_and_different_employer(self):
         model, _ = self.application()

@@ -77,6 +77,10 @@ def reviewed_coverage(map, sources, visible, policy, profile, model, errors)
     if row["disposition"] == "included" && row["category"] != "qualification" && (paths.empty? || paths.length != row["claim_paths"].length)
       errors << "#{term}: reviewed inclusion has no visible supporting claim"
     end
+    if fit == "formal-eligibility-met" && row["disposition"] == "included"
+      paths = visible.select { |item| !(Array(item["refs"]) & refs).empty? }.map { |item| item["path"] }
+      errors << "#{term}: reviewed inclusion has no visible supporting qualification" if paths.empty?
+    end
     row.merge("coverage" => fit, "selection_reason" => row["reason"], "claim_paths" => paths,
               "status" => row["disposition"], "in_prose" => paths.any? { |path| prose_item?(path) },
               "unused_candidates" => [])
@@ -84,7 +88,7 @@ def reviewed_coverage(map, sources, visible, policy, profile, model, errors)
 end
 
 def eligible_qualification?(row, support, profile, model)
-  minimum_years = row["posting_excerpt"].match(/\b(\d+)\s*\+?\s*years?\b/i)
+  minimum_years = row["posting_excerpt"].match(/\b(\d+)(?:\s*(?:[-–—]|to)\s*\d+|\s*\+)?\s*years?\b/i)
   return false unless row["screening_finding"] && support.all? do |source|
     source["kind"] == "user-stated" &&
       source["record_path"].match?(/\Aprofile\.(?:experience|work_eligibility|eligibility|education|certifications|languages)\[/)
@@ -97,4 +101,49 @@ def eligible_qualification?(row, support, profile, model)
   years = confirmed_experience_years({"experience" => timeline}, model)
   return false unless years
   (years >= minimum_years[1].to_i) == (row["fit"] == "formal-eligibility-met")
+end
+
+def reviewed_project_selection(map, visible, sources, policy, ranks, errors, warnings)
+  material_refs = visible.select { |item| item["path"].match?(MATERIAL_ITEM) }
+                         .flat_map { |item| item["refs"] }
+  selected = material_refs.filter_map { |ref| sources.dig(ref, "project") }.uniq
+  compared = map.fetch("project_review", {})
+  mapped = map["requirements"].flat_map { |row| row["refs"] }.filter_map do |ref|
+    source = sources[ref]
+    source["project"] if source && eligible_source?(source, policy)
+  end
+  missing = (selected | mapped) - compared.keys
+  unless missing.empty?
+    warnings << "Project selection review missing for #{missing.join(', ')}. Compare direct role evidence " \
+                "and record what each project adds over alternatives before editorial approval."
+  end
+  compared.map do |project, row|
+    unless row["refs"].all? { |ref| sources.dig(ref, "project") == project && eligible_source?(sources[ref], policy) }
+      errors << "#{project}: project comparison must cite eligible records from that project"
+    end
+    if selected.include?(project) != (row["disposition"] == "selected") ||
+       (row["disposition"] == "selected" && (row["refs"] & material_refs).empty?)
+      errors << "#{project}: reviewed project selection disagrees with the material résumé claims"
+    end
+    row.merge("project" => project, "general_rank" => ranks[project])
+  end
+end
+
+def requirement_interview(coverage, sources, warnings)
+  coverage.filter_map do |row|
+    discovery = row["discovery"]
+    if !discovery && row["priority"] == "required" && %w[partial transferable needs-confirmation].include?(row["fit"])
+      warnings << "#{row['term']}: capability discovery needs review. Check prior answers and record a focused question or why none is needed."
+      discovery = {
+        "question" => "What experience or knowledge could address the remaining scope of #{row['term']}? Give a specific example and context.",
+        "reason" => "The reviewed fit leaves part or all of this required capability open."
+      }
+    end
+    next unless discovery && discovery["question"]
+
+    row.slice("id", "term", "fit", "disposition", "refs", "reason").merge(
+      "question" => discovery["question"], "why_ask" => discovery["reason"],
+      "known_capabilities" => row["refs"].filter_map { |ref| sources.dig(ref, "capability") }
+    )
+  end
 end
