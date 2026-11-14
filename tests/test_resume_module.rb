@@ -1793,11 +1793,21 @@ class ResumeModuleTest < Minitest::Test
   def test_engagement_name_and_bullets_reach_both_documents
     with_model do |model, _path, directory|
       model["experience"][0]["engagements"] = [engagement_entry]
-      output, _stdout, stderr, status = render_model(model, directory)
+      output, _stdout, stderr, status = render_model(model, directory, "--include-text")
       assert status.success?, stderr
       runs = docx_runs(File.join(output, "resume.docx"))
+      heading = runs.scan(%r{<w:p(?:\s[^>]*)?>.*?</w:p>}m).find do |paragraph|
+        paragraph.include?("<w:t>PROJECTS</w:t>")
+      end
+      refute_nil heading
+      assert_includes heading, "<w:bottom"
+      assert_includes heading, 'w:color="A0A0A0"'
       assert_includes runs, "Stronger Client"
       assert_includes runs, "typed failure handling"
+      assert_operator runs.index("data import pipeline"), :<, runs.index("PROJECTS")
+      assert_operator runs.index("PROJECTS"), :<, runs.index("Stronger Client")
+      plain = File.read(File.join(output, "resume.txt"), encoding: "UTF-8")
+      assert_match(/^  PROJECTS\n    Stronger Client .*\n      • Implemented a reporting vertical/, plain)
     end
   end
 
@@ -1808,6 +1818,7 @@ class ResumeModuleTest < Minitest::Test
       output, _stdout, stderr, status = render_model(model, directory)
       assert status.success?, stderr
       runs = docx_runs(File.join(output, "resume.docx"))
+      assert_operator runs.index("PROJECTS"), :<, runs.index("Stronger Client")
       assert_operator runs.index("Stronger Client"), :<, runs.index("data import pipeline")
     end
   end

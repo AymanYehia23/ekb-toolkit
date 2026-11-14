@@ -215,7 +215,9 @@ or charts for proficiency.
 role-level framing lines for job-targeted resumes, or up to four distinct
 employer-level lines for a master resume; two to four engagements; and up to
 three bullets per engagement when each adds separate value. Render role framing
-before named engagements by default.
+before named engagements by default. Group named engagements under an
+indented **PROJECTS** heading with a thin divider in PDF and DOCX. Indent each
+project name and its bullets below that heading.
 `experience_budget` in the policy holds these numbers and the renderer reports
 overruns as warnings rather than truncating. A heading is part of the page cost:
 do not retain a one-bullet engagement whose only incremental value is an
@@ -233,9 +235,9 @@ do not render a confirmed profile break automatically.
 DOCX export.
 Bullet text starts inside the company or project title margin, wrapped lines
 align under the first text line, and the marker is vertically offset to the
-body-text baseline. An engagement title aligns with the role bullet text and its
-own bullets sit one level deeper, giving three visible depths: employer, named
-project, achievement. Do not rely on a viewer's default list indentation or a
+body-text baseline. The **PROJECTS** heading aligns with the role bullet text.
+Each project title sits farther in, with its bullets one level deeper.
+Do not rely on a viewer's default list indentation or a
 private-use Symbol-font glyph; use a portable round Unicode bullet in the
 document font.
 

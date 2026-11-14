@@ -44,6 +44,7 @@ class ResumeError(Exception):
 
 NO_BREAK_SPACE_MARKER = "\ue000"
 DELIVERY_STATUS = "private_draft_human_approval_required"
+ROLE_PROJECTS_HEADING = "PROJECTS"
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -185,11 +186,8 @@ def bullet_layout(policy: dict[str, Any]) -> dict[str, float]:
         "hanging_pt": 11.0,
         "marker_font_size_pt": 6.0,
         "marker_vertical_offset_pt": -1.5,
-        # Second level, for named engagements inside a role. The title sits
-        # between the employer margin and its own bullets so the reader sees
-        # employer, project, achievement as three distinct depths.
-        "engagement_title_indent_pt": 20.0,
-        "engagement_text_indent_pt": 40.0,
+        "engagement_title_indent_pt": 32.0,
+        "engagement_text_indent_pt": 49.0,
     }
     layout: dict[str, float] = {}
     for key, fallback in defaults.items():
@@ -197,6 +195,12 @@ def bullet_layout(policy: dict[str, Any]) -> dict[str, float]:
         if not isinstance(value, (int, float)):
             raise ResumeError(f"policy.bullets.{key} must be numeric")
         layout[key] = float(value)
+    # Older workspace policies copied the former defaults. Upgrade that
+    # geometry while preserving independently configured indentation.
+    if (layout["text_indent_pt"], layout["engagement_title_indent_pt"],
+            layout["engagement_text_indent_pt"]) == (20.0, 20.0, 40.0):
+        for key in ("engagement_title_indent_pt", "engagement_text_indent_pt"):
+            layout[key] = defaults[key]
     if layout["text_indent_pt"] <= 0:
         raise ResumeError("policy.bullets.text_indent_pt must be positive")
     if not 0 < layout["hanging_pt"] < layout["text_indent_pt"]:
@@ -1292,15 +1296,18 @@ def resume_lines(model: dict[str, Any]) -> list[str]:
         role_bullets_after = entry.get("bullets_position") == "after_engagements"
         if not role_bullets_after:
             lines.extend(f"• {text_of(item)}" for item in entry["bullets"])
-        for engagement in engagements_of(entry):
+        engagements = engagements_of(entry)
+        if engagements:
+            lines.append(f"  {ROLE_PROJECTS_HEADING}")
+        for engagement in engagements:
             lines.append(
-                " | ".join(
+                "    " + " | ".join(
                     part
                     for part in (text_of(engagement["name"]), text_of(engagement.get("context")))
                     if part
                 )
             )
-            lines.extend(f"• {text_of(item)}" for item in engagement["bullets"])
+            lines.extend(f"      • {text_of(item)}" for item in engagement["bullets"])
         if role_bullets_after:
             lines.extend(f"• {text_of(item)}" for item in entry["bullets"])
     if model.get("projects"):
@@ -1532,15 +1539,15 @@ def add_docx_section_heading(document: Document, label: str, policy: dict[str, A
     paragraph._p.get_or_add_pPr().append(_bottom_border())
 
 
-def _bottom_border() -> Any:
+def _bottom_border(*, color: str = "666666", size: str = "4") -> Any:
     from docx.oxml import OxmlElement
 
     borders = OxmlElement("w:pBdr")
     bottom = OxmlElement("w:bottom")
     bottom.set(qn("w:val"), "single")
-    bottom.set(qn("w:sz"), "4")
+    bottom.set(qn("w:sz"), size)
     bottom.set(qn("w:space"), "1")
-    bottom.set(qn("w:color"), "666666")
+    bottom.set(qn("w:color"), color)
     borders.append(bottom)
     return borders
 
@@ -1757,7 +1764,18 @@ def render_docx(model: dict[str, Any], policy: dict[str, Any], output: Path) -> 
         if not role_bullets_after:
             add_role_bullets()
 
-        for engagement in engagements_of(entry):
+        engagements = engagements_of(entry)
+        if engagements:
+            group = document.add_paragraph()
+            group.paragraph_format.keep_with_next = True
+            group.paragraph_format.left_indent = Pt(bullets["text_indent_pt"])
+            group.paragraph_format.space_before = Pt(5)
+            group.paragraph_format.space_after = Pt(1)
+            set_run_font(group.add_run(ROLE_PROJECTS_HEADING), policy["fonts"]["primary"],
+                         policy["sizes_pt"]["section"], bold=True)
+            group._p.get_or_add_pPr().append(_bottom_border(color="A0A0A0", size="3"))
+
+        for engagement in engagements:
             title = document.add_paragraph()
             title.paragraph_format.keep_with_next = True
             title.paragraph_format.left_indent = Pt(bullets["engagement_title_indent_pt"])
@@ -1975,7 +1993,10 @@ def protect_pdf_markup(markup: str) -> str:
     )
 
 
-def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> Emphasizer:
+def render_pdf(
+    model: dict[str, Any], policy: dict[str, Any], output: Path, *,
+    compact_projects: bool = False,
+) -> Emphasizer:
     emphasizer = Emphasizer(model, policy)
     phrases = protected_line_phrases(model, policy)
     hyperlink_color, hyperlink_underline = link_appearance(policy)
@@ -2114,7 +2135,32 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> E
         if not role_bullets_after:
             story.append(bullets)
 
-        for engagement in engagements_of(entry):
+        engagements = engagements_of(entry)
+        if engagements:
+            group_style = styles["section"].clone("projectGroup")
+            group_style.leftIndent = bullet_tokens["text_indent_pt"]
+            group_style.spaceBefore = 2 if compact_projects else 5
+            group_style.spaceAfter = 0
+            # SimpleDocTemplate's body frame has 6 pt padding on each side.
+            rule = HRFlowable(
+                width=max(1, document.width - 12 - group_style.leftIndent),
+                hAlign="RIGHT",
+                thickness=0.35,
+                color=colors.HexColor("#a0a0a0"),
+                spaceAfter=0 if compact_projects else 1,
+            )
+            rule.keepWithNext = True
+            story.extend([safe_paragraph(ROLE_PROJECTS_HEADING, group_style), rule])
+
+        engagement_spacing = policy["spacing_pt"].get("engagement_before", 1)
+        project_indent = bullet_tokens["engagement_title_indent_pt"]
+        project_bullet_indent = bullet_tokens["engagement_text_indent_pt"]
+        project_bullet_hang = bullet_tokens["hanging_pt"]
+        if compact_projects:
+            project_bullet_indent = min(project_bullet_indent, project_indent + 8)
+            project_bullet_hang = min(project_bullet_hang, project_bullet_indent - project_indent)
+
+        for engagement in engagements:
             name = linked(engagement["name"])
             context = text_of(engagement.get("context"))
             label = f"<b>{name}</b>"
@@ -2122,20 +2168,20 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> E
                 label += f" | {pdf_text_markup(context)}"
             engagement_heading = safe_paragraph(label, styles["entry"])
             engagement_heading.style = styles["entry"].clone("engagementEntry")
-            engagement_heading.style.leftIndent = bullet_tokens["engagement_title_indent_pt"]
-            engagement_heading.style.spaceBefore = policy["spacing_pt"].get("engagement_before", 1)
+            engagement_heading.style.leftIndent = project_indent
+            engagement_heading.style.spaceBefore = min(0.75, engagement_spacing) if compact_projects else engagement_spacing
             story.append(engagement_heading)
             story.append(
                 ListFlowable(
                     [ListItem(linked_emphasized(item)) for item in engagement["bullets"]],
                     bulletType="bullet",
                     start="circle",
-                    leftIndent=bullet_tokens["engagement_text_indent_pt"],
-                    bulletDedent=bullet_tokens["hanging_pt"],
+                    leftIndent=project_bullet_indent,
+                    bulletDedent=project_bullet_hang,
                     bulletFontName=font,
                     bulletFontSize=bullet_tokens["marker_font_size_pt"],
                     bulletOffsetY=bullet_tokens["marker_vertical_offset_pt"],
-                    spaceAfter=2,
+                    spaceAfter=0 if compact_projects else 2,
                 )
             )
 
@@ -2257,6 +2303,11 @@ def render_pdf(model: dict[str, Any], policy: dict[str, Any], output: Path) -> E
         canvas.restoreState()
 
     document.build(story, onFirstPage=lambda _canvas, _document: None, onLaterPages=later_page)
+    if (not compact_projects and document.page > model["layout"]["page_target"]
+            and any(engagements_of(entry) for entry in model["experience"])):
+        # Give the Projects subsection one compact pass before flowing onto
+        # another page. Keep all wording, type sizes and margins.
+        return render_pdf(model, policy, output, compact_projects=True)
     return emphasizer
 
 

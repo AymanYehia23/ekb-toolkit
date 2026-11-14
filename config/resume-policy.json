@@ -43,9 +43,9 @@
     "hanging_pt": 11,
     "marker_font_size_pt": 8,
     "marker_vertical_offset_pt": -1.5,
-    "note": "Bullet text sits inside the company or project title margin, wrapped lines align under the first text line, and the marker is lowered to the text baseline in both DOCX and PDF. An engagement title aligns with the role bullet text and its own bullets sit one level deeper, giving three visible depths: employer, named project, achievement. Both renderers consume these tokens; neither infers indentation from a viewer default.",
-    "engagement_title_indent_pt": 20,
-    "engagement_text_indent_pt": 40
+    "note": "The PROJECTS heading aligns with the role bullet text. Project titles and their bullets use progressively deeper indents. Wrapped bullet lines align with the first text line.",
+    "engagement_title_indent_pt": 32,
+    "engagement_text_indent_pt": 49
   },
   "allowed_sections": [
     "Summary",
